@@ -485,27 +485,6 @@ export default function Projects() {
                                 </div>
                             </div>
 
-                            <div className="form-group">
-                                <label className="form-label">Damaged Road Photo (GPS Verified)</label>
-                                {!gpsCameraRequested ? (
-                                    <button type="button" className="btn btn-outline" onClick={handleGpsCameraRequest} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px' }}>
-                                        📷 Open GPS Camera
-                                    </button>
-                                ) : (
-                                    <div style={{ padding: '16px', background: 'var(--bg-glass)', border: '1px solid var(--accent-orange)', borderRadius: '8px' }}>
-                                        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.4 }}>
-                                            <strong style={{ color: 'var(--accent-orange)' }}>⚠️ Location Verified.</strong><br/> 
-                                            You must use a <strong>Trusted GPS Camera App</strong> to take this photo so that timestamp and coordinates are embedded on the image. Regular photos will be rejected during audit.
-                                        </p>
-                                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                                            <a href="https://play.google.com/store/apps/details?id=com.vcamera.roudndai" target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{ flex: 1, fontSize: '12px', textAlign: 'center', borderColor: '#3b82f6', color: '#3b82f6' }}>
-                                                ⬇️ Get GPS App on PlayStore
-                                            </a>
-                                        </div>
-                                        <input type="file" className="form-input" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} required />
-                                    </div>
-                                )}
-                            </div>
 
                             <div className="form-group">
                                 <label className="form-label">Budget Estimation Proof</label>
