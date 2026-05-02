@@ -27,6 +27,7 @@ const NAV_ITEMS = {
         { to: '/projects', icon: <FiFolder />, label: 'My Projects' },
         { to: '/milestones', icon: <FiCheckSquare />, label: 'Milestones' },
         { to: '/funds', icon: <FiDollarSign />, label: 'Payments' },
+        { to: '/grievances', icon: <FiAlertCircle />, label: 'Citizen Complaints' },
         { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
 
     ],
@@ -35,6 +36,7 @@ const NAV_ITEMS = {
         { to: '/projects', icon: <FiFolder />, label: 'Projects' },
         { to: '/milestones', icon: <FiCheckSquare />, label: 'Milestones' },
         { to: '/funds', icon: <FiDollarSign />, label: 'Fund Verification' },
+        { to: '/grievances', icon: <FiAlertCircle />, label: 'Citizen Complaints' },
         { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
 
     ],

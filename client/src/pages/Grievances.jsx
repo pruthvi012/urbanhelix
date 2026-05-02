@@ -107,14 +107,14 @@ export default function Grievances() {
         <div className="grievances-page">
             <div className="page-header">
                 <h1 className="page-title">
-                    {['engineer', 'admin'].includes(user?.role) ? 'Citizen Complaints Management' : 'Citizen Problem Reporting'}
+                    {user?.role !== 'citizen' ? 'Citizen Complaints Management' : 'Citizen Problem Reporting'}
                 </h1>
                 <p className="page-subtitle">
-                    {['engineer', 'admin'].includes(user?.role) ? 'Review and resolve GPS-verified infrastructure issues reported by citizens' : 'Report infrastructure issues with GPS-verified evidence'}
+                    {user?.role !== 'citizen' ? 'Review GPS-verified infrastructure issues reported by citizens' : 'Report infrastructure issues with GPS-verified evidence'}
                 </p>
             </div>
 
-            {user && (
+            {user?.role === 'citizen' && (
                 <button className="btn btn-primary" style={{ marginBottom: '20px', gap: '10px' }} onClick={() => setShowModal(true)}>
                     <FiCamera /> Report a Problem
                 </button>
