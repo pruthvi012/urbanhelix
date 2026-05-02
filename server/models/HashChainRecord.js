@@ -22,7 +22,6 @@ const hashChainRecordSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Index for fast chain traversal
-hashChainRecordSchema.index({ sequenceNumber: 1 });
 hashChainRecordSchema.index({ recordType: 1 });
 
 module.exports = mongoose.model('HashChainRecord', hashChainRecordSchema);
