@@ -111,7 +111,7 @@ export default function Layout() {
                     </div>
                     <div className="header-actions">
                         <NotificationBell />
-                        <div className="header-user">
+                        <div className="header-user" onClick={handleLogout} style={{ cursor: 'pointer' }} title="Click to Logout">
                             <div className="header-avatar">{initials}</div>
                         </div>
                     </div>
@@ -162,6 +162,24 @@ export default function Layout() {
                                     <span>{item.label}</span>
                                 </NavLink>
                             ))}
+
+                            <hr style={{ margin: '16px 0', borderColor: 'var(--border-glass)' }} />
+                            <button 
+                                onClick={handleLogout} 
+                                className="mobile-menu-item" 
+                                style={{ 
+                                    background: 'transparent', 
+                                    border: 'none', 
+                                    color: '#ef4444', 
+                                    width: '100%', 
+                                    textAlign: 'left',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <span className="icon"><FiLogOut size={20} /></span>
+                                <span>Logout / Switch Account</span>
+                            </button>
                         </div>
                     </div>
                 </div>
