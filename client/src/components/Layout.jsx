@@ -132,13 +132,15 @@ export default function Layout() {
                             </button>
                         </div>
                         <div className="mobile-menu-links">
-                            <NavLink to="/projects" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
-                                <span className="icon"><FiPlusCircle size={20} /></span>
-                                <div>
-                                    <div className="menu-item-title">Project Proposal</div>
-                                    <div className="menu-item-desc">Add photos of damaged roads</div>
-                                </div>
-                            </NavLink>
+                            {user?.role === 'engineer' && (
+                                <NavLink to="/projects" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
+                                    <span className="icon"><FiPlusCircle size={20} /></span>
+                                    <div>
+                                        <div className="menu-item-title">Project Proposal</div>
+                                        <div className="menu-item-desc">Add photos of damaged roads</div>
+                                    </div>
+                                </NavLink>
+                            )}
                             <NavLink to="/grievances" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
                                 <span className="icon"><FiAlertCircle size={20} /></span>
                                 <div>

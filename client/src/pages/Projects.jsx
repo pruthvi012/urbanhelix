@@ -320,7 +320,7 @@ export default function Projects() {
                     </select>
                 )}
                 <button className="btn btn-outline" onClick={() => setShowWardDir(true)}>📂 Ward Directory</button>
-                {(user?.role === 'citizen' || user?.role === 'admin') && (
+                {user?.role === 'engineer' && (
                     <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Proposal</button>
                 )}
             </div>
