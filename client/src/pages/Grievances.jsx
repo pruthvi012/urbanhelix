@@ -106,8 +106,12 @@ export default function Grievances() {
     return (
         <div className="grievances-page">
             <div className="page-header">
-                <h1 className="page-title">Citizen Problem Reporting</h1>
-                <p className="page-subtitle">Report infrastructure issues with GPS-verified evidence</p>
+                <h1 className="page-title">
+                    {['engineer', 'admin'].includes(user?.role) ? 'Citizen Complaints Management' : 'Citizen Problem Reporting'}
+                </h1>
+                <p className="page-subtitle">
+                    {['engineer', 'admin'].includes(user?.role) ? 'Review and resolve GPS-verified infrastructure issues reported by citizens' : 'Report infrastructure issues with GPS-verified evidence'}
+                </p>
             </div>
 
             {user && (

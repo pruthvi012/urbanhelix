@@ -41,3 +41,8 @@ blockchain/artifacts/
 blockchain/cache/
 blockchain/typechain/
 blockchain/typechain-types/
+
+# Tunnel tools
+*.exe
+*.txt
+client/dev-dist/
