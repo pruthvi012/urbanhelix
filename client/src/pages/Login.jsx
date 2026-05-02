@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -7,8 +7,29 @@ export default function Login() {
     const [form, setForm] = useState({ name: '', email: '', password: '', role: 'citizen' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [showInstall, setShowInstall] = useState(false);
     const { login, register } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const handler = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setShowInstall(true);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleInstall = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        setDeferredPrompt(null);
+        setShowInstall(false);
+    };
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -31,6 +52,36 @@ export default function Login() {
     return (
         <div className="login-page">
             <div className="login-card">
+
+                {showInstall && (
+                    <div style={{
+                        background: 'linear-gradient(135deg, #1e3a5f, #0f172a)',
+                        border: '1px solid rgba(99,102,241,0.4)',
+                        borderRadius: '12px',
+                        padding: '14px 18px',
+                        marginBottom: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '24px' }}>📲</span>
+                            <div>
+                                <div style={{ color: '#fff', fontWeight: 700, fontSize: '13px' }}>Install UrbanHelixX App</div>
+                                <div style={{ color: '#94a3b8', fontSize: '11px' }}>Add to home screen for quick access</div>
+                            </div>
+                        </div>
+                        <button onClick={handleInstall} style={{
+                            background: '#6366f1', color: '#fff', border: 'none',
+                            borderRadius: '8px', padding: '8px 16px', fontWeight: 700,
+                            cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap'
+                        }}>
+                            Install
+                        </button>
+                    </div>
+                )}
+
                 <div className="login-logo">
                     <div className="login-logo-icon">🏛️</div>
                     <h1>UrbanHeliX</h1>
@@ -91,15 +142,111 @@ export default function Login() {
                 </div>
 
                 {!isRegister && (
-                    <div style={{ marginTop: '20px', padding: '12px', background: 'rgba(59,130,246,0.08)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                        <strong style={{ color: 'var(--accent-blue)' }}>Demo Credentials</strong> (password: password123)
-                        <div style={{ marginTop: '6px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
-                            <span>🔑 admin@urbanhelix.gov</span>
-                            <span>🔧 rajesh.engineer@urbanhelix.gov</span>
-                            <span>🏗️ vikram@contractor.com</span>
-                            <span>💰 sunita.finance@urbanhelix.gov</span>
-                            <span>👤 ananya@citizen.com</span>
+                    <div style={{ 
+                        marginTop: '28px', 
+                        padding: '20px', 
+                        background: '#f8fafc', 
+                        borderRadius: '12px', 
+                        border: '1px solid #e2e8f0',
+                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                    }}>
+                        <p style={{ 
+                            fontSize: '12px', 
+                            fontWeight: 700, 
+                            color: '#b91c1c', 
+                            textTransform: 'uppercase', 
+                            letterSpacing: '1px',
+                            textAlign: 'center', 
+                            marginBottom: '16px' 
+                        }}>
+                            ⚡ Quick Portal Access
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                            <button 
+                                type="button"
+                                className="btn btn-outline" 
+                                style={{ 
+                                    background: '#ffffff', 
+                                    fontSize: '12px', 
+                                    padding: '12px 8px',
+                                    border: '1px solid #e2e8f0',
+                                    flexDirection: 'column',
+                                    gap: '4px'
+                                }}
+                                onClick={() => login('ananya@citizen.com', 'password123').then(() => navigate('/')).catch(err => setError(err.response?.data?.message || err.message))}
+                            >
+                                <span style={{ fontSize: '18px' }}>👤</span>
+                                <span>Public Citizen</span>
+                            </button>
+                            <button 
+                                type="button"
+                                className="btn btn-outline" 
+                                style={{ 
+                                    background: '#ffffff', 
+                                    fontSize: '12px', 
+                                    padding: '12px 8px',
+                                    border: '1px solid #e2e8f0',
+                                    flexDirection: 'column',
+                                    gap: '4px'
+                                }}
+                                onClick={() => login('rajesh.engineer@urbanhelix.gov', 'password123').then(() => navigate('/')).catch(err => setError(err.response?.data?.message || err.message))}
+                            >
+                                <span style={{ fontSize: '18px' }}>🔧</span>
+                                <span>District Engineer</span>
+                            </button>
+                            <button 
+                                type="button"
+                                className="btn btn-outline" 
+                                style={{ 
+                                    background: '#ffffff', 
+                                    fontSize: '12px', 
+                                    padding: '12px 8px',
+                                    border: '1px solid #e2e8f0',
+                                    flexDirection: 'column',
+                                    gap: '4px'
+                                }}
+                                onClick={() => login('vikram@contractor.com', 'password123').then(() => navigate('/')).catch(err => setError(err.response?.data?.message || err.message))}
+                            >
+                                <span style={{ fontSize: '18px' }}>🏗️</span>
+                                <span>Project Contractor</span>
+                            </button>
+                            <button 
+                                type="button"
+                                className="button" 
+                                style={{ 
+                                    background: '#ffffff', 
+                                    fontSize: '12px', 
+                                    padding: '12px 8px',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '4px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    cursor: 'pointer',
+                                    color: '#475569',
+                                    fontWeight: 600
+                                }}
+                                onClick={() => login('sunita.finance@urbanhelix.gov', 'password123').then(() => navigate('/')).catch(err => setError(err.response?.data?.message || err.message))}
+                            >
+                                <span style={{ fontSize: '18px' }}>💰</span>
+                                <span>Finance Officer</span>
+                            </button>
                         </div>
+                        <button 
+                            type="button"
+                            className="btn btn-primary" 
+                            style={{ 
+                                width: '100%', 
+                                marginTop: '10px', 
+                                justifyContent: 'center',
+                                fontSize: '13px',
+                                background: '#1e293b'
+                            }}
+                            onClick={() => login('admin@urbanhelix.gov', 'password123').then(() => navigate('/')).catch(err => setError(err.response?.data?.message || err.message))}
+                        >
+                            🛡️ System Administrator Access
+                        </button>
                     </div>
                 )}
             </div>

@@ -4,6 +4,7 @@ const AuditLog = require('../models/AuditLog');
 const HashChainService = require('../services/hashChainService');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const notificationService = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -34,14 +35,17 @@ router.get('/', async (req, res) => {
 // POST /api/grievances — file a grievance (citizen, admin)
 router.post('/', protect, authorize('citizen', 'admin'), upload.single('image'), async (req, res) => {
     try {
-        const { project, title, description, category } = req.body;
+        const { project, title, description, category, ward, area, location } = req.body;
 
         const grievanceData = {
-            project,
+            project: project || null,
             citizen: req.user._id,
             title,
             description,
             category,
+            ward,
+            area,
+            location: typeof location === 'string' ? JSON.parse(location) : location,
         };
 
         if (req.file) {
@@ -57,6 +61,8 @@ router.post('/', protect, authorize('citizen', 'admin'), upload.single('image'),
                 projectId: project,
                 title,
                 category,
+                ward,
+                area,
                 filedBy: req.user.name,
             },
             { entityType: 'grievance', entityId: grievance._id },
@@ -120,6 +126,9 @@ router.put('/:id/resolve', protect, authorize('engineer', 'admin'), async (req, 
             remarks: remarks || '',
         };
         await grievance.save();
+
+        // Notify the citizen
+        await notificationService.notifyGrievanceResolution(grievance, status);
 
         res.json({ success: true, grievance });
     } catch (error) {

@@ -8,7 +8,7 @@ const projectSchema = new mongoose.Schema({
         enum: ['road', 'water_supply', 'sanitation', 'electricity', 'park', 'building', 'bridge', 'drainage', 'other'],
         default: 'other',
     },
-    department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true },
+    department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: false },
     proposedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     engineer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     contractor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
@@ -22,12 +22,14 @@ const projectSchema = new mongoose.Schema({
         default: 'proposed',
     },
     location: {
-        ward: { type: String, default: '' },
-        address: { type: String, default: '' },
+        ward: { type: String, required: true },
+        wardNo: { type: Number },
+        area: { type: String, required: true },
+        address: { type: String },
         coordinates: {
-            lat: { type: Number, default: null },
-            lng: { type: Number, default: null },
-        },
+            lat: Number,
+            lng: Number
+        }
     },
     startDate: { type: Date, default: null },
     expectedEndDate: { type: Date, default: null },
@@ -42,6 +44,11 @@ const projectSchema = new mongoose.Schema({
     transactionHash: String,
     lastTransactionHash: String,
     imageUrl: String,
+    progressPhotos: [{
+        url: String,
+        description: String,
+        timestamp: { type: Date, default: Date.now }
+    }],
     reportUrl: String,
     verifications: [
         {
@@ -53,7 +60,16 @@ const projectSchema = new mongoose.Schema({
             transactionHash: String
         }
     ],
-    contactEmail: String,
+    budgetEstimateProofUrl: String,
+    isBudgetLocked: { type: Boolean, default: false },
+    budgetRevisionHistory: [{
+        oldBudget: Number,
+        newBudget: Number,
+        reason: String,
+        timestamp: { type: Date, default: Date.now },
+        changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        transactionHash: String
+    }],
     statusHistory: [{
         status: {
             type: String,

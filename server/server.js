@@ -13,6 +13,8 @@ const milestoneRoutes = require('./routes/milestones');
 const fundRoutes = require('./routes/funds');
 const grievanceRoutes = require('./routes/grievances');
 const auditRoutes = require('./routes/audit');
+const notificationRoutes = require('./routes/notifications');
+const wardRoutes = require('./routes/wards');
 
 const app = express();
 
@@ -32,6 +34,8 @@ app.use('/api/milestones', milestoneRoutes);
 app.use('/api/funds', fundRoutes);
 app.use('/api/grievances', grievanceRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/wards', wardRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

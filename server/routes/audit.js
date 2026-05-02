@@ -87,13 +87,44 @@ router.get('/logs', protect, async (req, res) => {
 // GET /api/audit/analytics — analytics overview
 router.get('/analytics', async (req, res) => {
     try {
-        // Department-wise spending
-        const deptSpending = await Department.find()
-            .select('name ward totalBudget allocatedBudget spentBudget')
-            .sort({ name: 1 });
+        const { category, ward, area } = req.query;
+        let projectMatch = {};
+        if (category && category !== 'all') {
+            projectMatch.category = category;
+        }
+        if (ward && ward !== 'all') {
+            projectMatch['location.ward'] = { $regex: new RegExp(`^${ward}$`, 'i') };
+        }
+        if (area && area !== 'all') {
+            projectMatch['location.area'] = { $regex: new RegExp(`^${area}$`, 'i') };
+        }
+
+        // Department-wise spending (Aggregated from Projects)
+        const groupBy = (ward && ward !== 'all') ? '$location.area' : '$location.ward';
+        const deptSpending = await Project.aggregate([
+            { $match: projectMatch },
+            {
+                $group: {
+                    _id: groupBy,
+                    totalBudget: { $sum: '$estimatedBudget' },
+                    allocatedBudget: { $sum: '$allocatedBudget' },
+                    spentBudget: { $sum: '$spentBudget' }
+                }
+            },
+            {
+                $project: {
+                    name: '$_id',
+                    totalBudget: 1,
+                    allocatedBudget: 1,
+                    spentBudget: 1
+                }
+            },
+            { $sort: { name: 1 } }
+        ]);
 
         // Project status distribution
         const projectStats = await Project.aggregate([
+            { $match: projectMatch },
             { $group: { _id: '$status', count: { $sum: 1 }, totalBudget: { $sum: '$allocatedBudget' } } },
         ]);
 
@@ -123,6 +154,30 @@ router.get('/analytics', async (req, res) => {
             { $group: { _id: '$recordType', count: { $sum: 1 } } },
         ]);
 
+        // Ward-wise project status
+        const wardWiseProjectStatus = await Project.aggregate([
+            { $match: projectMatch },
+            {
+                $group: {
+                    _id: { ward: '$location.ward', status: '$status' },
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $group: {
+                    _id: '$_id.ward',
+                    statuses: {
+                        $push: {
+                            status: '$_id.status',
+                            count: '$count'
+                        }
+                    },
+                    total: { $sum: '$count' }
+                }
+            },
+            { $sort: { '_id': 1 } }
+        ]);
+
         res.json({
             success: true,
             analytics: {
@@ -131,6 +186,7 @@ router.get('/analytics', async (req, res) => {
                 projectsByCategory: categoryStats,
                 monthlyFundFlow: monthlyFunds,
                 hashChainStats: chainStats,
+                wardWiseProjectStatus,
             },
         });
     } catch (error) {

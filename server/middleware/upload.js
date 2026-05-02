@@ -25,7 +25,7 @@ const storage = multer.diskStorage({
 
 const fileFilter = (req, file, cb) => {
     // Allow images and PDFs
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'image/heic', 'image/heif'];
     if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
@@ -36,7 +36,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit to prevent tunnel errors with large mobile photos
 });
 
 module.exports = upload;

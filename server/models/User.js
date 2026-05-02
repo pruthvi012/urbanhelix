@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null },
     phone: { type: String, default: null },
     isActive: { type: Boolean, default: true },
+    pushTokens: [{ type: String }],
 }, { timestamps: true });
 
 // Hash password before saving

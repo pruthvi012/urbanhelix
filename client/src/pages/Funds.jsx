@@ -55,8 +55,6 @@ export default function Funds() {
                 <select className="form-select" style={{ width: 'auto' }} value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}>
                     <option value="">All Status</option>
                     <option value="pending">Pending</option>
-                    <option value="verification_1">Verification Stage 1</option>
-                    <option value="verification_2">Verification Stage 2</option>
                     <option value="approved">Approved</option>
                     <option value="completed">Completed</option>
                 </select>

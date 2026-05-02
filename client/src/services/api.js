@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
 
 const api = axios.create({
     baseURL: API_BASE,
@@ -44,15 +44,21 @@ export const deptAPI = {
     create: (data) => api.post('/departments', data),
     allocate: (id, amount) => api.put(`/departments/${id}/allocate`, { amount }),
 };
+// Wards
+export const wardAPI = {
+    getAll: () => api.get('/wards'),
+};
 
 // Projects
 export const projectAPI = {
     getAll: (params) => api.get('/projects', { params }),
     getById: (id) => api.get(`/projects/${id}`),
     create: (data) => api.post('/projects', data),
+    update: (id, data) => api.put(`/projects/${id}`, data),
     approve: (id, data) => api.put(`/projects/${id}/approve`, data),
     assign: (id, data) => api.put(`/projects/${id}/assign`, data),
     updateStatus: (id, data) => api.put(`/projects/${id}/status`, data),
+    reviseBudget: (id, data) => api.put(`/projects/${id}/revision`, data),
     getStats: () => api.get('/projects/stats/overview'),
 };
 
@@ -86,7 +92,13 @@ export const auditAPI = {
     verifyRecord: (id) => api.get(`/audit/verify-record/${id}`),
     getChain: (params) => api.get('/audit/chain', { params }),
     getLogs: (params) => api.get('/audit/logs', { params }),
-    getAnalytics: () => api.get('/audit/analytics'),
+    getAnalytics: (category, ward, area) => api.get('/audit/analytics', { params: { category, ward, area } }),
+};
+
+// Notifications
+export const notificationAPI = {
+    getAll: () => api.get('/notifications'),
+    markAsRead: (id) => api.put(`/notifications/${id}/read`),
 };
 
 export default api;

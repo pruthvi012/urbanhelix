@@ -4,6 +4,7 @@ const Project = require('../models/Project');
 const AuditLog = require('../models/AuditLog');
 const HashChainService = require('../services/hashChainService');
 const BlockchainService = require('../services/blockchainService');
+const notificationService = require('../services/notificationService');
 
 const { protect, authorize } = require('../middleware/auth');
 
@@ -96,6 +97,14 @@ router.post('/', protect, authorize('contractor', 'admin'), async (req, res) => 
             console.error('Blockchain submission failed for milestone:', bcError);
         }
 
+        // Notify all stakeholders about milestone submission
+        await notificationService.notifyProjectStakeholders(
+            proj,
+            'New Milestone Submitted',
+            `Contractor has submitted Milestone #${milestone.milestoneNumber} for project: ${proj.title}`,
+            'milestone_submitted'
+        );
+
         res.status(201).json({ success: true, milestone });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -141,6 +150,17 @@ router.put('/:id/engineer-approve', protect, authorize('engineer', 'admin'), asy
             );
         }
 
+        // Notify all stakeholders about engineer review
+        if (proj) {
+            const statusText = approved ? 'reviewed by engineer' : 'rejected by engineer';
+            await notificationService.notifyProjectStakeholders(
+                proj,
+                `Milestone ${approved ? 'Reviewed' : 'Rejected'}`,
+                `Milestone #${milestone.milestoneNumber} for "${proj.title}" has been ${statusText}.`,
+                'milestone_update'
+            );
+        }
+
         res.json({ success: true, milestone });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -175,6 +195,17 @@ router.put('/:id/financial-approve', protect, authorize('financial_officer', 'ad
                 },
                 { entityType: 'milestone', entityId: milestone._id },
                 req.user._id
+            );
+        }
+
+        // Notify all stakeholders about final approval
+        if (proj) {
+            const statusText = approved ? 'approved' : 'rejected';
+            await notificationService.notifyProjectStakeholders(
+                proj,
+                `Milestone Payment ${approved ? 'Approved' : 'Rejected'}`,
+                `Milestone #${milestone.milestoneNumber} for "${proj.title}" has been ${statusText} by financial officer.`,
+                'milestone_update'
             );
         }
 

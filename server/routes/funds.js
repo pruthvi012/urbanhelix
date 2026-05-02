@@ -132,12 +132,21 @@ router.put('/:id/verify', protect, authorize('financial_officer', 'admin'), asyn
         } else if (stage === 2) {
             transaction.status = 'approved';
 
-            // Update project spent budget
+            // Update project and department spent budget
             if (transaction.project) {
                 const project = await Project.findById(transaction.project);
                 if (project) {
                     project.spentBudget += transaction.amount;
                     await project.save();
+
+                    // Also update department spending
+                    if (project.department) {
+                        const dept = await Department.findById(project.department);
+                        if (dept) {
+                            dept.spentBudget += transaction.amount;
+                            await dept.save();
+                        }
+                    }
                 }
             }
 

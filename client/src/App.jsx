@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { onMessageListener } from './firebase';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import Install from './pages/Install';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
@@ -29,6 +32,7 @@ function PublicRoute({ children }) {
 function AppRoutes() {
     return (
         <Routes>
+            <Route path="/install" element={<Install />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
@@ -46,6 +50,13 @@ function AppRoutes() {
 }
 
 export default function App() {
+    useEffect(() => {
+        onMessageListener().then(payload => {
+            console.log('Foreground message received:', payload);
+            alert(`${payload.notification.title}: ${payload.notification.body}`);
+        }).catch(err => console.log('failed: ', err));
+    }, []);
+
     return (
         <BrowserRouter>
             <AuthProvider>

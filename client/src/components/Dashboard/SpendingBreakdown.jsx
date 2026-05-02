@@ -11,9 +11,18 @@ export default function SpendingBreakdown({ data }) {
     const chartData = data || defaultData;
 
     return (
-        <div className="premium-card">
-            <h3 className="premium-card-label" style={{ color: 'white', marginBottom: '20px' }}>Spending Breakdown</h3>
-            <div style={{ height: '300px', width: '100%' }}>
+        <div className="premium-card" style={{ 
+            padding: '0', 
+            background: '#ffffff', 
+            border: '1px solid #e2e8f0', 
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            color: '#0f172a',
+            overflow: 'hidden'
+        }}>
+            <div style={{ padding: '16px 20px', background: '#b91c1c', marginBottom: '20px' }}>
+                <h3 className="premium-card-label" style={{ color: 'white', margin: 0 }}>🍰 Spending Breakdown</h3>
+            </div>
+            <div style={{ padding: '0 20px 20px', height: '300px', width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
@@ -30,9 +39,9 @@ export default function SpendingBreakdown({ data }) {
                             ))}
                         </Pie>
                         <Tooltip 
-                            contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                            contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a' }}
                         />
-                        <Legend iconType="circle" layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: '12px', paddingLeft: '10px' }} />
+                        <Legend iconType="circle" layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: '12px', paddingLeft: '10px', color: '#64748b' }} />
                     </PieChart>
                 </ResponsiveContainer>
             </div>

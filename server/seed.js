@@ -46,16 +46,18 @@ const seed = async () => {
 
         // 2. Create Departments & Blockchain Budgets
         const deptsData = [
-            { name: 'K.P. Agrahara PWD', ward: '144', totalBudget: 100000000, fiscalYear: '2025-2026' },
-            { name: 'Vijayanagar PWD', ward: '145', totalBudget: 150000000, fiscalYear: '2025-2026' },
-            { name: 'Hosahalli PWD', ward: '146', totalBudget: 150000000, fiscalYear: '2025-2026' },
-            { name: 'Hampinagar PWD', ward: '147', totalBudget: 100000000, fiscalYear: '2025-2026' },
-            { name: 'New Guddadahalli PWD', ward: '148', totalBudget: 150000000, fiscalYear: '2025-2026' },
-            { name: 'Gali Anjaneya PWD', ward: '149', totalBudget: 200000000, fiscalYear: '2025-2026' },
-            { name: 'Attiguppe PWD', ward: '150', totalBudget: 150000000, fiscalYear: '2025-2026' },
-            { name: 'Deepanjalinagar PWD', ward: '151', totalBudget: 150000000, fiscalYear: '2025-2026' },
-            { name: 'Avalahalli PWD', ward: '152', totalBudget: 100000000, fiscalYear: '2025-2026' },
-            { name: 'Venkateshwara Area PWD', ward: '189', totalBudget: 50000000, fiscalYear: '2025-2026' }
+            { name: 'Kempapura Agrahara PWD', ward: 'Kempapura Agrahara', wardNo: 156, totalBudget: 100000000, fiscalYear: '2025-2026' },
+            { name: 'Vijayanagar Water Supply', ward: 'Vijayanagar', wardNo: 157, totalBudget: 150000000, fiscalYear: '2025-2026' },
+            { name: 'Hosahalli Sanitation', ward: 'Hosahalli', wardNo: 158, totalBudget: 150000000, fiscalYear: '2025-2026' },
+            { name: 'Hampi Nagar Parks', ward: 'Hampi Nagar', wardNo: 159, totalBudget: 100000000, fiscalYear: '2025-2026' },
+            { name: 'Bapuji Nagar Public Works', ward: 'Bapuji Nagar', wardNo: 160, totalBudget: 150000000, fiscalYear: '2025-2026' },
+            { name: 'Gali Anjenaya Temple Roads', ward: 'Gali Anjenaya Temple Ward', wardNo: 162, totalBudget: 200000000, fiscalYear: '2025-2026' },
+            { name: 'Attiguppe Electricity', ward: 'Attiguppe', wardNo: 161, totalBudget: 150000000, fiscalYear: '2025-2026' },
+            { name: 'Veerabhadranagar Water Supply', ward: 'Veerabhadranagar', wardNo: 163, totalBudget: 150000000, fiscalYear: '2025-2026' },
+            { name: 'Avalahalli Sanitation', ward: 'Avalahalli', wardNo: 164, totalBudget: 100000000, fiscalYear: '2025-2026' },
+            { name: 'Sudham Nagara PWD', ward: 'Sudham Nagara', wardNo: 171, totalBudget: 80000000, fiscalYear: '2025-2026' },
+            { name: 'Koramangala Smart City', ward: 'Koramangala', wardNo: 186, totalBudget: 300000000, fiscalYear: '2025-2026' },
+            { name: 'BTM Layout Roads', ward: 'BTM Layout', wardNo: 192, totalBudget: 120000000, fiscalYear: '2025-2026' }
         ];
 
         const departments = [];
@@ -79,54 +81,59 @@ const seed = async () => {
         // 3. Create Projects & Blockchain Registration
         const projectData = [
             {
-                title: 'Gali Anjaneya Temple Area Maintenance',
-                description: 'Maintenance work for Gali Anjaneya Temple area.',
+                title: 'Gali Anjenaya Temple Road Repair',
+                description: 'Urgent road repairs near Gali Anjenaya Temple.',
                 category: 'road',
-                department: departments[5]._id,
+                department: departments[6]._id,
                 proposedBy: users[0]._id,
                 estimatedBudget: 1000000,
                 status: 'in_progress',
-                priority: 'medium'
+                priority: 'medium',
+                location: { ward: 'Gali Anjenaya Temple Ward', wardNo: 162, area: 'Gali Anjaneya Temple area', address: 'Mysore Road' }
             },
             {
-                title: 'Deepanjalinagar Maintenance',
-                description: 'Maintenance work at Deepanjalinagar.',
+                title: 'Veerabhadranagar Maintenance',
+                description: 'Maintenance work at Veerabhadranagar.',
                 category: 'road',
                 department: departments[7]._id,
                 proposedBy: users[0]._id,
                 estimatedBudget: 700000,
                 status: 'in_progress',
-                priority: 'medium'
+                priority: 'medium',
+                location: { ward: 'Veerabhadranagar', wardNo: 163, area: 'Veerabhadranagar', address: 'Main Road' }
             },
             {
-                title: 'Venkateshwara Area Maintenance',
-                description: 'Maintenance work at Venkateshwara area.',
+                title: 'Suddagunte Palya Maintenance',
+                description: 'Maintenance work at Suddagunte Palya area.',
                 category: 'road',
                 department: departments[9]._id,
                 proposedBy: users[0]._id,
                 estimatedBudget: 1200000,
                 status: 'approved',
-                priority: 'high'
+                priority: 'high',
+                location: { ward: 'Suddagunte Palya', wardNo: 189, area: 'S G Palya', address: 'Tavarekere' }
             },
             {
-                title: 'Gali Anjaneya Additional Works',
-                description: 'Additional civil works at Gali Anjaneya.',
+                title: 'Gali Anjenaya Temple Ward Additional Works',
+                description: 'Additional civil works at Gali Anjenaya Temple Ward.',
                 category: 'road',
                 department: departments[5]._id,
                 proposedBy: users[0]._id,
                 estimatedBudget: 2500000,
                 status: 'proposed',
-                priority: 'high'
+                priority: 'high',
+                location: { ward: 'Gali Anjenaya Temple Ward', wardNo: 162, area: 'Mysore Road', address: 'Back Road' }
             },
             {
-                title: 'K.P. Agrahara Comprehensive Maintenance',
-                description: 'General maintenance work at K.P. Agrahara.',
+                title: 'Kempapura Agrahara Comprehensive Maintenance',
+                description: 'General maintenance work at Kempapura Agrahara.',
                 category: 'road',
                 department: departments[0]._id,
                 proposedBy: users[0]._id,
                 estimatedBudget: 5500000,
                 status: 'approved',
-                priority: 'medium'
+                priority: 'medium',
+                location: { ward: 'Kempapura Agrahara', wardNo: 156, area: 'RPC Layout', address: 'Hosahalli Main Road' }
             },
             {
                 title: 'Vijayanagar Major Maintenance',
@@ -136,7 +143,8 @@ const seed = async () => {
                 proposedBy: users[0]._id,
                 estimatedBudget: 11000000,
                 status: 'in_progress',
-                priority: 'high'
+                priority: 'high',
+                location: { ward: 'Vijayanagar', wardNo: 157, area: '1st Stage', address: 'MC Layout' }
             },
             {
                 title: 'Hosahalli Major Maintenance',
@@ -146,57 +154,30 @@ const seed = async () => {
                 proposedBy: users[0]._id,
                 estimatedBudget: 11000000,
                 status: 'approved',
-                priority: 'high'
+                priority: 'high',
+                location: { ward: 'Hosahalli', wardNo: 158, area: 'Hosahalli', address: 'Pipeline Road' }
             },
             {
-                title: 'Hampinagar Comprehensive Maintenance',
-                description: 'General maintenance work at Hampinagar.',
+                title: 'Hampi Nagar Comprehensive Maintenance',
+                description: 'General maintenance work at Hampi Nagar.',
                 category: 'road',
                 department: departments[3]._id,
                 proposedBy: users[0]._id,
                 estimatedBudget: 5500000,
                 status: 'proposed',
-                priority: 'medium'
+                priority: 'medium',
+                location: { ward: 'Hampi Nagar', wardNo: 159, area: 'RPC Layout', address: 'Attiguppe' }
             },
             {
-                title: 'New Guddadahalli Major Works',
-                description: 'General maintenance work at New Guddadahalli.',
+                title: 'Bapuji Nagar Major Works',
+                description: 'General maintenance work at Bapuji Nagar.',
                 category: 'road',
                 department: departments[4]._id,
                 proposedBy: users[0]._id,
                 estimatedBudget: 11000000,
                 status: 'in_progress',
-                priority: 'high'
-            },
-            {
-                title: 'Gali Anjaneya Major Works',
-                description: 'General maintenance work at Gali Anjaneya.',
-                category: 'road',
-                department: departments[5]._id,
-                proposedBy: users[0]._id,
-                estimatedBudget: 11000000,
-                status: 'in_progress',
-                priority: 'high'
-            },
-            {
-                title: 'Attiguppe Major Maintenance',
-                description: 'General maintenance work at Attiguppe.',
-                category: 'road',
-                department: departments[6]._id,
-                proposedBy: users[0]._id,
-                estimatedBudget: 11000000,
-                status: 'approved',
-                priority: 'high'
-            },
-            {
-                title: 'Deepanjalinagar Major Works',
-                description: 'General maintenance work at Deepanjalinagar.',
-                category: 'road',
-                department: departments[7]._id,
-                proposedBy: users[0]._id,
-                estimatedBudget: 11000000,
-                status: 'proposed',
-                priority: 'high'
+                priority: 'high',
+                location: { ward: 'Bapuji Nagar', wardNo: 160, area: 'New Guddadahalli', address: 'Bapuji Nagar Main Road' }
             },
             {
                 title: 'Avalahalli Comprehensive Maintenance',
@@ -206,7 +187,8 @@ const seed = async () => {
                 proposedBy: users[0]._id,
                 estimatedBudget: 5500000,
                 status: 'in_progress',
-                priority: 'medium'
+                priority: 'medium',
+                location: { ward: 'Avalahalli', wardNo: 164, area: 'Avalahalli', address: 'Muneshwara Block' }
             }
         ];
 

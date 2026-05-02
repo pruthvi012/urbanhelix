@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const departmentSchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true, trim: true },
     ward: { type: String, required: true },
+    wardNo: { type: Number },
     description: { type: String, default: '' },
     headOfficer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     totalBudget: { type: Number, default: 0 },
@@ -14,6 +15,7 @@ const departmentSchema = new mongoose.Schema({
     blockchainId: { type: Number, unique: true, sparse: true },
     transactionHash: String,
     lastTransactionHash: String,
+    isLocked: { type: Boolean, default: false },
 }, { timestamps: true });
 
 // Virtual for remaining budget

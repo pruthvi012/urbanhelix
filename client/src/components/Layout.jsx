@@ -1,52 +1,58 @@
+import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiGrid, FiFolder, FiCheckSquare, FiDollarSign, FiAlertCircle, FiShield, FiBarChart2, FiLogOut, FiUsers } from 'react-icons/fi';
+import { FiGrid, FiFolder, FiCheckSquare, FiDollarSign, FiAlertCircle, FiShield, FiBarChart2, FiLogOut, FiUsers, FiSearch, FiMenu, FiX, FiPlusCircle } from 'react-icons/fi';
+import ChatBot from './ChatBot';
+import NotificationBell from './NotificationBell';
 
 const NAV_ITEMS = {
     citizen: [
         { to: '/', icon: <FiGrid />, label: 'Dashboard' },
         { to: '/projects', icon: <FiFolder />, label: 'Projects' },
-        { to: '/grievances', icon: <FiAlertCircle />, label: 'Grievances' },
-        { to: '/audit', icon: <FiShield />, label: 'Public Audit' },
-        { to: '/analytics', icon: <FiBarChart2 />, label: 'Analytics' },
+        { to: '/grievances', icon: <FiAlertCircle />, label: 'Report a Problem' },
+        { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
+
     ],
     engineer: [
         { to: '/', icon: <FiGrid />, label: 'Dashboard' },
         { to: '/projects', icon: <FiFolder />, label: 'Projects' },
         { to: '/milestones', icon: <FiCheckSquare />, label: 'Milestones' },
         { to: '/funds', icon: <FiDollarSign />, label: 'Fund Transactions' },
-        { to: '/grievances', icon: <FiAlertCircle />, label: 'Grievances' },
-        { to: '/audit', icon: <FiShield />, label: 'Audit Chain' },
-        { to: '/analytics', icon: <FiBarChart2 />, label: 'Analytics' },
+        { to: '/grievances', icon: <FiAlertCircle />, label: 'Report a Problem' },
+        { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
+
     ],
     contractor: [
         { to: '/', icon: <FiGrid />, label: 'Dashboard' },
         { to: '/projects', icon: <FiFolder />, label: 'My Projects' },
         { to: '/milestones', icon: <FiCheckSquare />, label: 'Milestones' },
         { to: '/funds', icon: <FiDollarSign />, label: 'Payments' },
+        { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
+
     ],
     financial_officer: [
         { to: '/', icon: <FiGrid />, label: 'Dashboard' },
         { to: '/projects', icon: <FiFolder />, label: 'Projects' },
         { to: '/milestones', icon: <FiCheckSquare />, label: 'Milestones' },
         { to: '/funds', icon: <FiDollarSign />, label: 'Fund Verification' },
-        { to: '/audit', icon: <FiShield />, label: 'Audit Chain' },
-        { to: '/analytics', icon: <FiBarChart2 />, label: 'Analytics' },
+        { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
+
     ],
     admin: [
         { to: '/', icon: <FiGrid />, label: 'Dashboard' },
         { to: '/projects', icon: <FiFolder />, label: 'Projects' },
         { to: '/milestones', icon: <FiCheckSquare />, label: 'Milestones' },
         { to: '/funds', icon: <FiDollarSign />, label: 'Fund Transactions' },
-        { to: '/grievances', icon: <FiAlertCircle />, label: 'Grievances' },
-        { to: '/audit', icon: <FiShield />, label: 'Audit Chain' },
-        { to: '/analytics', icon: <FiBarChart2 />, label: 'Analytics' },
+        { to: '/grievances', icon: <FiAlertCircle />, label: 'Report a Problem' },
+        { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
+
     ],
 };
 
 export default function Layout() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
 
     const handleLogout = () => {
         logout();
@@ -93,8 +99,73 @@ export default function Layout() {
             </aside>
 
             <main className="main-content">
-                <Outlet />
+                <header className="main-header">
+                    <button className="mobile-menu-btn" onClick={() => setShowMobileMenu(true)}>
+                        <FiMenu size={24} />
+                    </button>
+                    <div className="search-bar">
+                        <FiSearch className="search-icon" />
+                        <input type="text" placeholder="Search projects, transactions, records..." />
+                    </div>
+                    <div className="header-actions">
+                        <NotificationBell />
+                        <div className="header-user">
+                            <div className="header-avatar">{initials}</div>
+                        </div>
+                    </div>
+                </header>
+                <div className="page-content">
+                    <Outlet />
+                </div>
             </main>
+
+            {/* Mobile Menu Overlay */}
+            {showMobileMenu && (
+                <div className="mobile-menu-overlay" onClick={() => setShowMobileMenu(false)}>
+                    <div className="mobile-menu-content" onClick={e => e.stopPropagation()}>
+                        <div className="mobile-menu-header">
+                            <div className="sidebar-logo-text" style={{ fontSize: '18px' }}>UrbanHeliX</div>
+                            <button className="btn-close" onClick={() => setShowMobileMenu(false)}>
+                                <FiX size={24} />
+                            </button>
+                        </div>
+                        <div className="mobile-menu-links">
+                            <NavLink to="/projects" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
+                                <span className="icon"><FiPlusCircle size={20} /></span>
+                                <div>
+                                    <div className="menu-item-title">Project Proposal</div>
+                                    <div className="menu-item-desc">Add photos of damaged roads</div>
+                                </div>
+                            </NavLink>
+                            <NavLink to="/grievances" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
+                                <span className="icon"><FiAlertCircle size={20} /></span>
+                                <div>
+                                    <div className="menu-item-title">Raise a Complaint</div>
+                                    <div className="menu-item-desc">Report civic issues directly</div>
+                                </div>
+                            </NavLink>
+                            <NavLink to="/milestones" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
+                                <span className="icon"><FiCheckSquare size={20} /></span>
+                                <div>
+                                    <div className="menu-item-title">See Milestones</div>
+                                    <div className="menu-item-desc">Track project progress</div>
+                                </div>
+                            </NavLink>
+                            
+                            <hr style={{ margin: '16px 0', borderColor: 'var(--border-glass)' }} />
+                            
+                            {navItems.map((item) => (
+                                <NavLink key={item.to} to={item.to} end={item.to === '/'} onClick={() => setShowMobileMenu(false)} className={({ isActive }) => `mobile-menu-item basic ${isActive ? 'active' : ''}`}>
+                                    <span className="icon">{item.icon}</span>
+                                    <span>{item.label}</span>
+                                </NavLink>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <ChatBot />
         </div>
     );
 }

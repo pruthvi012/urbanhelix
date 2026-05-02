@@ -1,13 +1,19 @@
 const mongoose = require('mongoose');
 
 const grievanceSchema = new mongoose.Schema({
-    project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
+    project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', default: null }, // Optional
     citizen: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
+    ward: { type: String, required: true },
+    area: { type: String, required: true },
+    location: {
+        lat: { type: Number, default: null },
+        lng: { type: Number, default: null },
+    },
     category: {
         type: String,
-        enum: ['delay', 'quality', 'corruption', 'fund_misuse', 'safety', 'environmental', 'other'],
+        enum: ['delay', 'quality', 'corruption', 'fund_misuse', 'safety', 'environmental', 'road_damage', 'water_issue', 'garbage', 'other'],
         default: 'other',
     },
     status: {
@@ -23,6 +29,7 @@ const grievanceSchema = new mongoose.Schema({
         remarks: { type: String, default: '' },
     },
     imageUrl: String,
+    gpsAddress: String, // Readable address from GPS
 }, { timestamps: true });
 
 grievanceSchema.virtual('upvoteCount').get(function () {

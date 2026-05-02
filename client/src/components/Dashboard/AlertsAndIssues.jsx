@@ -1,11 +1,19 @@
-export default function AlertsAndIssues({ alerts }) {
+export default function AlertsAndIssues({ wards = [] }) {
+    const fraudAlerts = wards
+        .filter(w => w.spentBudget > w.allocatedBudget)
+        .map(w => ({
+            label: `CRITICAL FRAUD: Overspending in ${w.name}`,
+            status: 'Anomaly',
+            value: `Exceeds by ₹ ${(w.spentBudget - w.allocatedBudget).toLocaleString()}`,
+            color: '#ef4444'
+        }));
+
     const defaultAlerts = [
-        { label: 'Unspent Funds in Adugodi', status: 'Pending', value: '₹ 700,000', color: 'var(--premium-orange)' },
-        { label: 'Delayed Project in Koramangala', status: '15 Days Overdue', value: '', color: '#f87171' },
-        { label: 'Overspending in Ward 146', status: 'Excess', value: '₹ 500,000', color: 'var(--premium-blue)' },
+        { label: 'Unspent Funds in Padmanabhanagar', status: 'Pending', value: '₹ 700,000', color: 'var(--premium-blue)' },
+        { label: 'Budget Utilization Warning', status: 'Notice', value: 'High Usage', color: 'var(--premium-orange)' },
     ];
 
-    const displayAlerts = alerts || defaultAlerts;
+    const displayAlerts = fraudAlerts.length > 0 ? [...fraudAlerts, ...defaultAlerts] : defaultAlerts;
 
     return (
         <div className="premium-card">

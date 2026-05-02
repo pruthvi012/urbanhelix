@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { projectAPI, milestoneAPI, auditAPI, authAPI } from '../services/api';
+import { FiMapPin, FiClock, FiShield, FiFileText, FiImage, FiTrendingUp, FiActivity, FiDollarSign } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProjectDetail() {
@@ -11,6 +13,7 @@ export default function ProjectDetail() {
     const [contractors, setContractors] = useState([]);
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [reportFile, setReportFile] = useState(null);
+    const [progressFile, setProgressFile] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => { loadData(); }, [id]);
@@ -64,10 +67,12 @@ export default function ProjectDetail() {
         formData.append('status', status);
         formData.append('remarks', remarks || '');
         if (reportFile) formData.append('report', reportFile);
+        if (progressFile) formData.append('progressPhoto', progressFile);
 
         try {
             await projectAPI.updateStatus(id, formData);
             setReportFile(null);
+            setProgressFile(null);
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error updating status'); }
     };
@@ -86,9 +91,19 @@ export default function ProjectDetail() {
 
     return (
         <div>
-            <div className="page-header">
-                <h1 className="page-title" style={{ marginTop: '8px' }}>{project.title}</h1>
-                <p className="page-subtitle">{project.category?.replace('_', ' ')} • {project.department?.name} • {project.location?.ward}</p>
+            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span className="badge badge-pending" style={{ fontSize: '10px' }}>ID: {project._id.substring(0, 8).toUpperCase()}</span>
+                        <span className="tx-tag">⛓️ Verified on Blockchain</span>
+                    </div>
+                    <h1 className="page-title">{project.title}</h1>
+                    <p className="page-subtitle"><FiMapPin /> {project.location?.address}, Ward {project.location?.ward} • {project.category?.replace('_', ' ')}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Current Status</div>
+                    <span className={`status-badge ${project.status}`} style={{ fontSize: '14px', padding: '6px 16px' }}>{project.status?.replace('_', ' ')}</span>
+                </div>
             </div>
 
             {/* Quick Actions Bar */}
@@ -103,9 +118,16 @@ export default function ProjectDetail() {
                     )}
                     {(['engineer', 'admin'].includes(user?.role) || (user?.role === 'contractor' && project.contractor?._id === user?._id)) &&
                         ['approved', 'in_progress', 'verification'].includes(project.status) && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <input type="file" onChange={(e) => setReportFile(e.target.files[0])} style={{ fontSize: '12px' }} />
-                                <button className="btn btn-outline btn-sm" onClick={handleUpdateStatus}>Update Status</button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: '10px', marginBottom: 0 }}>Progress Photo</label>
+                                    <input type="file" onChange={(e) => setProgressFile(e.target.files[0])} style={{ fontSize: '11px' }} />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: '10px', marginBottom: 0 }}>Report PDF</label>
+                                    <input type="file" onChange={(e) => setReportFile(e.target.files[0])} style={{ fontSize: '11px' }} />
+                                </div>
+                                <button className="btn btn-outline btn-sm" onClick={handleUpdateStatus}>Update Progress</button>
                             </div>
                         )}
                     {user?.role === 'admin' && (
@@ -147,26 +169,45 @@ export default function ProjectDetail() {
                 </div>
 
                 <div className="glass-card">
-                    <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px' }}>Budget & Documentation</h3>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FiDollarSign style={{ color: 'var(--accent-blue)' }} /> Budget & Revisions
+                    </h3>
                     <div style={{ display: 'grid', gap: '16px' }}>
-                        <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Estimated</span>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Original Estimated Budget</span>
                                 <span style={{ fontSize: '15px', fontWeight: 700 }}>{formatCurrency(project.estimatedBudget)}</span>
                             </div>
-                        </div>
-                        <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Allocated</span>
-                                <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--accent-blue)' }}>{formatCurrency(project.allocatedBudget)}</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Allocated (Revised) Budget</span>
+                                <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-blue)' }}>{formatCurrency(project.allocatedBudget || project.estimatedBudget)}</span>
                             </div>
                         </div>
-                        {project.reportUrl && (
-                            <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--glass-border)' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Project Report</div>
-                                <a href={`http://localhost:5000${project.reportUrl}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{ width: '100%', textAlign: 'center' }}>Download PDF Report</a>
+                        
+                        {project.budgetRevisionHistory?.length > 0 && (
+                            <div style={{ marginTop: '8px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Revision History</div>
+                                {project.budgetRevisionHistory.map((rev, idx) => (
+                                    <div key={idx} style={{ fontSize: '12px', borderLeft: '2px solid var(--accent-orange)', paddingLeft: '10px', marginBottom: '8px' }}>
+                                        <div style={{ fontWeight: 600 }}>Revise to {formatCurrency(rev.newBudget)}</div>
+                                        <div style={{ color: 'var(--text-muted)' }}>{rev.reason}</div>
+                                        <div style={{ fontSize: '10px', opacity: 0.7 }}>{new Date(rev.timestamp).toLocaleString()}</div>
+                                    </div>
+                                ))}
                             </div>
                         )}
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                            {project.budgetEstimateProofUrl && (
+                                <a href={`${project.budgetEstimateProofUrl}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{ flex: 1 }}>
+                                    <FiImage /> View Budget Proof
+                                </a>
+                            )}
+                            {project.reportUrl && (
+                                <a href={`${project.reportUrl}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{ flex: 1 }}>
+                                    <FiFileText /> View DPR Report
+                                </a>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -175,32 +216,50 @@ export default function ProjectDetail() {
                 <div className="glass-card">
                     <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px' }}>Visual Evidence</h3>
                     {project.imageUrl ? (
-                        <img src={`http://localhost:5000${project.imageUrl}`} alt="Project" style={{ width: '100%', borderRadius: '12px', border: '1px solid var(--glass-border)' }} />
+                        <img src={`${project.imageUrl}`} alt="Project" style={{ width: '100%', borderRadius: '12px', border: '1px solid var(--glass-border)' }} />
                     ) : (
                         <div style={{ height: '200px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
                             No visual uploads yet
                         </div>
                     )}
                 </div>
-                <div className="glass-card">
-                    <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '16px' }}>Project Progress</h2>
-                    <div style={{ marginBottom: '20px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Spent ({progress}%)</span>
-                            <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--accent-green)' }}>{formatCurrency(project.spentBudget)}</span>
-                        </div>
-                        <div className="progress-bar">
-                            <div className={`progress-bar-fill ${progress > 90 ? 'red' : progress > 60 ? 'blue' : 'green'}`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
-                        </div>
+            </div>
+            <div className="section">
+                <div className="section-header">
+                    <h2 className="section-title"><FiImage style={{ verticalAlign: 'middle', marginRight: '8px' }} /> Construction Visual Proof (Before & After)</h2>
+                </div>
+                <div className="grid-3" style={{ gap: '16px' }}>
+                    {/* Before Image (Original) */}
+                    <div className="glass-card" style={{ padding: '12px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', textAlign: 'center' }}>Original Condition (Before)</div>
+                        {project.imageUrl ? (
+                            <img src={`${project.imageUrl}`} alt="Before" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} />
+                        ) : (
+                            <div style={{ height: '200px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>No before photo</div>
+                        )}
                     </div>
-                    <div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Timeline</div>
-                        <div style={{ fontSize: '13px' }}>
-                            <div>Start: {project.startDate ? new Date(project.startDate).toLocaleDateString() : '—'}</div>
-                            <div>Expected End: {project.expectedEndDate ? new Date(project.expectedEndDate).toLocaleDateString() : '—'}</div>
-                            {project.actualEndDate && <div style={{ color: 'var(--accent-green)' }}>Completed: {new Date(project.actualEndDate).toLocaleDateString()}</div>}
+
+                    {/* Progress Photos */}
+                    {(project.progressPhotos || []).map((photo, idx) => (
+                        <div key={idx} className="glass-card" style={{ padding: '12px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', textAlign: 'center' }}>Progress {idx + 1}</div>
+                            <img src={`${photo.url}`} alt={`Progress ${idx}`} style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} />
+                            <div style={{ fontSize: '11px', marginTop: '6px', color: 'var(--text-secondary)' }}>{photo.description}</div>
+                            <div style={{ fontSize: '9px', color: 'var(--text-muted)' }}>{new Date(photo.timestamp).toLocaleDateString()}</div>
                         </div>
-                    </div>
+                    ))}
+
+                    {/* Final Image (If completed) */}
+                    {project.status === 'completed' && (
+                        <div className="glass-card" style={{ padding: '12px', border: '1px solid var(--accent-green)' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', textAlign: 'center', color: 'var(--accent-green)' }}>Completed (After)</div>
+                            {project.progressPhotos?.length > 0 ? (
+                                <img src={`${project.progressPhotos[project.progressPhotos.length - 1].url}`} alt="After" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} />
+                            ) : (
+                                <div style={{ height: '200px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>No final photo</div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -235,26 +294,72 @@ export default function ProjectDetail() {
                 ) : <div className="empty-state">No milestones added yet</div>}
             </div>
 
-            {/* Status History */}
+            {/* Activity Timeline */}
             <div className="section">
                 <div className="section-header">
-                    <h2 className="section-title">Status History</h2>
+                    <h2 className="section-title"><FiActivity style={{ verticalAlign: 'middle', marginRight: '8px' }} /> Public Activity Timeline</h2>
+                    <span className="badge badge-approved">Tamper-Proof History</span>
                 </div>
-                <div className="hash-chain-list">
-                    {(project.statusHistory || []).map((h, i) => (
-                        <div key={i}>
-                            <div className="hash-record">
-                                <div className="hash-record-number">Step {i + 1}</div>
-                                <div className="hash-record-type">
-                                    <span className={`badge badge-${h.status}`}>{h.status?.replace('_', ' ')}</span>
+                <div className="glass-card">
+                    <div className="activity-timeline-container">
+                        {[
+                            ...(project.statusHistory || []).map(h => ({ ...h, type: 'status' })),
+                            ...(project.budgetRevisionHistory || []).map(r => ({ 
+                                status: 'budget_revised', 
+                                remarks: `Budget revised from ${formatCurrency(r.oldBudget)} to ${formatCurrency(r.newBudget)}. Reason: ${r.reason}`, 
+                                timestamp: r.timestamp,
+                                type: 'revision',
+                                transactionHash: r.transactionHash
+                            }))
+                        ]
+                        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                        .map((item, idx) => (
+                            <div key={idx} className="timeline-item">
+                                <div className="timeline-marker">
+                                    <div className={`timeline-dot ${item.type === 'revision' ? 'warning' : 'active'}`}></div>
+                                    {idx < 100 && <div className="timeline-line"></div>}
                                 </div>
-                                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                                    {h.remarks} — <span style={{ color: 'var(--text-muted)' }}>{new Date(h.timestamp).toLocaleDateString()}</span>
+                                <div className="timeline-content-detailed">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div>
+                                            <span className={`badge badge-${item.status === 'budget_revised' ? 'proposed' : item.status}`} style={{ marginBottom: '6px' }}>
+                                                {item.status?.replace('_', ' ')}
+                                            </span>
+                                            <div style={{ fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>{item.remarks}</div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: '12px', fontWeight: 600 }}>{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(item.timestamp).toLocaleDateString()}</div>
+                                        </div>
+                                    </div>
+                                    {item.transactionHash && (
+                                        <div className="tx-tag" style={{ marginTop: '8px' }}>🔗 Proof Hash: {item.transactionHash.substring(0, 24)}...</div>
+                                    )}
                                 </div>
                             </div>
-                            {i < project.statusHistory.length - 1 && <div className="chain-connector"></div>}
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Transparency Section */}
+            <div className="section">
+                <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(59, 130, 246, 0.05))', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                        <div style={{ fontSize: '40px' }}>🛡️</div>
+                        <div>
+                            <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Transparency Verified by Hashing</h3>
+                            <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                                This project's history is secured using cryptographic hashing. Every update creates a unique digital fingerprint 
+                                that cannot be secretly changed. The current project state is verified against the last recorded hash on the blockchain.
+                            </p>
+                            {project.lastTransactionHash && (
+                                <div style={{ marginTop: '12px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--accent-green)', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '4px' }}>
+                                    LATEST PROOF HASH: {project.lastTransactionHash}
+                                </div>
+                            )}
                         </div>
-                    ))}
+                    </div>
                 </div>
             </div>
 

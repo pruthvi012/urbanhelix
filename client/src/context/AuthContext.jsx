@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
+import { requestForToken } from '../firebase';
 
 const AuthContext = createContext(null);
 
@@ -14,6 +15,8 @@ export function AuthProvider({ children }) {
         if (savedToken && savedUser) {
             setToken(savedToken);
             setUser(JSON.parse(savedUser));
+            // Request push token if already logged in
+            requestForToken();
         }
         setLoading(false);
     }, []);
@@ -25,6 +28,7 @@ export function AuthProvider({ children }) {
             localStorage.setItem('urbanhelix_user', JSON.stringify(data.user));
             setToken(data.token);
             setUser(data.user);
+            requestForToken();
             return data;
         }
         throw new Error(data.message);
@@ -37,6 +41,7 @@ export function AuthProvider({ children }) {
             localStorage.setItem('urbanhelix_user', JSON.stringify(data.user));
             setToken(data.token);
             setUser(data.user);
+            requestForToken();
             return data;
         }
         throw new Error(data.message);

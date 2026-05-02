@@ -2,9 +2,9 @@ import { FiCheck, FiPlay, FiClock } from 'react-icons/fi';
 
 export default function RecentActivities({ activities }) {
     const defaultActivities = [
-        { title: 'Road Repair Completed in Ward 146', time: '2 days ago', status: 'completed' },
-        { title: 'Drainage Work Started in Adugodi', time: '5 days ago', status: 'started' },
-        { title: 'Streetlight Installation in Koramangala', time: '1 week ago', status: 'pending' },
+        { title: 'Road Repair Completed in Jayanagar', time: '2 days ago', status: 'completed' },
+        { title: 'Drainage Work Started in Basavanagudi', time: '5 days ago', status: 'started' },
+        { title: 'Streetlight Installation in BTM Layout', time: '1 week ago', status: 'pending' },
     ];
 
     const displayActivities = activities || defaultActivities;

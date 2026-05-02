@@ -68,6 +68,16 @@ router.put('/:id/allocate', protect, authorize('admin', 'engineer'), async (req,
         const department = await Department.findById(req.params.id);
         if (!department) return res.status(404).json({ success: false, message: 'Department not found' });
 
+        // Locking Logic: If spent exceeds allocated (Anomaly), lock it forever.
+        if (department.isLocked || (department.spentBudget > 0 && department.spentBudget >= department.allocatedBudget)) {
+            department.isLocked = true;
+            await department.save();
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Budget is LOCKED due to full utilization or anomaly detection. Further changes are restricted.' 
+            });
+        }
+
         department.allocatedBudget += Number(amount);
 
         // Blockchain: Allocate Fund on-chain
