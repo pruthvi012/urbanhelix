@@ -3,9 +3,18 @@ const router = express.Router();
 const Ward = require('../models/Ward');
 
 // Get all wards with their areas
+const { seedAll } = require('../utils/seeder');
 router.get('/', async (req, res) => {
     try {
-        const wards = await Ward.find().sort({ name: 1 });
+        let wards = await Ward.find().sort({ name: 1 });
+        
+        // Final fallback: if empty, try to seed right now
+        if (wards.length === 0) {
+            console.log('⚠️ Wards empty in route. Triggering emergency seed...');
+            await seedAll();
+            wards = await Ward.find().sort({ name: 1 });
+        }
+        
         res.json({ wards });
     } catch (err) {
         res.status(500).json({ message: err.message });
