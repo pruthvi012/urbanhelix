@@ -61,7 +61,7 @@ router.get('/', optionalAuth, async (req, res) => {
             .populate('department', 'name ward')
             .populate('proposedBy', 'name email')
             .populate('engineer', 'name email')
-            .populate('contractor', 'name email')
+            .populate('contractor', 'name email bankDetails')
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
@@ -94,7 +94,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
             .populate('department', 'name ward')
             .populate('proposedBy', 'name email role')
             .populate('engineer', 'name email')
-            .populate('contractor', 'name email')
+            .populate('contractor', 'name email bankDetails')
             .populate('statusHistory.changedBy', 'name role');
 
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });

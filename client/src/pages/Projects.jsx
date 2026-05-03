@@ -27,6 +27,9 @@ export default function Projects() {
     });
     const [budgetProof, setBudgetProof] = useState(null);
     const [showRevisionModal, setShowRevisionModal] = useState(false);
+    const [showVerifyModal, setShowVerifyModal] = useState(false);
+    const [showReleaseModal, setShowReleaseModal] = useState(false);
+    const [verifyForm, setVerifyForm] = useState({ verified: true, remarks: '', photo: null, expenditureId: '' });
     const [revisionForm, setRevisionForm] = useState({ newBudget: '', reason: '' });
 
     useEffect(() => { loadData(); }, [filter]);
@@ -446,18 +449,40 @@ export default function Projects() {
                                                                     {['engineer', 'admin'].includes(user?.role) && p.status === 'approved' && !p.contractor && (
                                                                         <button className="btn btn-primary btn-sm" onClick={() => openAssign(p)}>Assign</button>
                                                                     )}
-                                                                    {(['engineer', 'admin'].includes(user?.role) || (user?.role === 'contractor' && p.contractor?._id === user?._id)) &&
-                                                                        ['approved', 'in_progress', 'verification'].includes(p.status) && (
-                                                                            <>
-                                                                                <button className="btn btn-outline btn-sm" onClick={() => handleUpdateStatus(p._id)}>Status</button>
-                                                                                {user?.role === 'contractor' && p.projectCode && (
-                                                                                    <Link 
-                                                                                        to={`/expenses?code=${p.projectCode}`} 
-                                                                                        className="btn btn-primary btn-sm"
-                                                                                        style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                                                                    >
-                                                                                        💰 Log Expense
-                                                                                    </Link>
+                                                                    {['engineer', 'admin'].includes(user?.role) && ['approved', 'in_progress', 'verification'].includes(p.status) && (
+                                                                        <button 
+                                                                            className="btn btn-primary btn-sm" 
+                                                                            onClick={() => { setSelectedProject(p); setShowVerifyModal(true); }}
+                                                                            style={{ background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                                                        >
+                                                                            🔍 Verify Work
+                                                                        </button>
+                                                                    )}
+
+                                                                    {(user?.role === 'financial_officer' || user?.role === 'admin') && p.expenditures?.some(e => e.readyForPayment && !e.financeReleased) && (
+                                                                        <button 
+                                                                            className="btn btn-accent btn-sm" 
+                                                                            onClick={() => { setSelectedProject(p); setShowReleaseModal(true); }}
+                                                                            style={{ background: 'var(--accent-green)', color: 'white' }}
+                                                                        >
+                                                                            💸 Release Budget
+                                                                        </button>
+                                                                    )}
+
+                                                                    {user?.role === 'contractor' && p.contractor?._id === user?._id && ['approved', 'in_progress', 'verification'].includes(p.status) && (
+                                                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                                                            <button className="btn btn-outline btn-sm" onClick={() => handleUpdateStatus(p._id)}>Status</button>
+                                                                            {p.projectCode && (
+                                                                                <Link 
+                                                                                    to={`/expenses?code=${p.projectCode}`} 
+                                                                                    className="btn btn-primary btn-sm"
+                                                                                    style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                                                                >
+                                                                                    💰 Log Expense
+                                                                                </Link>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
                                                                                 )}
                                                                             </>
                                                                         )}
@@ -764,6 +789,81 @@ export default function Projects() {
                         <div style={{ marginTop: '20px', textAlign: 'right' }}>
                             <button className="btn btn-primary" onClick={() => setShowWardDir(false)}>Close Directory</button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Engineer Verification Modal */}
+            {showVerifyModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content glass-card" style={{ maxWidth: '500px' }}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">🔍 Verification — Site Visit Proof</h2>
+                            <button className="btn-close" onClick={() => setShowVerifyModal(false)}>&times;</button>
+                        </div>
+                        <form onSubmit={handleVerify}>
+                            <div className="form-group">
+                                <label className="form-label">Select Pending Expenditure</label>
+                                <select className="form-select" value={verifyForm.expenditureId} onChange={e => setVerifyForm({...verifyForm, expenditureId: e.target.value})} required>
+                                    <option value="">-- Choose Expenditure --</option>
+                                    {selectedProject?.expenditures?.filter(e => !e.engineerVerified).map(e => (
+                                        <option key={e._id} value={e._id}>{e.material} - ₹{e.amount.toLocaleString()} ({new Date(e.date).toLocaleDateString()})</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Decision</label>
+                                <select className="form-select" value={verifyForm.verified} onChange={e => setVerifyForm({...verifyForm, verified: e.target.value === 'true'})}>
+                                    <option value="true">✅ Verified & Approved</option>
+                                    <option value="false">❌ Rejected / Discrepancy</option>
+                                </select>
+                            </div>
+                            {verifyForm.verified && (
+                                <div className="form-group">
+                                    <label className="form-label">📍 GPS Site Inspection Photo (Mandatory)</label>
+                                    <input className="form-input" type="file" accept="image/*" capture="environment" onChange={e => setVerifyForm({...verifyForm, photo: e.target.files[0]})} required />
+                                </div>
+                            )}
+                            <div className="form-group">
+                                <label className="form-label">Remarks</label>
+                                <textarea className="form-input" rows="3" value={verifyForm.remarks} onChange={e => setVerifyForm({...verifyForm, remarks: e.target.value})} required placeholder="Enter inspection details..."></textarea>
+                            </div>
+                            <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Confirm Site Verification</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Finance Release Modal */}
+            {showReleaseModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content glass-card" style={{ maxWidth: '600px' }}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">💸 Release Budget to Contractor</h2>
+                            <button className="btn-close" onClick={() => setShowReleaseModal(false)}>&times;</button>
+                        </div>
+                        <div style={{ marginBottom: '20px' }}>
+                            <div style={{ padding: '12px', background: 'rgba(251,191,36,0.1)', borderRadius: '8px', border: '1px solid #fbbf24', marginBottom: '16px' }}>
+                                <h4 style={{ color: '#fbbf24', margin: '0 0 8px 0' }}>🏦 Contractor Bank Details</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px' }}>
+                                    <div><strong>Name:</strong> {selectedProject?.contractor?.name}</div>
+                                    <div><strong>Bank:</strong> {selectedProject?.contractor?.bankDetails?.bankName || 'Not Set'}</div>
+                                    <div><strong>Account No:</strong> {selectedProject?.contractor?.bankDetails?.accountNumber || 'Not Set'}</div>
+                                    <div><strong>IFSC Code:</strong> {selectedProject?.contractor?.bankDetails?.ifscCode || 'Not Set'}</div>
+                                </div>
+                            </div>
+                            
+                            <h4 style={{ marginBottom: '10px' }}>Verified Expenditures Pending Release:</h4>
+                            {selectedProject?.expenditures?.filter(e => e.readyForPayment && !e.financeReleased).map(e => (
+                                <div key={e._id} className="glass-card" style={{ padding: '12px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ fontWeight: 600 }}>{e.material}</div>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>₹{e.amount.toLocaleString()} | {new Date(e.date).toLocaleDateString()}</div>
+                                    </div>
+                                    <button className="btn btn-primary btn-sm" onClick={() => handleRelease(selectedProject._id, e._id)}>Release Amount</button>
+                                </div>
+                            ))}
+                        </div>
+                        <button className="btn btn-outline" style={{ width: '100%' }} onClick={() => setShowReleaseModal(false)}>Close</button>
                     </div>
                 </div>
             )}

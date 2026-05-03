@@ -15,6 +15,11 @@ const userSchema = new mongoose.Schema({
     phone: { type: String, default: null },
     isActive: { type: Boolean, default: true },
     pushTokens: [{ type: String }],
+    bankDetails: {
+        accountNumber: { type: String, default: null },
+        ifscCode: { type: String, default: null },
+        bankName: { type: String, default: null }
+    },
 }, { timestamps: true });
 
 // Hash password before saving
