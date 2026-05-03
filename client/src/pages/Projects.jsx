@@ -140,6 +140,32 @@ export default function Projects() {
         } catch (err) { alert(err.response?.data?.message || 'Error'); }
     };
 
+    const handleVerify = async (e) => {
+        e.preventDefault();
+        if (!verifyForm.expenditureId) { alert('Select an expenditure to verify!'); return; }
+        if (verifyForm.verified && !verifyForm.photo) { alert('Physical verification photo is mandatory!'); return; }
+
+        const formData = new FormData();
+        formData.append('verified', verifyForm.verified);
+        formData.append('remarks', verifyForm.remarks);
+        if (verifyForm.photo) formData.append('verificationPhoto', verifyForm.photo);
+
+        try {
+            await projectAPI.verifyExpenditure(selectedProject._id, verifyForm.expenditureId, formData);
+            setShowVerifyModal(false);
+            setVerifyForm({ verified: true, remarks: '', photo: null, expenditureId: '' });
+            loadData();
+        } catch (err) { alert(err.response?.data?.message || 'Error'); }
+    };
+
+    const handleRelease = async (projectId, expId) => {
+        if (!window.confirm('Release payment to contractor bank account?')) return;
+        try {
+            await projectAPI.releaseExpenditure(projectId, expId);
+            loadData();
+        } catch (err) { alert(err.response?.data?.message || 'Error'); }
+    };
+
     const openAssign = async (project) => {
         setSelectedProject(project);
         try {
@@ -482,7 +508,6 @@ export default function Projects() {
                                                                                 </Link>
                                                                             )}
                                                                         </div>
-                                                                    )}
                                                                     )}
                                                                 </div>
                                                             </td>
