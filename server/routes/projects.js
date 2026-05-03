@@ -578,4 +578,63 @@ router.put('/:id/revision', protect, authorize('engineer', 'admin'), async (req,
     }
 });
 
+// POST /api/projects/:id/expenditure — log contractor expenditure
+router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), async (req, res) => {
+    try {
+        const project = await Project.findById(req.params.id);
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+        const { date, amount, material, remarks } = req.body;
+
+        if (!date || !amount || !material) {
+            return res.status(400).json({ success: false, message: 'Date, amount, and material are required' });
+        }
+
+        const expAmount = Number(amount);
+
+        // Record expenditure
+        project.expenditures.push({
+            date: new Date(date),
+            amount: expAmount,
+            material,
+            remarks: remarks || '',
+            recordedBy: req.user._id
+        });
+
+        // Update total spent budget
+        project.spentBudget += expAmount;
+
+        // Optionally record to HashChain
+        try {
+            await HashChainService.addRecord(
+                'expenditure_logged',
+                {
+                    projectId: project._id,
+                    amount: expAmount,
+                    material,
+                    loggedBy: req.user.name
+                },
+                { entityType: 'project', entityId: project._id },
+                req.user._id
+            );
+        } catch (err) {
+            console.error('HashChain record failed:', err);
+        }
+
+        await project.save();
+
+        await AuditLog.create({
+            user: req.user._id,
+            action: 'log_expenditure',
+            resourceType: 'project',
+            resourceId: project._id,
+            details: `Logged expenditure of ₹${expAmount.toLocaleString()} for ${material}`,
+        });
+
+        res.json({ success: true, project });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 module.exports = router;

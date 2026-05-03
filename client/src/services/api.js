@@ -59,6 +59,7 @@ export const projectAPI = {
     assign: (id, data) => api.put(`/projects/${id}/assign`, data),
     updateStatus: (id, data) => api.put(`/projects/${id}/status`, data),
     reviseBudget: (id, data) => api.put(`/projects/${id}/revision`, data),
+    logExpenditure: (id, data) => api.post(`/projects/${id}/expenditure`, data),
     getStats: () => api.get('/projects/stats/overview'),
 };
 

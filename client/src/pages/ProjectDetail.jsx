@@ -15,6 +15,20 @@ export default function ProjectDetail() {
     const [reportFile, setReportFile] = useState(null);
     const [progressFile, setProgressFile] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showExpenseModal, setShowExpenseModal] = useState(false);
+    const [expenseForm, setExpenseForm] = useState({ date: new Date().toISOString().split('T')[0], amount: '', material: '', remarks: '' });
+
+    const categoryMaterials = {
+        road: ['Asphalt/Bitumen', 'Gravel/Crushed Stone', 'Concrete', 'Sand', 'Cement', 'Steel Rebar', 'Labor/Wages', 'Machinery Rental'],
+        water_supply: ['PVC/HDPE Pipes', 'Valves/Fittings', 'Pumps/Motors', 'Cement', 'Sand', 'Labor/Wages', 'Excavator Rental'],
+        sanitation: ['Concrete Pipes', 'Manhole Covers', 'Cement', 'Sand', 'Bricks', 'Labor/Wages'],
+        electricity: ['Cables/Wires', 'Transformers', 'Poles', 'Streetlights/LEDs', 'Switchgears', 'Labor/Wages'],
+        park: ['Plants/Trees', 'Soil/Fertilizer', 'Paving Stones', 'Fencing/Gates', 'Benches/Play Equipment', 'Lighting', 'Labor/Wages'],
+        building: ['Cement', 'Steel Rebar', 'Bricks/Blocks', 'Sand', 'Gravel', 'Wood/Plywood', 'Glass/Windows', 'Labor/Wages'],
+        bridge: ['Steel Girders', 'Concrete', 'High-grade Cement', 'Cables', 'Scaffolding', 'Labor/Wages', 'Heavy Machinery'],
+        drainage: ['Concrete Pipes', 'Cement', 'Sand', 'Steel Grates', 'Bricks', 'Labor/Wages', 'Excavator Rental'],
+        other: ['General Materials', 'Labor/Wages', 'Machinery', 'Miscellaneous']
+    };
 
     useEffect(() => { loadData(); }, [id]);
 
@@ -84,6 +98,16 @@ export default function ProjectDetail() {
         return `₹${amt.toLocaleString()}`;
     };
 
+    const handleLogExpense = async (e) => {
+        e.preventDefault();
+        try {
+            await projectAPI.logExpenditure(id, expenseForm);
+            setShowExpenseModal(false);
+            setExpenseForm({ date: new Date().toISOString().split('T')[0], amount: '', material: '', remarks: '' });
+            loadData();
+        } catch (err) { alert(err.response?.data?.message || 'Error logging expense'); }
+    };
+
     if (loading) return <div className="loading"><div className="spinner"></div> Loading...</div>;
     if (!project) return <div className="empty-state">Project not found</div>;
 
@@ -128,6 +152,11 @@ export default function ProjectDetail() {
                                     <input type="file" onChange={(e) => setReportFile(e.target.files[0])} style={{ fontSize: '11px' }} />
                                 </div>
                                 <button className="btn btn-outline btn-sm" onClick={handleUpdateStatus}>Update Progress</button>
+                                {user?.role === 'contractor' && (
+                                    <button className="btn btn-primary btn-sm" onClick={() => setShowExpenseModal(true)}>
+                                        <FiDollarSign /> Log Material Expense
+                                    </button>
+                                )}
                             </div>
                         )}
                     {user?.role === 'admin' && (
@@ -211,6 +240,32 @@ export default function ProjectDetail() {
                     </div>
                 </div>
             </div>
+
+            {/* Expenditures List */}
+            {project.expenditures && project.expenditures.length > 0 && (
+                <div className="section">
+                    <div className="section-header">
+                        <h2 className="section-title"><FiDollarSign style={{ verticalAlign: 'middle', marginRight: '8px' }} /> Material Expenses Logged by Contractor</h2>
+                    </div>
+                    <div className="table-container">
+                        <table className="table">
+                            <thead>
+                                <tr><th>Date</th><th>Material</th><th>Amount Spent</th><th>Remarks</th></tr>
+                            </thead>
+                            <tbody>
+                                {project.expenditures.sort((a, b) => new Date(b.date) - new Date(a.date)).map((exp, idx) => (
+                                    <tr key={idx}>
+                                        <td style={{ fontSize: '13px' }}>{new Date(exp.date).toLocaleDateString()}</td>
+                                        <td style={{ fontWeight: 500 }}>{exp.material}</td>
+                                        <td style={{ fontWeight: 600, color: 'var(--accent-red)' }}>{formatCurrency(exp.amount)}</td>
+                                        <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{exp.remarks || '—'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             <div className="grid-2" style={{ marginBottom: '24px' }}>
                 <div className="glass-card">
@@ -375,6 +430,43 @@ export default function ProjectDetail() {
                             </div>
                         ))}
                         <button className="btn btn-outline btn-sm" style={{ marginTop: '10px', width: '100%' }} onClick={() => setShowAssignModal(false)}>Cancel</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Log Expense Modal for Contractor */}
+            {showExpenseModal && (
+                <div className="modal-overlay" onClick={() => setShowExpenseModal(false)}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="modal-title">Log Material Expense</h3>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>Update the spent budget for: <strong>{project.title}</strong></p>
+                        <form onSubmit={handleLogExpense}>
+                            <div className="form-group">
+                                <label className="form-label">Date of Expenditure</label>
+                                <input className="form-input" type="date" value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Material / Expense Type</label>
+                                <select className="form-select" value={expenseForm.material} onChange={(e) => setExpenseForm({ ...expenseForm, material: e.target.value })} required>
+                                    <option value="">-- Select Material --</option>
+                                    {(categoryMaterials[project.category] || categoryMaterials.other).map(mat => (
+                                        <option key={mat} value={mat}>{mat}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Amount Spent (₹)</label>
+                                <input className="form-input" type="number" min="1" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} required />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Remarks / Description</label>
+                                <input className="form-input" type="text" placeholder="e.g. Purchased from local vendor" value={expenseForm.remarks} onChange={(e) => setExpenseForm({ ...expenseForm, remarks: e.target.value })} />
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                                <button type="submit" className="btn btn-primary">Save Expense</button>
+                                <button type="button" className="btn btn-outline" onClick={() => setShowExpenseModal(false)}>Cancel</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

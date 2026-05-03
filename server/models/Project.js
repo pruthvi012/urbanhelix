@@ -62,6 +62,14 @@ const projectSchema = new mongoose.Schema({
     ],
     budgetEstimateProofUrl: String,
     isBudgetLocked: { type: Boolean, default: false },
+    expenditures: [{
+        date: { type: Date, required: true },
+        amount: { type: Number, required: true },
+        material: { type: String, required: true },
+        remarks: { type: String },
+        recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        timestamp: { type: Date, default: Date.now }
+    }],
     budgetRevisionHistory: [{
         oldBudget: Number,
         newBudget: Number,
