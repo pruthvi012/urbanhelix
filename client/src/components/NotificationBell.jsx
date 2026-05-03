@@ -3,12 +3,14 @@ import { FiBell, FiCheck, FiInfo, FiAlertCircle, FiClock } from 'react-icons/fi'
 import { notificationAPI } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
+import { requestForToken } from '../firebase';
 
 export default function NotificationBell() {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [permissionStatus, setPermissionStatus] = useState(window.Notification?.permission || 'default');
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
 
@@ -139,8 +141,25 @@ export default function NotificationBell() {
                         )}
                     </div>
 
-                    <div className="notification-footer">
-                        <button onClick={() => navigate('/notifications')}>View all notifications</button>
+                    <div className="notification-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {permissionStatus === 'default' && (
+                            <button 
+                                className="btn btn-outline btn-sm"
+                                style={{ width: '100%', borderColor: 'var(--accent-blue)', color: 'var(--accent-blue)' }}
+                                onClick={async () => {
+                                    await requestForToken();
+                                    setPermissionStatus(window.Notification?.permission);
+                                }}
+                            >
+                                🔔 Enable Push Notifications
+                            </button>
+                        )}
+                        {permissionStatus === 'denied' && (
+                            <div style={{ fontSize: '11px', color: 'var(--accent-red)', textAlign: 'center', padding: '4px' }}>
+                                Notifications are blocked in your browser settings.
+                            </div>
+                        )}
+                        <button style={{ width: '100%' }} onClick={() => navigate('/notifications')}>View all in-app notifications</button>
                     </div>
                 </div>
             )}
