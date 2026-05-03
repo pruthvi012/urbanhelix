@@ -52,7 +52,7 @@ export default function Layout() {
     const navigate = useNavigate();
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [showNotificationPrompt, setShowNotificationPrompt] = useState(
-        window.Notification && (window.Notification.permission === 'default' || window.Notification.permission === 'denied')
+        user?.role === 'citizen' && window.Notification && (window.Notification.permission === 'default' || window.Notification.permission === 'denied')
     );
 
     const handleEnableNotifications = async () => {
@@ -117,7 +117,7 @@ export default function Layout() {
                         </div>
                     </div>
                     <div className="header-actions">
-                        <NotificationBell />
+                        {user?.role === 'citizen' && <NotificationBell />}
                         <div className="header-user" onClick={handleLogout} style={{ cursor: 'pointer' }} title="Click to Logout">
                             <div className="header-avatar">{initials}</div>
                         </div>
