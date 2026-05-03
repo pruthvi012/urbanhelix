@@ -704,8 +704,8 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             return res.status(400).json({ success: false, message: `Amount ₹${expAmount.toLocaleString()} exceeds remaining budget of ₹${remaining.toLocaleString()}` });
         }
 
-        const invoiceUrl = `/uploads/projects/${req.files.invoice[0].filename}`;
-        const progressPhotoUrl = `/uploads/projects/${req.files.progressPhoto[0].filename}`;
+        const invoiceUrl = req.files.invoice[0].location || `/uploads/projects/${req.files.invoice[0].filename}`;
+        const progressPhotoUrl = req.files.progressPhoto[0].location || `/uploads/projects/${req.files.progressPhoto[0].filename}`;
 
         // Calculate Cryptographic Hash including all fields
         const entryHash = calculateEntryHash({
@@ -803,7 +803,7 @@ router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'adm
         exp.readyForPayment = isVerified;
         
         if (req.file) {
-            exp.verificationPhotoUrl = `/uploads/projects/${req.file.filename}`;
+            exp.verificationPhotoUrl = req.file.location || `/uploads/projects/${req.file.filename}`;
         }
 
         await project.save();

@@ -50,7 +50,7 @@ router.post('/', protect, authorize('citizen', 'admin'), upload.single('image'),
         };
 
         if (req.file) {
-            grievanceData.imageUrl = `/uploads/grievances/${req.file.filename}`;
+            grievanceData.imageUrl = req.file.location || `/uploads/grievances/${req.file.filename}`;
         }
 
         const grievance = await Grievance.create(grievanceData);

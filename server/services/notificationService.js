@@ -6,7 +6,13 @@ const Notification = require('../models/Notification');
 // Note: This requires a serviceAccountKey.json file or environment variables
 try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        let serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        
+        // Fix for "Invalid PEM formatted message" error in some environments
+        if (serviceAccount.private_key) {
+            serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+        }
+
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
