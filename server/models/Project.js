@@ -81,7 +81,11 @@ const projectSchema = new mongoose.Schema({
         verifiedByEngineer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
         verifiedAt: { type: Date, default: null },
         verificationRemarks: { type: String, default: '' },
-        readyForPayment: { type: Boolean, default: false }
+        readyForPayment: { type: Boolean, default: false },
+        verificationPhotoUrl: { type: String, default: null },
+        financeReleased: { type: Boolean, default: false },
+        releasedByFinance: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+        releasedAt: { type: Date, default: null }
     }],
     budgetRevisionHistory: [{
         oldBudget: Number,

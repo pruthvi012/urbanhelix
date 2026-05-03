@@ -780,7 +780,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
 });
 
 // PUT /api/projects/:id/expenditure/:expId/verify — engineer physically verifies an expense
-router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'admin'), async (req, res) => {
+router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'admin'), upload.single('verificationPhoto'), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
@@ -789,12 +789,21 @@ router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'adm
         if (!exp) return res.status(404).json({ success: false, message: 'Expenditure record not found' });
 
         const { verified, remarks } = req.body;
+        const isVerified = verified === true || verified === 'true';
 
-        exp.engineerVerified = verified === true || verified === 'true';
+        if (isVerified && (!req.file && !exp.verificationPhotoUrl)) {
+            return res.status(400).json({ success: false, message: 'Physical verification photo is mandatory for approval' });
+        }
+
+        exp.engineerVerified = isVerified;
         exp.verifiedByEngineer = req.user._id;
         exp.verifiedAt = new Date();
         exp.verificationRemarks = remarks || '';
-        exp.readyForPayment = exp.engineerVerified;
+        exp.readyForPayment = isVerified;
+        
+        if (req.file) {
+            exp.verificationPhotoUrl = `/uploads/projects/${req.file.filename}`;
+        }
 
         await project.save();
 
@@ -806,7 +815,51 @@ router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'adm
             details: `Engineer ${exp.engineerVerified ? 'VERIFIED ✅' : 'REJECTED ❌'} expenditure of ₹${exp.amount.toLocaleString()} for ${exp.material}. Remarks: ${remarks || 'None'}`,
         });
 
+        // Notify Contractor of verification result
+        await Notification.create({
+            user: exp.recordedBy,
+            title: exp.engineerVerified ? '✅ Expense Verified' : '❌ Expense Rejected',
+            message: exp.engineerVerified 
+                ? `Your expense for "${exp.material}" (₹${exp.amount.toLocaleString()}) has been verified. It is now queued for Finance payment.`
+                : `Your expense for "${exp.material}" has been rejected by the Engineer. Reason: ${remarks}`,
+            type: 'system',
+            relatedEntity: { entityType: 'Project', entityId: project._id }
+        });
+
         res.json({ success: true, expenditure: exp, message: exp.engineerVerified ? 'Expenditure verified and marked ready for payment' : 'Expenditure rejected' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// PUT /api/projects/:id/expenditure/:expId/release — finance releases payment
+router.put('/:id/expenditure/:expId/release', protect, authorize('finance', 'admin'), async (req, res) => {
+    try {
+        const project = await Project.findById(req.params.id);
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+        const exp = project.expenditures.id(req.params.expId);
+        if (!exp) return res.status(404).json({ success: false, message: 'Expenditure record not found' });
+
+        if (!exp.readyForPayment) {
+            return res.status(400).json({ success: false, message: 'Expenditure must be verified by an Engineer before release' });
+        }
+
+        exp.financeReleased = true;
+        exp.releasedByFinance = req.user._id;
+        exp.releasedAt = new Date();
+
+        await project.save();
+
+        await AuditLog.create({
+            user: req.user._id,
+            action: 'disburse',
+            resourceType: 'project',
+            resourceId: project._id,
+            details: `Finance RELEASED payment: ₹${exp.amount.toLocaleString()} for ${exp.material} on project ${project.title}`,
+        });
+
+        res.json({ success: true, expenditure: exp, message: 'Payment released successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

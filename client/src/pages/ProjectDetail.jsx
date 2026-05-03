@@ -16,8 +16,9 @@ export default function ProjectDetail() {
     const [progressFile, setProgressFile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showExpenseModal, setShowExpenseModal] = useState(false);
-    const [isTampered, setIsTampered] = useState(false);
-    const [gpsLoading, setGpsLoading] = useState(false);
+    const [showVerifyModal, setShowVerifyModal] = useState(false);
+    const [selectedExp, setSelectedExp] = useState(null);
+    const [verifyForm, setVerifyForm] = useState({ verified: true, remarks: '', photo: null });
     const [expenseForm, setExpenseForm] = useState({ 
         date: new Date().toISOString().split('T')[0], 
         invoiceDate: new Date().toISOString().split('T')[0],
@@ -106,10 +107,30 @@ export default function ProjectDetail() {
 
 
 
-    const handleVerifyExpense = async (expId, verified) => {
-        const remarks = verified ? 'Physically verified at site' : prompt('Reason for rejection:') || 'Rejected';
+    const handleVerifyExpense = async (e) => {
+        e.preventDefault();
+        if (verifyForm.verified && !verifyForm.photo) {
+            alert('Physical verification photo is mandatory for approval!');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('verified', verifyForm.verified);
+        formData.append('remarks', verifyForm.remarks);
+        if (verifyForm.photo) formData.append('verificationPhoto', verifyForm.photo);
+
         try {
-            await projectAPI.verifyExpenditure(id, expId, { verified, remarks });
+            await projectAPI.verifyExpenditure(id, selectedExp._id, formData);
+            setShowVerifyModal(false);
+            setVerifyForm({ verified: true, remarks: '', photo: null });
+            loadData();
+        } catch (err) { alert(err.response?.data?.message || 'Error'); }
+    };
+
+    const handleReleasePayment = async (expId) => {
+        if (!window.confirm('Are you sure you want to release this payment?')) return;
+        try {
+            await projectAPI.releaseExpenditure(id, expId);
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error'); }
     };
@@ -339,26 +360,39 @@ export default function ProjectDetail() {
                                         <td style={{ fontSize: '13px' }}>{exp.vendor}</td>
                                         <td style={{ fontWeight: 600, color: 'var(--accent-red)' }}>{formatCurrency(exp.amount)}</td>
                                         <td>
-                                            <a href={exp.invoiceUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent-blue)', textDecoration: 'none' }}>📄 Bill</a>
-                                        </td>
-                                        <td>
-                                            {exp.progressPhotoUrl && <a href={exp.progressPhotoUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', textDecoration: 'none', marginRight: '4px' }}>📸 Photo</a>}
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                                {exp.invoiceUrl && <a href={exp.invoiceUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent-blue)', textDecoration: 'none' }}>📄 Bill/PDF</a>}
+                                                {exp.progressPhotoUrl && <a href={exp.progressPhotoUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', textDecoration: 'none' }}>📸 Cont. Photo</a>}
+                                                {exp.verificationPhotoUrl && <a href={exp.verificationPhotoUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24', textDecoration: 'none' }}>👷 Verify Photo</a>}
+                                            </div>
                                         </td>
                                         <td><span className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', fontSize: '10px' }}>🔒 SHA-256</span></td>
                                         <td>
-                                            {exp.engineerVerified ? (
-                                                <span className="tx-tag" style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--accent-green)' }}>✅ Verified<br/><span style={{ fontSize: '10px' }}>{exp.verificationRemarks}</span></span>
-                                            ) : (
-                                                ['engineer', 'admin'].includes(user?.role) ? (
-                                                    <div style={{ display: 'flex', gap: '4px', flexDirection: 'column' }}>
-                                                        <span style={{ fontSize: '11px', color: 'var(--accent-orange)' }}>⏳ Pending physical verification</span>
-                                                        <div style={{ display: 'flex', gap: '4px' }}>
-                                                            <button className="btn btn-success btn-sm" style={{ fontSize: '11px', padding: '3px 8px' }} onClick={() => handleVerifyExpense(exp._id, true)}>✅ Verify</button>
-                                                            <button className="btn btn-outline btn-sm" style={{ fontSize: '11px', padding: '3px 8px', borderColor: '#ef4444', color: '#ef4444' }} onClick={() => handleVerifyExpense(exp._id, false)}>❌ Reject</button>
-                                                        </div>
-                                                    </div>
-                                                ) : <span style={{ fontSize: '11px', color: 'var(--accent-orange)' }}>⏳ Awaiting Engineer</span>
-                                            )}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                {exp.engineerVerified ? (
+                                                    <span className="tx-tag" style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--accent-green)' }}>✅ Verified<br/><span style={{ fontSize: '10px' }}>{exp.verificationRemarks}</span></span>
+                                                ) : (
+                                                    <span className="tx-tag" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24' }}>⏳ Pending Physical Verification</span>
+                                                )}
+
+                                                {/* Engineer Action */}
+                                                {(user?.role === 'engineer' || user?.role === 'admin') && !exp.engineerVerified && (
+                                                    <button className="btn btn-primary btn-sm" style={{ fontSize: '11px' }} onClick={() => { setSelectedExp(exp); setShowVerifyModal(true); }}>
+                                                        Verify Now
+                                                    </button>
+                                                )}
+
+                                                {/* Finance Action */}
+                                                {(user?.role === 'finance' || user?.role === 'admin') && exp.readyForPayment && !exp.financeReleased && (
+                                                    <button className="btn btn-accent btn-sm" style={{ fontSize: '11px', background: 'var(--accent-blue)', color: 'white' }} onClick={() => handleReleasePayment(exp._id)}>
+                                                        💸 Release Amount
+                                                    </button>
+                                                )}
+
+                                                {exp.financeReleased && (
+                                                    <span className="tx-tag" style={{ background: 'rgba(59,130,246,0.15)', color: 'var(--accent-blue)' }}>💳 Paid / Released</span>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -603,6 +637,49 @@ export default function ProjectDetail() {
                                     {expenseForm.date !== expenseForm.invoiceDate ? '⚠️ Fix Date Mismatch' : '🔒 Lock & Submit Expense'}
                                 </button>
                                 <button type="button" className="btn btn-outline" onClick={() => setShowExpenseModal(false)}>Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* Engineer Verify Modal */}
+            {showVerifyModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content glass-card" style={{ maxWidth: '500px' }}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">🔍 Physical Site Verification</h2>
+                            <button className="btn-close" onClick={() => setShowVerifyModal(false)}>&times;</button>
+                        </div>
+                        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                            Verifying expense for <strong>{selectedExp?.material}</strong> (₹{selectedExp?.amount.toLocaleString()}).
+                            <br/>You must upload a live photo taken at the site as proof of inspection.
+                        </p>
+                        
+                        <form onSubmit={handleVerifyExpense}>
+                            <div className="form-group">
+                                <label className="form-label">Decision</label>
+                                <select className="form-select" value={verifyForm.verified} onChange={e => setVerifyForm({...verifyForm, verified: e.target.value === 'true'})}>
+                                    <option value="true">✅ Approve & Release for Payment</option>
+                                    <option value="false">❌ Reject / Discrepancy Found</option>
+                                </select>
+                            </div>
+
+                            {verifyForm.verified && (
+                                <div className="form-group">
+                                    <label className="form-label">📍 Inspection Photo (Mandatory)</label>
+                                    <input className="form-input" type="file" accept="image/*" capture="environment" onChange={e => setVerifyForm({...verifyForm, photo: e.target.files[0]})} required />
+                                    <small style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Take a photo of the completed work or material at the site.</small>
+                                </div>
+                            )}
+
+                            <div className="form-group">
+                                <label className="form-label">Remarks</label>
+                                <textarea className="form-input" rows="3" placeholder="Describe what you verified at the site..." value={verifyForm.remarks} onChange={e => setVerifyForm({...verifyForm, remarks: e.target.value})} required></textarea>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                                <button type="submit" className="btn btn-primary">Confirm Verification</button>
+                                <button type="button" className="btn btn-outline" onClick={() => setShowVerifyModal(false)}>Cancel</button>
                             </div>
                         </form>
                     </div>
