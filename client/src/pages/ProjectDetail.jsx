@@ -17,26 +17,25 @@ export default function ProjectDetail() {
     const [loading, setLoading] = useState(true);
     const [showExpenseModal, setShowExpenseModal] = useState(false);
     const [isTampered, setIsTampered] = useState(false);
+    const [gpsLoading, setGpsLoading] = useState(false);
     const [expenseForm, setExpenseForm] = useState({ 
         date: new Date().toISOString().split('T')[0], 
         invoiceDate: new Date().toISOString().split('T')[0],
-        amount: '', 
-        material: '', 
-        vendor: '',
-        remarks: '',
-        invoice: null 
+        amount: '', material: '', vendor: '', remarks: '',
+        invoice: null, progressPhoto: null,
+        gpsLat: '', gpsLng: ''
     });
 
-    const categoryMaterials = {
-        road: ['Asphalt/Bitumen', 'Gravel/Crushed Stone', 'Concrete', 'Sand', 'Cement', 'Steel Rebar', 'Labor/Wages', 'Machinery Rental'],
-        water_supply: ['PVC/HDPE Pipes', 'Valves/Fittings', 'Pumps/Motors', 'Cement', 'Sand', 'Labor/Wages', 'Excavator Rental'],
-        sanitation: ['Concrete Pipes', 'Manhole Covers', 'Cement', 'Sand', 'Bricks', 'Labor/Wages'],
-        electricity: ['Cables/Wires', 'Transformers', 'Poles', 'Streetlights/LEDs', 'Switchgears', 'Labor/Wages'],
-        park: ['Plants/Trees', 'Soil/Fertilizer', 'Paving Stones', 'Fencing/Gates', 'Benches/Play Equipment', 'Lighting', 'Labor/Wages'],
-        building: ['Cement', 'Steel Rebar', 'Bricks/Blocks', 'Sand', 'Gravel', 'Wood/Plywood', 'Glass/Windows', 'Labor/Wages'],
-        bridge: ['Steel Girders', 'Concrete', 'High-grade Cement', 'Cables', 'Scaffolding', 'Labor/Wages', 'Heavy Machinery'],
-        drainage: ['Concrete Pipes', 'Cement', 'Sand', 'Steel Grates', 'Bricks', 'Labor/Wages', 'Excavator Rental'],
-        other: ['General Materials', 'Labor/Wages', 'Machinery', 'Miscellaneous']
+    const CATEGORY_MATERIALS = {
+        road: ['Asphalt/Bitumen','Gravel/Crushed Stone','Concrete','Sand','Cement','Steel Rebar','Labour/Wages','Machinery Rental'],
+        water_supply: ['PVC/HDPE Pipes','Valves/Fittings','Pumps/Motors','Cement','Sand','Labour/Wages','Excavator Rental'],
+        sanitation: ['Concrete Pipes','Manhole Covers','Cement','Sand','Bricks','Labour/Wages'],
+        electricity: ['Cables/Wires','Transformers','Poles','Streetlights/LEDs','Switchgears','Labour/Wages'],
+        park: ['Plants/Trees','Soil/Fertilizer','Paving Stones','Fencing/Gates','Benches/Play Equipment','Lighting','Labour/Wages'],
+        building: ['Cement','Steel Rebar','Bricks/Blocks','Sand','Gravel','Wood/Plywood','Glass/Windows','Labour/Wages'],
+        bridge: ['Steel Girders','Concrete','High-grade Cement','Cables','Scaffolding','Labour/Wages','Heavy Machinery'],
+        drainage: ['Concrete Pipes','Cement','Sand','Steel Grates','Bricks','Labour/Wages','Excavator Rental'],
+        other: ['General Materials','Labour/Wages','Machinery','Miscellaneous']
     };
 
     useEffect(() => { loadData(); }, [id]);
@@ -106,40 +105,58 @@ export default function ProjectDetail() {
         return `₹${amt.toLocaleString()}`;
     };
 
+    const captureGPS = () => {
+        setGpsLoading(true);
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setExpenseForm(f => ({ ...f, gpsLat: pos.coords.latitude.toFixed(6), gpsLng: pos.coords.longitude.toFixed(6) }));
+                setGpsLoading(false);
+            },
+            () => { alert('Could not get GPS location. Please enable location access.'); setGpsLoading(false); },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    };
+
+    const handleVerifyExpense = async (expId, verified) => {
+        const remarks = verified ? 'Physically verified at site' : prompt('Reason for rejection:') || 'Rejected';
+        try {
+            await projectAPI.verifyExpenditure(id, expId, { verified, remarks });
+            loadData();
+        } catch (err) { alert(err.response?.data?.message || 'Error'); }
+    };
+
     const handleLogExpense = async (e) => {
         e.preventDefault();
-        
         if (expenseForm.date !== expenseForm.invoiceDate) {
-            alert('CRITICAL ERROR: Expenditure date must exactly match the date printed on the invoice!');
+            alert('CRITICAL: Expenditure date must exactly match the invoice date!');
             return;
         }
+        if (!expenseForm.invoice) { alert('Invoice/bill upload is mandatory!'); return; }
+        if (!expenseForm.progressPhoto) { alert('Geo-tagged progress photo is mandatory!'); return; }
+        if (!expenseForm.gpsLat || !expenseForm.gpsLng) { alert('GPS location is required. Click "Capture GPS" first.'); return; }
 
-        if (!expenseForm.invoice) {
-            alert('Please upload the material invoice!');
+        const remaining = (project.allocatedBudget || project.estimatedBudget) - project.spentBudget;
+        if (Number(expenseForm.amount) > remaining) {
+            alert(`Amount ₹${Number(expenseForm.amount).toLocaleString()} exceeds remaining budget ₹${remaining.toLocaleString()}!`);
             return;
         }
 
         const formData = new FormData();
-        Object.keys(expenseForm).forEach(key => {
-            if (key === 'invoice') {
-                formData.append('invoice', expenseForm.invoice);
-            } else {
-                formData.append(key, expenseForm[key]);
-            }
-        });
+        formData.append('date', expenseForm.date);
+        formData.append('invoiceDate', expenseForm.invoiceDate);
+        formData.append('amount', expenseForm.amount);
+        formData.append('material', expenseForm.material);
+        formData.append('vendor', expenseForm.vendor);
+        formData.append('remarks', expenseForm.remarks);
+        formData.append('gpsLat', expenseForm.gpsLat);
+        formData.append('gpsLng', expenseForm.gpsLng);
+        formData.append('invoice', expenseForm.invoice);
+        formData.append('progressPhoto', expenseForm.progressPhoto);
 
         try {
             await projectAPI.logExpenditure(id, formData);
             setShowExpenseModal(false);
-            setExpenseForm({ 
-                date: new Date().toISOString().split('T')[0], 
-                invoiceDate: new Date().toISOString().split('T')[0],
-                amount: '', 
-                material: '', 
-                vendor: '',
-                remarks: '',
-                invoice: null 
-            });
+            setExpenseForm({ date: new Date().toISOString().split('T')[0], invoiceDate: new Date().toISOString().split('T')[0], amount: '', material: '', vendor: '', remarks: '', invoice: null, progressPhoto: null, gpsLat: '', gpsLng: '' });
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error logging expense'); }
     };
@@ -299,29 +316,42 @@ export default function ProjectDetail() {
             {project.expenditures && project.expenditures.length > 0 && (
                 <div className="section">
                     <div className="section-header">
-                        <h2 className="section-title"><FiDollarSign style={{ verticalAlign: 'middle', marginRight: '8px' }} /> Material Expenses Logged by Contractor</h2>
+                        <h2 className="section-title"><FiDollarSign style={{ verticalAlign: 'middle', marginRight: '8px' }} /> Material Expenses — Contractor Submissions</h2>
                     </div>
                     <div className="table-container">
                         <table className="table">
                             <thead>
-                                <tr><th>Date</th><th>Material</th><th>Vendor/Supplier</th><th>Amount Spent</th><th>Invoice Proof</th><th>Audit Status</th></tr>
+                                <tr><th>Date</th><th>Material</th><th>Vendor</th><th>Amount</th><th>Invoice</th><th>Site Photo & GPS</th><th>Hash</th><th>Engineer Verification</th></tr>
                             </thead>
                             <tbody>
-                                {project.expenditures.sort((a, b) => new Date(b.date) - new Date(a.date)).map((exp, idx) => (
-                                    <tr key={idx}>
+                                {project.expenditures.sort((a, b) => new Date(b.date) - new Date(a.date)).map((exp) => (
+                                    <tr key={exp._id}>
                                         <td style={{ fontSize: '13px' }}>{new Date(exp.date).toLocaleDateString()}</td>
                                         <td style={{ fontWeight: 500 }}>{exp.material}</td>
                                         <td style={{ fontSize: '13px' }}>{exp.vendor}</td>
                                         <td style={{ fontWeight: 600, color: 'var(--accent-red)' }}>{formatCurrency(exp.amount)}</td>
                                         <td>
-                                            <a href={`${exp.invoiceUrl}`} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-blue)', textDecoration: 'none' }}>
-                                                📄 View Invoice
-                                            </a>
+                                            <a href={exp.invoiceUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent-blue)', textDecoration: 'none' }}>📄 Bill</a>
                                         </td>
                                         <td>
-                                            <span className="tx-tag" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--accent-green)' }}>
-                                                🔒 SHA-256 Verified
-                                            </span>
+                                            {exp.progressPhotoUrl && <a href={exp.progressPhotoUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', textDecoration: 'none', marginRight: '4px' }}>📸 Photo</a>}
+                                            {exp.gpsLat && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>📍 {parseFloat(exp.gpsLat).toFixed(4)},{parseFloat(exp.gpsLng).toFixed(4)}</span>}
+                                        </td>
+                                        <td><span className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', fontSize: '10px' }}>🔒 SHA-256</span></td>
+                                        <td>
+                                            {exp.engineerVerified ? (
+                                                <span className="tx-tag" style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--accent-green)' }}>✅ Verified<br/><span style={{ fontSize: '10px' }}>{exp.verificationRemarks}</span></span>
+                                            ) : (
+                                                ['engineer', 'admin'].includes(user?.role) ? (
+                                                    <div style={{ display: 'flex', gap: '4px', flexDirection: 'column' }}>
+                                                        <span style={{ fontSize: '11px', color: 'var(--accent-orange)' }}>⏳ Pending physical verification</span>
+                                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                                            <button className="btn btn-success btn-sm" style={{ fontSize: '11px', padding: '3px 8px' }} onClick={() => handleVerifyExpense(exp._id, true)}>✅ Verify</button>
+                                                            <button className="btn btn-outline btn-sm" style={{ fontSize: '11px', padding: '3px 8px', borderColor: '#ef4444', color: '#ef4444' }} onClick={() => handleVerifyExpense(exp._id, false)}>❌ Reject</button>
+                                                        </div>
+                                                    </div>
+                                                ) : <span style={{ fontSize: '11px', color: 'var(--accent-orange)' }}>⏳ Awaiting Engineer</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -501,49 +531,77 @@ export default function ProjectDetail() {
             {/* Log Expense Modal for Contractor */}
             {showExpenseModal && (
                 <div className="modal-overlay" onClick={() => setShowExpenseModal(false)}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="modal-title">Log Material Expense</h3>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>Update the spent budget for: <strong>{project.title}</strong></p>
+                    <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <h3 className="modal-title">📋 Log Material Expense</h3>
+                        <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: 'var(--accent-red)' }}>
+                            ⚠️ All entries are SHA-256 hashed and tamper-proof. Engineer must physically verify before payment is released.
+                        </div>
+
+                        {/* Remaining Budget Banner */}
+                        <div style={{ background: 'rgba(59,130,246,0.1)', borderRadius: '8px', padding: '8px 14px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Remaining Budget</span>
+                            <span style={{ fontWeight: 700, color: 'var(--accent-blue)' }}>{formatCurrency((project.allocatedBudget || project.estimatedBudget) - project.spentBudget)}</span>
+                        </div>
+
                         <form onSubmit={handleLogExpense}>
-                            <div className="grid-2" style={{ gap: '15px' }}>
+                            <div className="grid-2" style={{ gap: '12px' }}>
                                 <div className="form-group">
                                     <label className="form-label">Expenditure Date</label>
                                     <input className="form-input" type="date" value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Invoice Date (Must Match)</label>
+                                    <label className="form-label">Invoice Date <span style={{ color: 'var(--accent-red)' }}>(Must Match!)</span></label>
                                     <input className="form-input" type="date" value={expenseForm.invoiceDate} onChange={(e) => setExpenseForm({ ...expenseForm, invoiceDate: e.target.value })} required />
                                 </div>
+                            </div>
+                            {expenseForm.date !== expenseForm.invoiceDate && (
+                                <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '10px', fontWeight: 600 }}>⚠️ Date mismatch! Dates must be identical.</div>
+                            )}
+                            <div className="form-group">
+                                <label className="form-label">Material / Expense Type <span style={{ color: 'var(--accent-blue)', fontSize: '11px' }}>AI-Suggested for {project.category?.replace('_',' ')}</span></label>
+                                <select className="form-select" value={expenseForm.material} onChange={(e) => setExpenseForm({ ...expenseForm, material: e.target.value })} required>
+                                    <option value="">-- Select Material --</option>
+                                    {(CATEGORY_MATERIALS[project.category] || CATEGORY_MATERIALS.other).map(mat => (
+                                        <option key={mat} value={mat}>{mat}</option>
+                                    ))}
+                                </select>
+                                <small style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Only approved materials for this project type are shown. Custom entries are blocked.</small>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Vendor / Supplier Name</label>
                                 <input className="form-input" type="text" placeholder="e.g. Bharath Steels Ltd." value={expenseForm.vendor} onChange={(e) => setExpenseForm({ ...expenseForm, vendor: e.target.value })} required />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Material / Expense Type</label>
-                                <select className="form-select" value={expenseForm.material} onChange={(e) => setExpenseForm({ ...expenseForm, material: e.target.value })} required>
-                                    <option value="">-- Select Material --</option>
-                                    {(categoryMaterials[project.category] || categoryMaterials.other).map(mat => (
-                                        <option key={mat} value={mat}>{mat}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="form-group">
                                 <label className="form-label">Amount Spent (₹)</label>
-                                <input className="form-input" type="number" min="1" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} required />
+                                <input className="form-input" type="number" min="1" max={(project.allocatedBudget || project.estimatedBudget) - project.spentBudget} value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} required />
+                                <small style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Max: ₹{((project.allocatedBudget || project.estimatedBudget) - project.spentBudget).toLocaleString()} remaining</small>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Upload Official Invoice (PDF/Image)</label>
-                                <input className="form-input" type="file" onChange={(e) => setExpenseForm({ ...expenseForm, invoice: e.target.files[0] })} required />
-                                <small style={{ color: 'var(--text-muted)', fontSize: '10px' }}>This bill will be SHA-256 hashed and cannot be altered later.</small>
+                                <label className="form-label">📄 Upload Official Invoice / Bill <span style={{ color: 'var(--accent-red)' }}>*Required</span></label>
+                                <input className="form-input" type="file" accept="image/*,application/pdf" onChange={(e) => setExpenseForm({ ...expenseForm, invoice: e.target.files[0] })} required />
+                                <small style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Bill date must match expenditure date. This will be SHA-256 hashed permanently.</small>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Remarks</label>
+                                <label className="form-label">📸 Geo-tagged Site Photo <span style={{ color: 'var(--accent-red)' }}>*Required</span></label>
+                                <input className="form-input" type="file" accept="image/*" capture="environment" onChange={(e) => setExpenseForm({ ...expenseForm, progressPhoto: e.target.files[0] })} required />
+                                <small style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Take a photo at the work site. Photo location must match the ward.</small>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">📍 GPS Location <span style={{ color: 'var(--accent-red)' }}>*Required</span></label>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <button type="button" className="btn btn-outline btn-sm" onClick={captureGPS} disabled={gpsLoading}>
+                                        {gpsLoading ? '⏳ Getting GPS...' : '📍 Capture My GPS Location'}
+                                    </button>
+                                    {expenseForm.gpsLat && <span style={{ fontSize: '11px', color: 'var(--accent-green)', fontWeight: 600 }}>✅ {expenseForm.gpsLat}, {expenseForm.gpsLng}</span>}
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Remarks (Optional)</label>
                                 <input className="form-input" type="text" placeholder="Additional details..." value={expenseForm.remarks} onChange={(e) => setExpenseForm({ ...expenseForm, remarks: e.target.value })} />
                             </div>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                                <button type="submit" className="btn btn-primary" disabled={expenseForm.date !== expenseForm.invoiceDate}>
-                                    {expenseForm.date !== expenseForm.invoiceDate ? 'Date Mismatch' : 'Lock & Save Expenditure'}
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                                <button type="submit" className="btn btn-primary" disabled={expenseForm.date !== expenseForm.invoiceDate || !expenseForm.gpsLat}>
+                                    {expenseForm.date !== expenseForm.invoiceDate ? '⚠️ Fix Date Mismatch' : !expenseForm.gpsLat ? '📍 GPS Required' : '🔒 Lock & Submit Expense'}
                                 </button>
                                 <button type="button" className="btn btn-outline" onClick={() => setShowExpenseModal(false)}>Cancel</button>
                             </div>

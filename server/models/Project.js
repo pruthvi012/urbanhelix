@@ -70,10 +70,18 @@ const projectSchema = new mongoose.Schema({
         material: { type: String, required: true },
         vendor: { type: String, required: true },
         invoiceUrl: { type: String, required: true },
+        progressPhotoUrl: { type: String },
+        gpsLat: { type: Number },
+        gpsLng: { type: Number },
         remarks: { type: String },
         entryHash: { type: String, required: true },
         recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        timestamp: { type: Date, default: Date.now }
+        timestamp: { type: Date, default: Date.now },
+        engineerVerified: { type: Boolean, default: false },
+        verifiedByEngineer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+        verifiedAt: { type: Date, default: null },
+        verificationRemarks: { type: String, default: '' },
+        readyForPayment: { type: Boolean, default: false }
     }],
     budgetRevisionHistory: [{
         oldBudget: Number,

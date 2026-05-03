@@ -14,9 +14,22 @@ const crypto = require('crypto');
 const router = express.Router();
 
 const calculateEntryHash = (data) => {
-    const { amount, material, date, invoiceUrl, vendor } = data;
-    const str = `${amount}|${material}|${new Date(date).toISOString()}|${invoiceUrl}|${vendor}`;
+    const { amount, material, date, invoiceUrl, vendor, progressPhotoUrl, gpsLat, gpsLng } = data;
+    const str = `${amount}|${material}|${new Date(date).toISOString()}|${invoiceUrl}|${vendor}|${progressPhotoUrl||''}|${gpsLat||''}|${gpsLng||''}`;
     return crypto.createHash('sha256').update(str).digest('hex');
+};
+
+// Allowed materials per category (whitelist)
+const CATEGORY_MATERIALS = {
+    road: ['Asphalt/Bitumen','Gravel/Crushed Stone','Concrete','Sand','Cement','Steel Rebar','Labour/Wages','Machinery Rental'],
+    water_supply: ['PVC/HDPE Pipes','Valves/Fittings','Pumps/Motors','Cement','Sand','Labour/Wages','Excavator Rental'],
+    sanitation: ['Concrete Pipes','Manhole Covers','Cement','Sand','Bricks','Labour/Wages'],
+    electricity: ['Cables/Wires','Transformers','Poles','Streetlights/LEDs','Switchgears','Labour/Wages'],
+    park: ['Plants/Trees','Soil/Fertilizer','Paving Stones','Fencing/Gates','Benches/Play Equipment','Lighting','Labour/Wages'],
+    building: ['Cement','Steel Rebar','Bricks/Blocks','Sand','Gravel','Wood/Plywood','Glass/Windows','Labour/Wages'],
+    bridge: ['Steel Girders','Concrete','High-grade Cement','Cables','Scaffolding','Labour/Wages','Heavy Machinery'],
+    drainage: ['Concrete Pipes','Cement','Sand','Steel Grates','Bricks','Labour/Wages','Excavator Rental'],
+    other: ['General Materials','Labour/Wages','Machinery','Miscellaneous']
 };
 
 const generateProjectCode = async () => {
@@ -648,35 +661,55 @@ router.put('/:id/revision', protect, authorize('engineer', 'admin'), async (req,
 });
 
 // POST /api/projects/:id/expenditure — log contractor expenditure with invoice and hashing
-router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), upload.single('invoice'), async (req, res) => {
+router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), upload.fields([{ name: 'invoice', maxCount: 1 }, { name: 'progressPhoto', maxCount: 1 }]), async (req, res) => {
     try {
-        const project = await Project.findById(req.params.id);
+        const project = await Project.findById(req.params.id).populate('engineer', 'name _id');
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        const { date, invoiceDate, amount, material, vendor, remarks } = req.body;
+        const { date, invoiceDate, amount, material, vendor, remarks, gpsLat, gpsLng } = req.body;
 
-        if (!date || !invoiceDate || !amount || !material || !vendor || !req.file) {
-            return res.status(400).json({ success: false, message: 'All fields including invoice upload are required' });
+        if (!date || !invoiceDate || !amount || !material || !vendor) {
+            return res.status(400).json({ success: false, message: 'All fields (date, invoiceDate, amount, material, vendor) are required' });
+        }
+
+        if (!req.files || !req.files.invoice) {
+            return res.status(400).json({ success: false, message: 'Invoice/bill upload is mandatory for every expense entry' });
+        }
+        if (!req.files.progressPhoto) {
+            return res.status(400).json({ success: false, message: 'Geo-tagged progress photo is mandatory' });
         }
 
         // Strict date matching validation
         if (date !== invoiceDate) {
-            return res.status(400).json({ success: false, message: 'Expenditure date must match invoice date' });
+            return res.status(400).json({ success: false, message: 'Expenditure date must exactly match the date printed on the invoice' });
+        }
+
+        // Material whitelist validation
+        const allowedMaterials = CATEGORY_MATERIALS[project.category] || CATEGORY_MATERIALS.other;
+        if (!allowedMaterials.includes(material)) {
+            return res.status(400).json({ success: false, message: `Invalid material "${material}" for category "${project.category}". Allowed: ${allowedMaterials.join(', ')}` });
         }
 
         const expAmount = Number(amount);
-        const invoiceUrl = `/uploads/projects/${req.file.filename}`;
 
-        // Calculate Cryptographic Hash for this entry
+        // Budget remaining check
+        const remaining = (project.allocatedBudget || project.estimatedBudget) - project.spentBudget;
+        if (expAmount > remaining) {
+            return res.status(400).json({ success: false, message: `Amount ₹${expAmount.toLocaleString()} exceeds remaining budget of ₹${remaining.toLocaleString()}` });
+        }
+
+        const invoiceUrl = `/uploads/projects/${req.files.invoice[0].filename}`;
+        const progressPhotoUrl = `/uploads/projects/${req.files.progressPhoto[0].filename}`;
+
+        // Calculate Cryptographic Hash including all fields
         const entryHash = calculateEntryHash({
-            amount: expAmount,
-            material,
-            date,
-            invoiceUrl,
-            vendor
+            amount: expAmount, material, date, invoiceUrl, vendor,
+            progressPhotoUrl,
+            gpsLat: gpsLat ? parseFloat(gpsLat) : null,
+            gpsLng: gpsLng ? parseFloat(gpsLng) : null
         });
 
-        // Record expenditure
+        // Record expenditure (pending engineer verification)
         project.expenditures.push({
             date: new Date(date),
             invoiceDate: new Date(invoiceDate),
@@ -684,9 +717,14 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             material,
             vendor,
             invoiceUrl,
+            progressPhotoUrl,
+            gpsLat: gpsLat ? parseFloat(gpsLat) : null,
+            gpsLng: gpsLng ? parseFloat(gpsLng) : null,
             entryHash,
             remarks: remarks || '',
-            recordedBy: req.user._id
+            recordedBy: req.user._id,
+            engineerVerified: false,
+            readyForPayment: false
         });
 
         // Update total spent budget
@@ -696,14 +734,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
         try {
             await HashChainService.addRecord(
                 'expenditure_logged',
-                {
-                    projectId: project._id,
-                    amount: expAmount,
-                    material,
-                    vendor,
-                    entryHash,
-                    loggedBy: req.user.name
-                },
+                { projectId: project._id, amount: expAmount, material, vendor, entryHash, loggedBy: req.user.name },
                 { entityType: 'project', entityId: project._id },
                 req.user._id
             );
@@ -718,13 +749,64 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             action: 'log_expenditure',
             resourceType: 'project',
             resourceId: project._id,
-            details: `Logged tamper-proof expenditure: ₹${expAmount.toLocaleString()} for ${material} from ${vendor}`,
+            details: `Logged tamper-proof expenditure: ₹${expAmount.toLocaleString()} for ${material} from ${vendor}. Awaiting engineer verification.`,
         });
+
+        // Notify assigned engineer for cross-verification
+        if (project.engineer) {
+            await Notification.create({
+                user: project.engineer._id || project.engineer,
+                title: '🔍 Expense Needs Physical Verification',
+                message: `Contractor logged ₹${expAmount.toLocaleString()} for "${material}" on project "${project.title}". Please visit site and verify physically.`,
+                type: 'system',
+                relatedEntity: { entityType: 'Project', entityId: project._id }
+            });
+        }
 
         res.json({ success: true, project });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
+// PUT /api/projects/:id/expenditure/:expId/verify — engineer physically verifies an expense
+router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'admin'), async (req, res) => {
+    try {
+        const project = await Project.findById(req.params.id);
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+        const exp = project.expenditures.id(req.params.expId);
+        if (!exp) return res.status(404).json({ success: false, message: 'Expenditure record not found' });
+
+        const { verified, remarks } = req.body;
+
+        exp.engineerVerified = verified === true || verified === 'true';
+        exp.verifiedByEngineer = req.user._id;
+        exp.verifiedAt = new Date();
+        exp.verificationRemarks = remarks || '';
+        exp.readyForPayment = exp.engineerVerified;
+
+        await project.save();
+
+        await AuditLog.create({
+            user: req.user._id,
+            action: 'verify_expenditure',
+            resourceType: 'project',
+            resourceId: project._id,
+            details: `Engineer ${exp.engineerVerified ? 'VERIFIED ✅' : 'REJECTED ❌'} expenditure of ₹${exp.amount.toLocaleString()} for ${exp.material}. Remarks: ${remarks || 'None'}`,
+        });
+
+        res.json({ success: true, expenditure: exp, message: exp.engineerVerified ? 'Expenditure verified and marked ready for payment' : 'Expenditure rejected' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// GET /api/projects/materials/:category — get allowed materials for a category
+router.get('/materials/:category', (req, res) => {
+    const mats = CATEGORY_MATERIALS[req.params.category] || CATEGORY_MATERIALS.other;
+    res.json({ success: true, materials: mats });
+});
+
 
 module.exports = router;
