@@ -29,6 +29,7 @@ export default function Projects() {
     const [showRevisionModal, setShowRevisionModal] = useState(false);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [showReleaseModal, setShowReleaseModal] = useState(false);
+    const [lightboxUrl, setLightboxUrl] = useState(null);
     const [verifyForm, setVerifyForm] = useState({ verified: true, remarks: '', photo: null, expenditureId: '' });
     const [revisionForm, setRevisionForm] = useState({ newBudget: '', reason: '' });
 
@@ -426,7 +427,14 @@ export default function Projects() {
                                                     <tr key={p._id}>
                                                         <td>
                                                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                                                {p.imageUrl && <img src={`http://localhost:5000${p.imageUrl}`} alt="" style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />}
+                                                                {p.imageUrl && (
+                                                                    <img 
+                                                                        src={`http://localhost:5000${p.imageUrl}`} 
+                                                                        alt="" 
+                                                                        style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover', cursor: 'pointer' }} 
+                                                                        onClick={() => setLightboxUrl(`http://localhost:5000${p.imageUrl}`)}
+                                                                    />
+                                                                )}
                                                                 <div>
                                                                     <Link to={`/projects/${p._id}`} style={{ color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 500 }}>
                                                                         {p.title}
@@ -887,6 +895,37 @@ export default function Projects() {
                             ))}
                         </div>
                         <button className="btn btn-outline" style={{ width: '100%' }} onClick={() => setShowReleaseModal(false)}>Close</button>
+                    </div>
+                </div>
+            )}
+            {/* Image Lightbox Overlay */}
+            {lightboxUrl && (
+                <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.95)', zIndex: 9999 }}>
+                    <button 
+                        onClick={() => setLightboxUrl(null)}
+                        style={{ 
+                            position: 'absolute', 
+                            top: '20px', 
+                            right: '20px', 
+                            background: '#ff4444', 
+                            color: 'white', 
+                            border: 'none', 
+                            borderRadius: '50%', 
+                            width: '50px', 
+                            height: '50px', 
+                            fontSize: '24px', 
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 4px 12px rgba(255,0,0,0.3)',
+                            zIndex: 10000
+                        }}
+                    >
+                        &times;
+                    </button>
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+                        <img src={lightboxUrl} style={{ maxWidth: '95%', maxHeight: '95%', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }} alt="Project" />
                     </div>
                 </div>
             )}

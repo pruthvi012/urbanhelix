@@ -18,6 +18,7 @@ export default function ProjectDetail() {
     const [showExpenseModal, setShowExpenseModal] = useState(false);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [selectedExp, setSelectedExp] = useState(null);
+    const [lightboxUrl, setLightboxUrl] = useState(null);
     const [verifyForm, setVerifyForm] = useState({ verified: true, remarks: '', photo: null });
     const [expenseForm, setExpenseForm] = useState({ 
         date: new Date().toISOString().split('T')[0], 
@@ -361,9 +362,9 @@ export default function ProjectDetail() {
                                         <td style={{ fontWeight: 600, color: 'var(--accent-red)' }}>{formatCurrency(exp.amount)}</td>
                                         <td>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                                {exp.invoiceUrl && <a href={exp.invoiceUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent-blue)', textDecoration: 'none' }}>📄 Bill/PDF</a>}
-                                                {exp.progressPhotoUrl && <a href={exp.progressPhotoUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', textDecoration: 'none' }}>📸 Cont. Photo</a>}
-                                                {exp.verificationPhotoUrl && <a href={exp.verificationPhotoUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24', textDecoration: 'none' }}>👷 Verify Photo</a>}
+                                                {exp.invoiceUrl && <button onClick={() => setLightboxUrl(exp.invoiceUrl)} className="tx-tag" style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent-blue)', border: 'none', cursor: 'pointer' }}>📄 Bill/PDF</button>}
+                                                {exp.progressPhotoUrl && <button onClick={() => setLightboxUrl(exp.progressPhotoUrl)} className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', border: 'none', cursor: 'pointer' }}>📸 Cont. Photo</button>}
+                                                {exp.verificationPhotoUrl && <button onClick={() => setLightboxUrl(exp.verificationPhotoUrl)} className="tx-tag" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24', border: 'none', cursor: 'pointer' }}>👷 Verify Photo</button>}
                                             </div>
                                         </td>
                                         <td><span className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', fontSize: '10px' }}>🔒 SHA-256</span></td>
@@ -682,6 +683,41 @@ export default function ProjectDetail() {
                                 <button type="button" className="btn btn-outline" onClick={() => setShowVerifyModal(false)}>Cancel</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* Image Lightbox Overlay */}
+            {lightboxUrl && (
+                <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.95)', zIndex: 9999 }}>
+                    <button 
+                        onClick={() => setLightboxUrl(null)}
+                        style={{ 
+                            position: 'absolute', 
+                            top: '20px', 
+                            right: '20px', 
+                            background: '#ff4444', 
+                            color: 'white', 
+                            border: 'none', 
+                            borderRadius: '50%', 
+                            width: '50px', 
+                            height: '50px', 
+                            fontSize: '24px', 
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 4px 12px rgba(255,0,0,0.3)',
+                            zIndex: 10000
+                        }}
+                    >
+                        &times;
+                    </button>
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+                        {lightboxUrl.toLowerCase().endsWith('.pdf') ? (
+                            <iframe src={lightboxUrl} style={{ width: '90%', height: '90%', border: 'none', borderRadius: '12px' }} title="Document Viewer"></iframe>
+                        ) : (
+                            <img src={lightboxUrl} style={{ maxWidth: '95%', maxHeight: '95%', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }} alt="Evidence" />
+                        )}
                     </div>
                 </div>
             )}
