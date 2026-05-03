@@ -554,20 +554,25 @@ export default function Projects() {
                                         <div style={{ 
                                             maxHeight: '200px', 
                                             overflowY: 'auto', 
-                                            background: '#ffffff', 
-                                            borderRadius: '10px', 
-                                            border: '1px solid #e2e8f0',
+                                            background: 'var(--bg-secondary)', 
+                                            borderRadius: '12px', 
+                                            border: '1px solid var(--border-glass)',
                                             padding: '12px',
-                                            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                                            boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.2)'
                                         }}>
                                             {/* Search box inside the list for quick filtering */}
                                             <input 
                                                 className="form-input" 
-                                                placeholder="🔍 Filter wards..." 
+                                                placeholder="🔍 Search ward name or number..." 
                                                 value={wardSearch} 
                                                 onChange={(e) => setWardSearch(e.target.value)}
-                                                style={{ marginBottom: '12px', height: '34px', fontSize: '13px', background: '#f8fafc' }}
+                                                style={{ marginBottom: '12px', height: '38px', fontSize: '13px', background: 'rgba(255,255,255,0.03)', borderColor: 'var(--border-glass)' }}
                                             />
+                                            {wards.length === 0 && (
+                                                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+                                                    Loading ward data... if this persists, click "Ward Directory" to refresh.
+                                                </div>
+                                            )}
                                             {Array.from(new Set(wards.map(w => w.assemblyConstituency))).map(ac => {
                                                 const acWards = wards.filter(w => 
                                                     w.assemblyConstituency === ac && 
@@ -584,17 +589,18 @@ export default function Projects() {
                                                                     key={w._id} 
                                                                     className="ward-select-item"
                                                                     style={{ 
-                                                                        padding: '8px 12px', 
+                                                                        padding: '10px 14px', 
                                                                         cursor: 'pointer', 
-                                                                        borderRadius: '6px',
+                                                                        borderRadius: '8px',
                                                                         fontSize: '13px',
                                                                         display: 'flex',
                                                                         justifyContent: 'space-between',
                                                                         alignItems: 'center',
                                                                         transition: 'all 0.2s ease',
-                                                                        background: form.location.wardNo === w.wardNo ? '#eff6ff' : 'transparent',
-                                                                        color: form.location.wardNo === w.wardNo ? '#2563eb' : '#475569',
-                                                                        border: form.location.wardNo === w.wardNo ? '1px solid #dbeafe' : '1px solid transparent'
+                                                                        background: form.location.wardNo === w.wardNo ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
+                                                                        color: form.location.wardNo === w.wardNo ? 'var(--accent-blue)' : 'var(--text-primary)',
+                                                                        border: form.location.wardNo === w.wardNo ? '1px solid var(--accent-blue)' : '1px solid rgba(255,255,255,0.05)',
+                                                                        marginBottom: '2px'
                                                                     }}
                                                                     onClick={() => {
                                                                         setForm({ ...form, location: { ...form.location, ward: w.name, wardNo: w.wardNo, area: '' } });
@@ -619,15 +625,15 @@ export default function Projects() {
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                background: '#ffffff', 
-                                                borderRadius: '10px', 
-                                                border: '1px dashed #cbd5e1',
+                                                background: 'var(--bg-secondary)', 
+                                                borderRadius: '12px', 
+                                                border: '1px dashed var(--border-glass)',
                                                 fontSize: '12px',
-                                                color: '#94a3b8',
+                                                color: 'var(--text-muted)',
                                                 padding: '0 20px',
                                                 textAlign: 'center'
                                             }}>
-                                                Select a ward on the left to see constituent areas
+                                                👈 Select a ward on the left to see constituent areas
                                             </div>
                                         ) : (
                                             <div style={{ 
@@ -643,17 +649,18 @@ export default function Projects() {
                                                         key={a} 
                                                         onClick={() => setForm({ ...form, location: { ...form.location, area: a } })}
                                                         style={{ 
-                                                            padding: '8px 10px', 
-                                                            borderRadius: '8px', 
+                                                            padding: '10px 12px', 
+                                                            borderRadius: '10px', 
                                                             fontSize: '11px', 
                                                             cursor: 'pointer',
                                                             textAlign: 'center',
                                                             fontWeight: 600,
-                                                            background: form.location.area === a ? '#2563eb' : '#ffffff',
-                                                            color: form.location.area === a ? '#ffffff' : '#64748b',
+                                                            background: form.location.area === a ? 'var(--accent-blue)' : 'rgba(255,255,255,0.03)',
+                                                            color: form.location.area === a ? '#ffffff' : 'var(--text-secondary)',
                                                             border: '1px solid',
-                                                            borderColor: form.location.area === a ? '#2563eb' : '#e2e8f0',
-                                                            transition: 'all 0.2s ease'
+                                                            borderColor: form.location.area === a ? 'var(--accent-blue)' : 'var(--border-glass)',
+                                                            transition: 'all 0.2s ease',
+                                                            boxShadow: form.location.area === a ? '0 0 15px rgba(59, 130, 246, 0.3)' : 'none'
                                                         }}
                                                     >
                                                         {a}
@@ -666,18 +673,18 @@ export default function Projects() {
                                 {form.location.area && (
                                     <div style={{ 
                                         marginTop: '16px', 
-                                        padding: '8px 12px', 
-                                        background: '#dcfce7', 
-                                        borderRadius: '6px', 
+                                        padding: '10px 16px', 
+                                        background: 'rgba(16, 185, 129, 0.1)', 
+                                        borderRadius: '10px', 
                                         display: 'inline-flex', 
                                         alignItems: 'center', 
-                                        gap: '8px',
-                                        fontSize: '12px',
-                                        color: '#166534',
+                                        gap: '10px',
+                                        fontSize: '13px',
+                                        color: 'var(--accent-emerald)',
                                         fontWeight: 700,
-                                        border: '1px solid #bbf7d0'
+                                        border: '1px solid rgba(16, 185, 129, 0.2)'
                                     }}>
-                                        📍 Selected: {form.location.ward} ({form.location.area})
+                                        📍 Selected Location: {form.location.ward} - {form.location.area}
                                     </div>
                                 )}
                             </div>
