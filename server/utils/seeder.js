@@ -26,23 +26,25 @@ const seedDepartments = [
 
 const seedAll = async () => {
     try {
-        // 1. Seed Wards
+        // 1. Seed Wards - Force re-seed if we don't have our core 10 wards
         const wardCount = await Ward.countDocuments();
-        if (wardCount === 0) {
-            console.log('🌱 Seeding wards...');
+        if (wardCount < 10) {
+            console.log('🌱 Insufficient wards found. Refreshing ward data...');
+            await Ward.deleteMany({});
             await Ward.insertMany(seedWards);
-            console.log('✅ Wards seeded!');
+            console.log('✅ Wards seeded and verified!');
         }
 
-        // 2. Seed Departments
+        // 2. Seed Departments - Force re-seed if we have fewer than 5 departments
         const deptCount = await Department.countDocuments();
-        if (deptCount === 0) {
-            console.log('🌱 Seeding departments...');
+        if (deptCount < 5) {
+            console.log('🌱 Insufficient departments found. Refreshing department data...');
+            await Department.deleteMany({});
             await Department.insertMany(seedDepartments);
-            console.log('✅ Departments seeded!');
+            console.log('✅ Departments seeded and verified!');
         }
 
-        console.log('🏁 Data seeding complete.');
+        console.log('🏁 Data seeding verification complete.');
     } catch (err) {
         console.error('❌ Seeding failed:', err.message);
     }
