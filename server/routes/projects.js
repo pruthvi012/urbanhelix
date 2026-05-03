@@ -53,9 +53,9 @@ router.get('/', optionalAuth, async (req, res) => {
 
         const total = await Project.countDocuments(filter);
 
-        // Sanitize projectCode for non-engineers/admins unless they searched specifically by it
+        // Sanitize projectCode for non-engineers/admins/finance unless they searched specifically by it
         const userRole = req.user?.role;
-        const canSeeCode = userRole === 'admin' || userRole === 'engineer';
+        const canSeeCode = userRole === 'admin' || userRole === 'engineer' || userRole === 'financial_officer';
         
         const sanitizedProjects = projects.map(p => {
             const pObj = p.toObject();
@@ -86,7 +86,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
         
         let pObj = project.toObject();
         const userRole = req.user?.role;
-        if (userRole !== 'admin' && userRole !== 'engineer' && (!req.user || req.user._id.toString() !== pObj.contractor?._id?.toString())) {
+        if (userRole !== 'admin' && userRole !== 'engineer' && userRole !== 'financial_officer' && (!req.user || req.user._id.toString() !== pObj.contractor?._id?.toString())) {
             delete pObj.projectCode;
         }
 
@@ -169,11 +169,8 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin'), upload.fiel
             }
         }
         
-        const projectCode = await generateProjectCode();
-
         const projectData = {
             ...req.body,
-            projectCode,
             location: locationData,
             proposedBy: req.user._id,
             status: 'proposed',
@@ -317,6 +314,11 @@ router.put('/:id/approve', protect, authorize('financial_officer'), async (req, 
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
         const { allocatedBudget, remarks } = req.body;
+        
+        // Generate projectCode upon approval
+        if (!project.projectCode) {
+            project.projectCode = await generateProjectCode();
+        }
 
         project.status = 'approved';
         project.engineer = req.user._id;

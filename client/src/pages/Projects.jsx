@@ -391,7 +391,7 @@ export default function Projects() {
                                                         </>
                                                     )}
                                                     <th>Report</th>
-                                                    {['engineer', 'admin', 'contractor'].includes(user?.role) && <th>Actions</th>}
+                                                    {['engineer', 'admin', 'contractor', 'financial_officer'].includes(user?.role) && <th>Actions</th>}
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -404,7 +404,7 @@ export default function Projects() {
                                                                     <Link to={`/projects/${p._id}`} style={{ color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 500 }}>
                                                                         {p.title}
                                                                     </Link>
-                                                                    {['engineer', 'admin'].includes(user?.role) && p.projectCode && (
+                                                                    {['engineer', 'admin', 'financial_officer'].includes(user?.role) && p.projectCode && (
                                                                         <div style={{ fontSize: '11px', color: 'var(--accent-green)', fontWeight: 700, marginTop: '4px' }}>
                                                                             Code: {p.projectCode}
                                                                         </div>
@@ -439,10 +439,10 @@ export default function Projects() {
                                                                 <FiDownload /> PDF
                                                             </button>
                                                         </td>
-                                                        {(['engineer', 'admin'].includes(user?.role) || (user?.role === 'contractor' && p.contractor?._id === user?._id)) && (
+                                                        {(['engineer', 'admin', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && p.contractor?._id === user?._id)) && (
                                                             <td>
                                                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                                                    {['engineer', 'admin'].includes(user?.role) && p.status === 'proposed' && (
+                                                                    {user?.role === 'financial_officer' && p.status === 'proposed' && (
                                                                         <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id)}>Approve</button>
                                                                     )}
                                                                     {['engineer', 'admin'].includes(user?.role) && p.status === 'approved' && !p.contractor && (
