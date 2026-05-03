@@ -57,7 +57,12 @@ const PORT = process.env.PORT || 5000;
 
 connectDB().then(async () => {
     // Run automated data seeder
-    await seedAll();
+    try {
+        console.log('🔄 Checking database integrity...');
+        await seedAll();
+    } catch (seedErr) {
+        console.error('⚠️ Critical: Automated seeding failed:', seedErr.message);
+    }
 
     app.listen(PORT, () => {
         console.log(`🚀 UrbanHeliX server running on port ${PORT}`);
