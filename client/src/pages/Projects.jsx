@@ -172,7 +172,7 @@ export default function Projects() {
             const p = res.data.project;
             if (!p) { alert('Could not load project data.'); return; }
 
-            const fmt = (n) => n ? `\u20B9${Number(n).toLocaleString('en-IN')}` : '\u20B90';
+            const fmt = (n) => n ? `Rs. ${Number(n).toLocaleString('en-IN')}` : 'Rs. 0';
             const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' }) : 'N/A';
             const utilRate = p.allocatedBudget > 0 ? ((p.spentBudget || 0) / p.allocatedBudget * 100).toFixed(1) : '0';
             const remaining = (p.allocatedBudget || 0) - (p.spentBudget || 0);
@@ -248,7 +248,7 @@ export default function Projects() {
         <tr><td class="fin-label">Spent to Date</td><td>${fmt(p.spentBudget)}</td></tr>
         <tr><td class="fin-label">Remaining Balance</td><td class="${remaining >= 0 ? 'highlight' : 'warning'}">${fmt(remaining)}</td></tr>
         <tr><td class="fin-label">Budget Utilization</td><td>${utilRate}%</td></tr>
-        <tr><td class="fin-label">Budget Lock Status</td><td>${p.isBudgetLocked ? '\u2705 LOCKED & VERIFIED' : '\u23F3 PROVISIONAL'}</td></tr>
+        <tr><td class="fin-label">Budget Lock Status</td><td>${p.isBudgetLocked ? 'LOCKED & VERIFIED' : 'PROVISIONAL'}</td></tr>
     </table>
 
     ${p.progressPhotos?.length > 0 ? `
