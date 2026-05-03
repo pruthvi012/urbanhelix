@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { getAnalytics } from "firebase/analytics";
-import axios from 'axios';
+import api from './services/api';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -34,10 +34,7 @@ export const requestForToken = async () => {
         // Send token to server
         const token = localStorage.getItem('urbanhelix_token');
         if (token) {
-          await axios.post('/api/notifications/subscribe', 
-            { token: currentToken },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
+          await api.post('/notifications/subscribe', { token: currentToken });
         }
         return currentToken;
       } else {
@@ -51,10 +48,9 @@ export const requestForToken = async () => {
   }
 };
 
-export const onMessageListener = () =>
-  new Promise((resolve) => {
-    onMessage(messaging, (payload) => {
-      console.log("Message received. ", payload);
-      resolve(payload);
-    });
+export const onMessageListener = (callback) => {
+  return onMessage(messaging, (payload) => {
+    console.log("Message received. ", payload);
+    callback(payload);
   });
+};

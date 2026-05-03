@@ -51,10 +51,15 @@ function AppRoutes() {
 
 export default function App() {
     useEffect(() => {
-        onMessageListener().then(payload => {
+        const unsubscribe = onMessageListener((payload) => {
             console.log('Foreground message received:', payload);
-            alert(`${payload.notification.title}: ${payload.notification.body}`);
-        }).catch(err => console.log('failed: ', err));
+            // You can use a toast here instead of alert for better UX, but alert works for testing
+            alert(`${payload.notification.title}\n\n${payload.notification.body}`);
+        });
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
     }, []);
 
     return (
