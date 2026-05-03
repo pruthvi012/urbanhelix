@@ -26,6 +26,11 @@ const NAV_ITEMS = {
     contractor: [
         { to: '/', icon: <FiGrid />, label: 'Dashboard' },
         { to: '/projects', icon: <FiFolder />, label: 'My Projects' },
+        { to: '/milestones', icon: <FiCheckSquare />, label: 'Milestones' },
+        { to: '/funds', icon: <FiDollarSign />, label: 'Payments' },
+        { to: '/grievances', icon: <FiAlertCircle />, label: 'Citizen Complaints' },
+        { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
+
     ],
     financial_officer: [
         { to: '/', icon: <FiGrid />, label: 'Dashboard' },
@@ -148,24 +153,20 @@ export default function Layout() {
                                     </div>
                                 </NavLink>
                             )}
-                            {user?.role === 'citizen' && (
-                                <NavLink to="/grievances" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
-                                    <span className="icon"><FiAlertCircle size={20} /></span>
-                                    <div>
-                                        <div className="menu-item-title">Raise a Complaint</div>
-                                        <div className="menu-item-desc">Report civic issues directly</div>
-                                    </div>
-                                </NavLink>
-                            )}
-                            {user?.role !== 'contractor' && (
-                                <NavLink to="/milestones" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
-                                    <span className="icon"><FiCheckSquare size={20} /></span>
-                                    <div>
-                                        <div className="menu-item-title">See Milestones</div>
-                                        <div className="menu-item-desc">Track project progress</div>
-                                    </div>
-                                </NavLink>
-                            )}
+                            <NavLink to="/grievances" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
+                                <span className="icon"><FiAlertCircle size={20} /></span>
+                                <div>
+                                    <div className="menu-item-title">Raise a Complaint</div>
+                                    <div className="menu-item-desc">Report civic issues directly</div>
+                                </div>
+                            </NavLink>
+                            <NavLink to="/milestones" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
+                                <span className="icon"><FiCheckSquare size={20} /></span>
+                                <div>
+                                    <div className="menu-item-title">See Milestones</div>
+                                    <div className="menu-item-desc">Track project progress</div>
+                                </div>
+                            </NavLink>
                             
                             <hr style={{ margin: '16px 0', borderColor: 'var(--border-glass)' }} />
                             

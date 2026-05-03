@@ -160,7 +160,7 @@ export default function ProjectDetail() {
                         <span className="tx-tag">⛓️ Verified on Blockchain</span>
                     </div>
                     <h1 className="page-title">{project.title}</h1>
-                    <p className="page-subtitle"><FiMapPin /> {project.location?.address}, Ward {project.location?.ward} • {project.category?.replace('_', ' ')}</p>
+                    <p className="page-subtitle"><FiMapPin /> {project.location?.address}, Ward {project.location?.wardNo}: {project.location?.ward} • {project.category?.replace('_', ' ')}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Current Status</div>
@@ -245,7 +245,7 @@ export default function ProjectDetail() {
                         </div>
                         <div>
                             <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Location</div>
-                            <div style={{ fontSize: '14px', fontWeight: 500 }}>{project.location?.address}, Ward {project.location?.ward}</div>
+                            <div style={{ fontSize: '14px', fontWeight: 500 }}>{project.location?.address}, Ward {project.location?.wardNo}: {project.location?.ward}</div>
                         </div>
                     </div>
                 </div>

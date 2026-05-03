@@ -15,7 +15,6 @@ const grievanceRoutes = require('./routes/grievances');
 const auditRoutes = require('./routes/audit');
 const notificationRoutes = require('./routes/notifications');
 const wardRoutes = require('./routes/wards');
-const { seedAll } = require('./utils/seeder');
 
 const app = express();
 
@@ -55,15 +54,7 @@ app.use((err, req, res, next) => {
 // Start server
 const PORT = process.env.PORT || 5000;
 
-connectDB().then(async () => {
-    // Run automated data seeder
-    try {
-        console.log('🔄 Checking database integrity...');
-        await seedAll();
-    } catch (seedErr) {
-        console.error('⚠️ Critical: Automated seeding failed:', seedErr.message);
-    }
-
+connectDB().then(() => {
     app.listen(PORT, () => {
         console.log(`🚀 UrbanHeliX server running on port ${PORT}`);
     });

@@ -60,8 +60,6 @@ export const projectAPI = {
     updateStatus: (id, data) => api.put(`/projects/${id}/status`, data),
     reviseBudget: (id, data) => api.put(`/projects/${id}/revision`, data),
     logExpenditure: (id, data) => api.post(`/projects/${id}/expenditure`, data),
-    verifyCode: (data) => api.post('/projects/verify-code', data),
-    getMyProjects: () => api.get('/projects/my-projects'),
     getStats: () => api.get('/projects/stats/overview'),
 };
 

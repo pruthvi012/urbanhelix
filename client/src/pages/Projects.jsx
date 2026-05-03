@@ -27,23 +27,11 @@ export default function Projects() {
     const [budgetProof, setBudgetProof] = useState(null);
     const [showRevisionModal, setShowRevisionModal] = useState(false);
     const [revisionForm, setRevisionForm] = useState({ newBudget: '', reason: '' });
-    const [contractorCodeInput, setContractorCodeInput] = useState('');
-    const [codeError, setCodeError] = useState('');
-    const [codeSuccess, setCodeSuccess] = useState('');
-    const [generatedCode, setGeneratedCode] = useState(null);
-    const [showCodeModal, setShowCodeModal] = useState(false);
 
     useEffect(() => { loadData(); }, [filter]);
 
     const loadData = async () => {
         try {
-            // Contractors only see their verified projects
-            if (user?.role === 'contractor') {
-                const projRes = await projectAPI.getMyProjects();
-                setProjects(projRes.data.projects || []);
-                setLoading(false);
-                return;
-            }
             const params = {};
             if (filter.status) params.status = filter.status;
             if (filter.category) params.category = filter.category;
@@ -52,17 +40,11 @@ export default function Projects() {
             const [projRes, deptRes, wardRes] = await Promise.all([
                 projectAPI.getAll(params),
                 deptAPI.getAll(),
-                wardAPI.getAll(),
+                (wardAPI && wardAPI.getAll) ? wardAPI.getAll() : fetch('/api/wards').then(r => r.json()),
             ]);
-            setProjects(projRes.data.projects || []);
-            setDepartments(deptRes.data.departments || []);
-            setWards(wardRes.data.wards || []);
-
-            // Auto-retry if wards are empty (handles seeding delay)
-            if ((!wardRes.data.wards || wardRes.data.wards.length === 0) && user?.role === 'engineer') {
-                console.log('⏳ Wards empty, retrying in 3s...');
-                setTimeout(loadData, 3000);
-            }
+            setProjects(projRes.data?.projects || projRes.projects || []);
+            setDepartments(deptRes.data?.departments || deptRes.departments || []);
+            setWards(wardRes.data?.wards || wardRes.wards || []);
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
@@ -114,12 +96,7 @@ export default function Projects() {
                 if (imageFile) formData.append('image', imageFile);
                 if (reportFile) formData.append('report', reportFile);
                 if (budgetProof) formData.append('budgetEstimateProof', budgetProof);
-                const res = await projectAPI.create(formData);
-                // Show the auto-generated contractor code
-                if (res.data.contractorCode) {
-                    setGeneratedCode(res.data.contractorCode);
-                    setShowCodeModal(true);
-                }
+                await projectAPI.create(formData);
             }
             
             setShowModal(false);
@@ -170,20 +147,6 @@ export default function Projects() {
             setShowAssignModal(false);
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error'); }
-    };
-
-    const handleVerifyCode = async (e) => {
-        e.preventDefault();
-        setCodeError('');
-        setCodeSuccess('');
-        try {
-            const res = await projectAPI.verifyCode({ code: contractorCodeInput });
-            setCodeSuccess(`Project "${res.data.project?.title}" unlocked successfully!`);
-            setContractorCodeInput('');
-            loadData();
-        } catch (err) {
-            setCodeError(err.response?.data?.message || 'Invalid code. Please try again.');
-        }
     };
 
     const handleUpdateStatus = async (id) => {
@@ -320,28 +283,10 @@ export default function Projects() {
     return (
         <div>
             <div className="page-header">
-                <h1 className="page-title">{user?.role === 'contractor' ? 'My Projects' : 'Projects'}</h1>
-                <p className="page-subtitle">{user?.role === 'contractor' ? 'Enter your project access code to view assigned work' : 'Municipal infrastructure projects lifecycle'}</p>
+                <h1 className="page-title">Projects</h1>
+                <p className="page-subtitle">Municipal infrastructure projects lifecycle</p>
             </div>
 
-            {/* CONTRACTOR CODE ENTRY UI */}
-            {user?.role === 'contractor' && (
-                <div className="glass-card" style={{ marginBottom: '24px', padding: '24px' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>🔐 Enter Project Access Code</h3>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '13px' }}>You will receive a unique access code (e.g. UHX-XXXXXXXX) from the assigned engineer. Enter it below to unlock your project.</p>
-                    <form onSubmit={handleVerifyCode} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                        <div className="form-group" style={{ flex: 1, minWidth: '200px', marginBottom: 0 }}>
-                            <input className="form-input" type="text" placeholder="UHX-XXXXXXXX" value={contractorCodeInput} onChange={(e) => setContractorCodeInput(e.target.value.toUpperCase())} required style={{ fontFamily: 'monospace', fontSize: '16px', letterSpacing: '2px', textTransform: 'uppercase' }} />
-                        </div>
-                        <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>Unlock Project</button>
-                    </form>
-                    {codeError && <div style={{ marginTop: '12px', padding: '10px', borderRadius: '8px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: '13px', fontWeight: 600 }}>{codeError}</div>}
-                    {codeSuccess && <div style={{ marginTop: '12px', padding: '10px', borderRadius: '8px', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '13px', fontWeight: 600 }}>{codeSuccess}</div>}
-                </div>
-            )}
-
-            {/* Filters (hidden for contractors) */}
-            {user?.role !== 'contractor' && (
             <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
                 <select className="form-select" style={{ width: 'auto' }} value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}>
                     <option value="">All Status</option>
@@ -362,8 +307,6 @@ export default function Projects() {
                     <option value="building">Building</option>
                     <option value="drainage">Drainage</option>
                 </select>
-                {user?.role === 'engineer' && (
-                <>
                 <select className="form-select" style={{ width: 'auto' }} value={filter.wardNo} onChange={(e) => setFilter({ ...filter, wardNo: e.target.value, area: '' })}>
                     <option value="">All Wards</option>
                     {wards.map(w => <option key={w._id} value={w.wardNo}>Ward {w.wardNo}: {w.name}</option>)}
@@ -371,17 +314,16 @@ export default function Projects() {
                 {filter.wardNo && (
                     <select className="form-select" style={{ width: 'auto' }} value={filter.area} onChange={(e) => setFilter({ ...filter, area: e.target.value })}>
                         <option value="">All Areas</option>
-                        {wards.find(w => w.wardNo === parseInt(filter.wardNo))?.areas.map(a => (
+                        {(wards.find(w => w.wardNo === parseInt(filter.wardNo))?.areas || []).map(a => (
                             <option key={a} value={a}>{a}</option>
                         ))}
                     </select>
                 )}
                 <button className="btn btn-outline" onClick={() => setShowWardDir(true)}>📂 Ward Directory</button>
-                <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Proposal</button>
-                </>
+                {user?.role === 'engineer' && (
+                    <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Proposal</button>
                 )}
             </div>
-            )}
 
             <div className="projects-categorized">
                 {['road', 'drainage', 'water_supply', 'sanitation', 'electricity', 'park', 'bridge', 'building', 'other']
@@ -405,12 +347,8 @@ export default function Projects() {
                                             <thead>
                                                 <tr>
                                                     <th>Project</th>
-                                                    {user?.role === 'engineer' && (
-                                                        <>
-                                                            <th>Ward</th>
-                                                            <th>Area</th>
-                                                        </>
-                                                    )}
+                                                    <th>Ward</th>
+                                                    <th>Area</th>
                                                     <th>Status</th>
                                                     {user?.role !== 'citizen' && (
                                                         <>
@@ -439,14 +377,11 @@ export default function Projects() {
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        {user?.role === 'engineer' && (
-                                                            <>
-                                                                <td style={{ fontSize: '13px' }}>
-                                                                    {p.location?.ward}
-                                                                </td>
-                                                                <td style={{ fontSize: '13px' }}>{p.location?.area}</td>
-                                                            </>
-                                                        )}
+                                                        <td style={{ fontSize: '13px' }}>
+                                                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Ward {p.location?.wardNo}</div>
+                                                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{p.location?.ward}</div>
+                                                        </td>
+                                                        <td style={{ fontSize: '13px' }}>{p.location?.area}</td>
                                                         <td>
                                                             <span className={`status-badge ${p.status}`}>{p.status.replace('_', ' ')}</span>
                                                         </td>
@@ -558,44 +493,37 @@ export default function Projects() {
                             </div>
 
                             <div className="ward-area-section" style={{ 
-                                background: 'rgba(15, 23, 42, 0.5)', 
+                                background: '#f8fafc', 
                                 padding: '20px', 
-                                borderRadius: '16px', 
-                                border: '1px solid var(--border-glass)',
-                                marginBottom: '24px',
-                                boxShadow: 'inset 0 4px 20px rgba(0,0,0,0.3)'
+                                borderRadius: '12px', 
+                                border: '1px solid #e2e8f0',
+                                marginBottom: '24px'
                             }}>
                                 <div className="grid-2" style={{ gap: '24px' }}>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label style={{ display: 'block', marginBottom: '12px', fontWeight: 700, color: 'var(--text-primary)', fontSize: '14px' }}>1. Select Ward</label>
+                                        <label style={{ display: 'block', marginBottom: '10px', fontWeight: 600, color: '#1e293b' }}>1. Select Ward</label>
                                         <div style={{ 
                                             maxHeight: '200px', 
                                             overflowY: 'auto', 
-                                            background: 'var(--bg-secondary)', 
-                                            borderRadius: '12px', 
-                                            border: '1px solid var(--border-glass)',
+                                            background: '#ffffff', 
+                                            borderRadius: '10px', 
+                                            border: '1px solid #e2e8f0',
                                             padding: '12px',
-                                            boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.2)'
+                                            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
                                         }}>
                                             {/* Search box inside the list for quick filtering */}
                                             <input 
                                                 className="form-input" 
-                                                placeholder="🔍 Search ward name or number..." 
+                                                placeholder="🔍 Filter wards..." 
                                                 value={wardSearch} 
                                                 onChange={(e) => setWardSearch(e.target.value)}
-                                                style={{ marginBottom: '12px', height: '38px', fontSize: '13px', background: 'rgba(255,255,255,0.03)', borderColor: 'var(--border-glass)' }}
+                                                style={{ marginBottom: '12px', height: '34px', fontSize: '13px', background: '#f8fafc' }}
                                             />
-                                            {wards.length === 0 && (
-                                                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-                                                    <div className="spinner" style={{ width: '20px', height: '20px', margin: '0 auto 10px' }}></div>
-                                                    Fetching BBMP Ward Data...
-                                                </div>
-                                            )}
-                                            {Array.from(new Set(wards.map(w => w.assemblyConstituency))).map(ac => {
+                                            {Array.from(new Set(wards.map(w => w.assemblyConstituency || 'Unknown AC'))).map(ac => {
                                                 const acWards = wards.filter(w => 
-                                                    w.assemblyConstituency === ac && 
-                                                    (w.name.toLowerCase().includes(wardSearch.toLowerCase()) || 
-                                                     w.wardNo.toString().includes(wardSearch))
+                                                    (w.assemblyConstituency || 'Unknown AC') === ac && 
+                                                    ((w.name || '').toLowerCase().includes((wardSearch || '').toLowerCase()) || 
+                                                     (w.wardNo || '').toString().includes(wardSearch || ''))
                                                 );
                                                 if (acWards.length === 0) return null;
                                                 return (
@@ -607,18 +535,17 @@ export default function Projects() {
                                                                     key={w._id} 
                                                                     className="ward-select-item"
                                                                     style={{ 
-                                                                        padding: '10px 14px', 
+                                                                        padding: '8px 12px', 
                                                                         cursor: 'pointer', 
-                                                                        borderRadius: '8px',
+                                                                        borderRadius: '6px',
                                                                         fontSize: '13px',
                                                                         display: 'flex',
                                                                         justifyContent: 'space-between',
                                                                         alignItems: 'center',
                                                                         transition: 'all 0.2s ease',
-                                                                        background: form.location.wardNo === w.wardNo ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
-                                                                        color: form.location.wardNo === w.wardNo ? 'var(--accent-blue)' : 'var(--text-primary)',
-                                                                        border: form.location.wardNo === w.wardNo ? '1px solid var(--accent-blue)' : '1px solid rgba(255,255,255,0.05)',
-                                                                        marginBottom: '2px'
+                                                                        background: form.location.wardNo === w.wardNo ? '#eff6ff' : 'transparent',
+                                                                        color: form.location.wardNo === w.wardNo ? '#2563eb' : '#475569',
+                                                                        border: form.location.wardNo === w.wardNo ? '1px solid #dbeafe' : '1px solid transparent'
                                                                     }}
                                                                     onClick={() => {
                                                                         setForm({ ...form, location: { ...form.location, ward: w.name, wardNo: w.wardNo, area: '' } });
@@ -636,22 +563,22 @@ export default function Projects() {
                                     </div>
 
                                     <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label style={{ display: 'block', marginBottom: '12px', fontWeight: 700, color: 'var(--text-primary)', fontSize: '14px' }}>2. Select Area / Locality</label>
+                                        <label style={{ display: 'block', marginBottom: '10px', fontWeight: 600, color: '#1e293b' }}>2. Select Area / Locality</label>
                                         {!form.location.ward ? (
                                             <div style={{ 
                                                 height: '100px',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                background: 'var(--bg-secondary)', 
-                                                borderRadius: '12px', 
-                                                border: '1px dashed var(--border-glass)',
+                                                background: '#ffffff', 
+                                                borderRadius: '10px', 
+                                                border: '1px dashed #cbd5e1',
                                                 fontSize: '12px',
-                                                color: 'var(--text-muted)',
+                                                color: '#94a3b8',
                                                 padding: '0 20px',
                                                 textAlign: 'center'
                                             }}>
-                                                👈 Select a ward on the left to see constituent areas
+                                                Select a ward on the left to see constituent areas
                                             </div>
                                         ) : (
                                             <div style={{ 
@@ -662,23 +589,22 @@ export default function Projects() {
                                                 maxHeight: '180px',
                                                 overflowY: 'auto'
                                             }}>
-                                                {wards.find(w => w.wardNo === form.location.wardNo)?.areas.map(a => (
+                                                {(wards.find(w => w.wardNo === form.location.wardNo)?.areas || []).map(a => (
                                                     <div 
                                                         key={a} 
                                                         onClick={() => setForm({ ...form, location: { ...form.location, area: a } })}
                                                         style={{ 
-                                                            padding: '10px 12px', 
-                                                            borderRadius: '10px', 
+                                                            padding: '8px 10px', 
+                                                            borderRadius: '8px', 
                                                             fontSize: '11px', 
                                                             cursor: 'pointer',
                                                             textAlign: 'center',
                                                             fontWeight: 600,
-                                                            background: form.location.area === a ? 'var(--accent-blue)' : 'rgba(255,255,255,0.03)',
-                                                            color: form.location.area === a ? '#ffffff' : 'var(--text-secondary)',
+                                                            background: form.location.area === a ? '#2563eb' : '#ffffff',
+                                                            color: form.location.area === a ? '#ffffff' : '#64748b',
                                                             border: '1px solid',
-                                                            borderColor: form.location.area === a ? 'var(--accent-blue)' : 'var(--border-glass)',
-                                                            transition: 'all 0.2s ease',
-                                                            boxShadow: form.location.area === a ? '0 0 15px rgba(59, 130, 246, 0.3)' : 'none'
+                                                            borderColor: form.location.area === a ? '#2563eb' : '#e2e8f0',
+                                                            transition: 'all 0.2s ease'
                                                         }}
                                                     >
                                                         {a}
@@ -691,18 +617,18 @@ export default function Projects() {
                                 {form.location.area && (
                                     <div style={{ 
                                         marginTop: '16px', 
-                                        padding: '10px 16px', 
-                                        background: 'rgba(16, 185, 129, 0.1)', 
-                                        borderRadius: '10px', 
+                                        padding: '8px 12px', 
+                                        background: '#dcfce7', 
+                                        borderRadius: '6px', 
                                         display: 'inline-flex', 
                                         alignItems: 'center', 
-                                        gap: '10px',
-                                        fontSize: '13px',
-                                        color: 'var(--accent-emerald)',
+                                        gap: '8px',
+                                        fontSize: '12px',
+                                        color: '#166534',
                                         fontWeight: 700,
-                                        border: '1px solid rgba(16, 185, 129, 0.2)'
+                                        border: '1px solid #bbf7d0'
                                     }}>
-                                        📍 Selected Location: {form.location.ward} - {form.location.area}
+                                        📍 Selected: {form.location.ward} ({form.location.area})
                                     </div>
                                 )}
                             </div>
@@ -782,7 +708,7 @@ export default function Projects() {
                                         AC: {w.assemblyConstituency}
                                     </div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                        {w.areas.map(a => (
+                                        {(w.areas || []).map(a => (
                                             <span key={a} style={{ fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: 'var(--text-secondary)' }}>
                                                 {a}
                                             </span>
@@ -794,37 +720,6 @@ export default function Projects() {
                         <div style={{ marginTop: '20px', textAlign: 'right' }}>
                             <button className="btn btn-primary" onClick={() => setShowWardDir(false)}>Close Directory</button>
                         </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Generated Contractor Code Modal */}
-            {showCodeModal && generatedCode && (
-                <div className="modal-overlay" onClick={() => setShowCodeModal(false)}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔑</div>
-                        <h3 className="modal-title" style={{ marginBottom: '8px' }}>Project Proposal Submitted!</h3>
-                        <p style={{ color: 'var(--accent-green)', marginBottom: '8px', fontSize: '14px', fontWeight: 600 }}>✅ Proposal recorded successfully.</p>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '13px' }}>
-                            A unique Contractor Access Code has been auto-generated for this project. Share this code with the contractor once assigned — they will need it to access the project in their account.
-                        </p>
-                        <div style={{ background: 'rgba(0,0,0,0.3)', border: '2px dashed var(--accent-blue)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>Contractor Access Code</div>
-                            <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 800, letterSpacing: '3px', color: 'var(--accent-blue)' }}>
-                                {generatedCode}
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                            <button className="btn btn-primary" onClick={() => { navigator.clipboard.writeText(generatedCode); alert('Code copied to clipboard!'); }}>
-                                📋 Copy Code
-                            </button>
-                            <button className="btn btn-outline" onClick={() => setShowCodeModal(false)}>
-                                Done
-                            </button>
-                        </div>
-                        <p style={{ marginTop: '16px', fontSize: '11px', color: 'var(--text-muted)' }}>
-                            ⚠️ Save this code now! Each project gets a unique code that never repeats.
-                        </p>
                     </div>
                 </div>
             )}

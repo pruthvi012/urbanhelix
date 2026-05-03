@@ -8,29 +8,25 @@ export default function Grievances() {
     const [grievances, setGrievances] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [form, setForm] = useState({ project: '', title: '', description: '', category: 'other', ward: '', area: '' });
+    const [wards, setWards] = useState([]);
+    const [wardSearch, setWardSearch] = useState('');
     const [file, setFile] = useState(null);
     const [location, setLocation] = useState(null);
     const [locationLoading, setLocationLoading] = useState(false);
     const [gpsCameraRequested, setGpsCameraRequested] = useState(false);
+    const [form, setForm] = useState({ project: '', title: '', description: '', category: 'other', ward: '', wardNo: '', area: '' });
 
     useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {
         try {
-            const res = await grievanceAPI.getAll({});
-            setGrievances(res.data.grievances || []);
+            const [gRes, wRes] = await Promise.all([
+                grievanceAPI.getAll({}),
+                grievanceAPI.getWards ? grievanceAPI.getWards() : fetch('/api/wards').then(r => r.json())
+            ]);
+            setGrievances(gRes.data.grievances || []);
+            setWards(wRes.data?.wards || wRes.wards || []);
         } catch (err) { console.error(err); } finally { setLoading(false); }
-    };
-
-    const handleFileChange = (e) => {
-        const selectedFile = e.target.files[0];
-        setFile(selectedFile);
-        
-        // Auto-fetch location when photo is taken/selected
-        if (selectedFile) {
-            fetchLocation();
-        }
     };
 
     const fetchLocation = () => {
@@ -59,7 +55,6 @@ export default function Grievances() {
     };
 
     const openGPSCameraApp = () => {
-        // Trigger intent to open GPS Camera app natively, or fallback to PlayStore if not installed
         window.location.href = "intent://#Intent;package=com.vcamera.roudndai;scheme=android-app;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.vcamera.roudndai;end";
     };
 
@@ -82,6 +77,10 @@ export default function Grievances() {
     const handleCreate = async (e) => {
         e.preventDefault();
         try {
+            if (!form.ward || !form.area) {
+                return alert('Please select a Ward and Area from the selection tool.');
+            }
+
             const formData = new FormData();
             Object.keys(form).forEach(key => formData.append(key, form[key]));
             if (file) formData.append('image', file);
@@ -90,7 +89,7 @@ export default function Grievances() {
             await grievanceAPI.create(formData);
             
             setShowModal(false);
-            setForm({ project: '', title: '', description: '', category: 'other', ward: '', area: '' });
+            setForm({ project: '', title: '', description: '', category: 'other', ward: '', wardNo: '', area: '' });
             setFile(null);
             setLocation(null);
             setGpsCameraRequested(false);
@@ -135,12 +134,10 @@ export default function Grievances() {
                                     )}
                                 </div>
                                 <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>{g.title}</h3>
-                                {user?.role === 'engineer' && (
-                                    <div style={{ display: 'flex', gap: '15px', marginBottom: '12px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><FiMapPin size={14} /> Ward: {g.ward}</span>
-                                        <span>Area: {g.area}</span>
-                                    </div>
-                                )}
+                                <div style={{ display: 'flex', gap: '15px', marginBottom: '12px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><FiMapPin size={14} /> Ward {g.wardNo}: {g.ward}</span>
+                                    <span>Area: {g.area}</span>
+                                </div>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.6, marginBottom: '15px' }}>{g.description}</p>
                                 
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '15px' }}>
@@ -184,7 +181,7 @@ export default function Grievances() {
 
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
+                    <div className="modal" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
                         <h3 className="modal-title">Report a Problem</h3>
                         <form onSubmit={handleCreate}>
                             <div className="form-group">
@@ -220,15 +217,89 @@ export default function Grievances() {
                                 {locationLoading && <div style={{ fontSize: '11px', color: 'var(--accent-blue)', marginTop: '8px' }}>Fetching GPS coordinates...</div>}
                             </div>
 
-                            <div className="grid-2" style={{ gap: '12px' }}>
-                                <div className="form-group">
-                                    <label className="form-label">Ward Number</label>
-                                    <input className="form-input" placeholder="e.g. 157" value={form.ward} onChange={(e) => setForm({ ...form, ward: e.target.value })} required />
+                            <div className="ward-area-section" style={{ 
+                                background: 'rgba(255,255,255,0.02)', 
+                                padding: '15px', 
+                                borderRadius: '12px', 
+                                border: '1px solid var(--border-glass)',
+                                marginBottom: '20px'
+                            }}>
+                                <div className="grid-2" style={{ gap: '20px' }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ marginBottom: '8px' }}>1. Select Ward</label>
+                                        <div style={{ 
+                                            maxHeight: '150px', 
+                                            overflowY: 'auto', 
+                                            background: 'rgba(0,0,0,0.2)', 
+                                            borderRadius: '8px', 
+                                            border: '1px solid var(--border-glass)',
+                                            padding: '8px'
+                                        }}>
+                                            <input 
+                                                className="form-input" 
+                                                placeholder="🔍 Filter wards..." 
+                                                value={wardSearch} 
+                                                onChange={(e) => setWardSearch(e.target.value)}
+                                                style={{ marginBottom: '8px', height: '30px', fontSize: '12px' }}
+                                            />
+                                            {wards.filter(w => (w.name || '').toLowerCase().includes((wardSearch || '').toLowerCase()) || (w.wardNo || '').toString().includes(wardSearch || '')).map(w => (
+                                                <div 
+                                                    key={w._id} 
+                                                    onClick={() => setForm({ ...form, ward: w.name, wardNo: w.wardNo, area: '' })}
+                                                    style={{ 
+                                                        padding: '6px 10px', 
+                                                        cursor: 'pointer', 
+                                                        borderRadius: '4px',
+                                                        fontSize: '12px',
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        background: form.wardNo === w.wardNo ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                                                        color: form.wardNo === w.wardNo ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                                                        marginBottom: '2px'
+                                                    }}
+                                                >
+                                                    <span>{w.name}</span>
+                                                    <span style={{ opacity: 0.6 }}>#{w.wardNo}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ marginBottom: '8px' }}>2. Select Area</label>
+                                        {!form.ward ? (
+                                            <div style={{ height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px dashed var(--border-glass)', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', padding: '10px' }}>
+                                                Select a ward to see areas
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '6px', maxHeight: '150px', overflowY: 'auto' }}>
+                                                {(wards.find(w => w.wardNo === form.wardNo)?.areas || []).map(a => (
+                                                    <div 
+                                                        key={a} 
+                                                        onClick={() => setForm({ ...form, area: a })}
+                                                        style={{ 
+                                                            padding: '6px', 
+                                                            borderRadius: '6px', 
+                                                            fontSize: '10px', 
+                                                            cursor: 'pointer',
+                                                            textAlign: 'center',
+                                                            background: form.area === a ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
+                                                            color: form.area === a ? 'white' : 'var(--text-secondary)',
+                                                            border: '1px solid var(--border-glass)'
+                                                        }}
+                                                    >
+                                                        {a}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="form-group">
-                                    <label className="form-label">Area Name</label>
-                                    <input className="form-input" placeholder="e.g. Koramangala" value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} required />
-                                </div>
+                                {form.area && (
+                                    <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--accent-green)', fontWeight: 600 }}>
+                                        📍 Selected: Ward {form.wardNo} - {form.area}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="form-group">

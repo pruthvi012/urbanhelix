@@ -8,17 +8,9 @@ const { protect, authorize } = require('../middleware/auth');
 const router = express.Router();
 
 // GET /api/departments — list all
-const { seedAll } = require('../utils/seeder');
 router.get('/', async (req, res) => {
     try {
-        let departments = await Department.find().populate('headOfficer', 'name email');
-        
-        if (departments.length === 0) {
-            console.log('⚠️ Departments empty. Seeding...');
-            await seedAll();
-            departments = await Department.find().populate('headOfficer', 'name email');
-        }
-
+        const departments = await Department.find().populate('headOfficer', 'name email');
         res.json({ success: true, departments });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

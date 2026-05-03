@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
 // POST /api/grievances — file a grievance (citizen, admin)
 router.post('/', protect, authorize('citizen', 'admin'), upload.single('image'), async (req, res) => {
     try {
-        const { project, title, description, category, ward, area, location } = req.body;
+        const { project, title, description, category, ward, wardNo, area, location } = req.body;
 
         const grievanceData = {
             project: project || null,
@@ -44,6 +44,7 @@ router.post('/', protect, authorize('citizen', 'admin'), upload.single('image'),
             description,
             category,
             ward,
+            wardNo: wardNo ? parseInt(wardNo) : undefined,
             area,
             location: typeof location === 'string' ? JSON.parse(location) : location,
         };
@@ -62,6 +63,7 @@ router.post('/', protect, authorize('citizen', 'admin'), upload.single('image'),
                 title,
                 category,
                 ward,
+                wardNo,
                 area,
                 filedBy: req.user.name,
             },

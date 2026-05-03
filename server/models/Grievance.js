@@ -6,6 +6,7 @@ const grievanceSchema = new mongoose.Schema({
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
     ward: { type: String, required: true },
+    wardNo: { type: Number },
     area: { type: String, required: true },
     location: {
         lat: { type: Number, default: null },
