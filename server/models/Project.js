@@ -12,8 +12,6 @@ const projectSchema = new mongoose.Schema({
     proposedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     engineer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     contractor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    contractorCode: { type: String, default: null, unique: true, sparse: true },
-    contractorCodeVerified: { type: Boolean, default: false },
     estimatedBudget: { type: Number, required: true },
     allocatedBudget: { type: Number, default: 0 },
     spentBudget: { type: Number, default: 0 },
@@ -69,13 +67,12 @@ const projectSchema = new mongoose.Schema({
         invoiceDate: { type: Date, required: true },
         amount: { type: Number, required: true },
         material: { type: String, required: true },
-        vendorName: { type: String, required: true },
+        vendor: { type: String, required: true },
         invoiceUrl: { type: String, required: true },
         remarks: { type: String },
+        entryHash: { type: String, required: true },
         recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        timestamp: { type: Date, default: Date.now },
-        expenseHash: { type: String, required: true },
-        isTampered: { type: Boolean, default: false }
+        timestamp: { type: Date, default: Date.now }
     }],
     budgetRevisionHistory: [{
         oldBudget: Number,

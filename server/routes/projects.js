@@ -9,9 +9,15 @@ const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const notificationService = require('../services/notificationService');
 const FundTransaction = require('../models/FundTransaction');
+const crypto = require('crypto');
 
 const router = express.Router();
-const crypto = require('crypto');
+
+const calculateEntryHash = (data) => {
+    const { amount, material, date, invoiceUrl, vendor } = data;
+    const str = `${amount}|${material}|${new Date(date).toISOString()}|${invoiceUrl}|${vendor}`;
+    return crypto.createHash('sha256').update(str).digest('hex');
+};
 
 // GET /api/projects — list all (public)
 router.get('/', async (req, res) => {
@@ -42,52 +48,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// POST /api/projects/verify-code — contractor verifies access code to unlock project
-router.post('/verify-code', protect, authorize('contractor'), async (req, res) => {
-    try {
-        const { code } = req.body;
-        if (!code) return res.status(400).json({ success: false, message: 'Access code is required.' });
-
-        const project = await Project.findOne({ contractorCode: code.trim().toUpperCase() })
-            .populate('department', 'name ward')
-            .populate('proposedBy', 'name email')
-            .populate('engineer', 'name email')
-            .populate('contractor', 'name email');
-
-        if (!project) return res.status(404).json({ success: false, message: 'Invalid code. No project found with this access code.' });
-
-        if (project.contractor?._id?.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ success: false, message: 'This code belongs to a different contractor.' });
-        }
-
-        project.contractorCodeVerified = true;
-        await project.save();
-
-        res.json({ success: true, message: 'Project unlocked successfully!', project });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// GET /api/projects/my-projects — contractor gets only their verified projects
-router.get('/my-projects', protect, authorize('contractor'), async (req, res) => {
-    try {
-        const projects = await Project.find({
-            contractor: req.user._id,
-            contractorCodeVerified: true
-        })
-            .populate('department', 'name ward')
-            .populate('proposedBy', 'name email')
-            .populate('engineer', 'name email')
-            .populate('contractor', 'name email')
-            .sort({ createdAt: -1 });
-
-        res.json({ success: true, projects });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
 // GET /api/projects/:id
 router.get('/:id', async (req, res) => {
     try {
@@ -100,30 +60,34 @@ router.get('/:id', async (req, res) => {
 
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        // VERIFY EXPENSE HASHES (Tamper Detection)
-        let tamperedFound = false;
+        // Verify expenditures integrity
+        let isTampered = false;
         if (project.expenditures && project.expenditures.length > 0) {
-            const crypto = require('crypto');
-            project.expenditures.forEach(exp => {
-                const dataString = `${exp.amount}-${exp.material}-${new Date(exp.date).toISOString()}-${exp.invoiceUrl}-${exp.vendorName}`;
-                const calculatedHash = crypto.createHash('sha256').update(dataString).digest('hex');
-                if (calculatedHash !== exp.expenseHash && !exp.isTampered) {
-                    exp.isTampered = true;
-                    tamperedFound = true;
+            for (const exp of project.expenditures) {
+                const currentHash = calculateEntryHash({
+                    amount: exp.amount,
+                    material: exp.material,
+                    date: exp.date,
+                    invoiceUrl: exp.invoiceUrl,
+                    vendor: exp.vendor
+                });
+                if (currentHash !== exp.entryHash) {
+                    isTampered = true;
+                    break;
                 }
-            });
-            if (tamperedFound) {
-                await project.save();
-                // Notify citizens and admins
-                await notificationService.notifyAllCitizens(
-                    'SECURITY ALERT: Invoice Tampered',
-                    `CRITICAL: Tampering detected in project "${project.title}". An expenditure amount or invoice was illegally altered after upload!`,
-                    { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
-                );
             }
         }
 
-        res.json({ success: true, project });
+        if (isTampered) {
+            // Trigger emergency notifications if not already handled
+            await notificationService.notifyAllCitizens(
+                '🚨 TAMPER ALERT: Project Expenditure Audit Failed',
+                `Warning: Cryptographic audit failed for project "${project.title}". Financial records may have been tampered with.`,
+                { type: 'tamper_alert', relatedEntity: { entityType: 'Project', entityId: project._id } }
+            );
+        }
+
+        res.json({ success: true, project, isTampered });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -200,17 +164,6 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin'), upload.fiel
             projectData.isBudgetLocked = true;
         }
 
-        // Auto-generate unique contractor access code
-        let contractorCode;
-        let isUnique = false;
-        while (!isUnique) {
-            const codeRaw = crypto.randomBytes(4).toString('hex').toUpperCase();
-            contractorCode = `UHX-${codeRaw}`;
-            const existing = await Project.findOne({ contractorCode });
-            if (!existing) isUnique = true;
-        }
-        projectData.contractorCode = contractorCode;
-
         const project = await Project.create(projectData);
 
         // Blockchain: Create Project on-chain
@@ -265,7 +218,7 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin'), upload.fiel
             { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
         );
 
-        res.status(201).json({ success: true, project, contractorCode: project.contractorCode });
+        res.status(201).json({ success: true, project });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -430,7 +383,7 @@ router.put('/:id/approve', protect, authorize('financial_officer'), async (req, 
     }
 });
 
-// PUT /api/projects/:id/assign — assign contractor + generate access code
+// PUT /api/projects/:id/assign — assign contractor
 router.put('/:id/assign', protect, authorize('engineer', 'admin'), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -439,7 +392,6 @@ router.put('/:id/assign', protect, authorize('engineer', 'admin'), async (req, r
         const { contractorId, startDate, expectedEndDate } = req.body;
 
         project.contractor = contractorId;
-        project.contractorCodeVerified = false;
         project.status = 'in_progress';
         project.startDate = startDate || new Date();
         project.expectedEndDate = expectedEndDate;
@@ -482,7 +434,6 @@ router.put('/:id/assign', protect, authorize('engineer', 'admin'), async (req, r
         res.status(500).json({ success: false, message: error.message });
     }
 });
-
 
 // PUT /api/projects/:id/status — update project status
 router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'), upload.fields([{ name: 'report', maxCount: 1 }, { name: 'progressPhoto', maxCount: 1 }]), async (req, res) => {
@@ -661,31 +612,34 @@ router.put('/:id/revision', protect, authorize('engineer', 'admin'), async (req,
     }
 });
 
-// POST /api/projects/:id/expenditure — log contractor expenditure
+// POST /api/projects/:id/expenditure — log contractor expenditure with invoice and hashing
 router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), upload.single('invoice'), async (req, res) => {
     try {
-        const crypto = require('crypto');
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        const { date, invoiceDate, amount, material, vendorName, remarks } = req.body;
+        const { date, invoiceDate, amount, material, vendor, remarks } = req.body;
 
-        if (!date || !invoiceDate || !amount || !material || !vendorName) {
-            return res.status(400).json({ success: false, message: 'All fields (including Vendor Name and Invoice Date) are required.' });
+        if (!date || !invoiceDate || !amount || !material || !vendor || !req.file) {
+            return res.status(400).json({ success: false, message: 'All fields including invoice upload are required' });
         }
+
+        // Strict date matching validation
         if (date !== invoiceDate) {
-            return res.status(400).json({ success: false, message: 'Expenditure date and Invoice Date must match exactly.' });
-        }
-        if (!req.file) {
-            return res.status(400).json({ success: false, message: 'Invoice bill upload is required to proceed.' });
+            return res.status(400).json({ success: false, message: 'Expenditure date must match invoice date' });
         }
 
         const expAmount = Number(amount);
         const invoiceUrl = `/uploads/projects/${req.file.filename}`;
 
-        // Create SHA-256 Hash
-        const dataString = `${expAmount}-${material}-${new Date(date).toISOString()}-${invoiceUrl}-${vendorName}`;
-        const expenseHash = crypto.createHash('sha256').update(dataString).digest('hex');
+        // Calculate Cryptographic Hash for this entry
+        const entryHash = calculateEntryHash({
+            amount: expAmount,
+            material,
+            date,
+            invoiceUrl,
+            vendor
+        });
 
         // Record expenditure
         project.expenditures.push({
@@ -693,18 +647,17 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             invoiceDate: new Date(invoiceDate),
             amount: expAmount,
             material,
-            vendorName,
+            vendor,
             invoiceUrl,
+            entryHash,
             remarks: remarks || '',
-            recordedBy: req.user._id,
-            expenseHash,
-            isTampered: false
+            recordedBy: req.user._id
         });
 
         // Update total spent budget
         project.spentBudget += expAmount;
 
-        // Optionally record to HashChain
+        // Record to HashChain
         try {
             await HashChainService.addRecord(
                 'expenditure_logged',
@@ -712,8 +665,8 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
                     projectId: project._id,
                     amount: expAmount,
                     material,
-                    vendorName,
-                    expenseHash,
+                    vendor,
+                    entryHash,
                     loggedBy: req.user.name
                 },
                 { entityType: 'project', entityId: project._id },
@@ -730,7 +683,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             action: 'log_expenditure',
             resourceType: 'project',
             resourceId: project._id,
-            details: `Logged expenditure of ₹${expAmount.toLocaleString()} for ${material} (Vendor: ${vendorName})`,
+            details: `Logged tamper-proof expenditure: ₹${expAmount.toLocaleString()} for ${material} from ${vendor}`,
         });
 
         res.json({ success: true, project });

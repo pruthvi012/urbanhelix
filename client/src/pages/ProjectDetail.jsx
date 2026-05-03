@@ -16,8 +16,16 @@ export default function ProjectDetail() {
     const [progressFile, setProgressFile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showExpenseModal, setShowExpenseModal] = useState(false);
-    const [expenseForm, setExpenseForm] = useState({ date: new Date().toISOString().split('T')[0], invoiceDate: '', amount: '', material: '', vendorName: '', remarks: '' });
-    const [invoiceFile, setInvoiceFile] = useState(null);
+    const [isTampered, setIsTampered] = useState(false);
+    const [expenseForm, setExpenseForm] = useState({ 
+        date: new Date().toISOString().split('T')[0], 
+        invoiceDate: new Date().toISOString().split('T')[0],
+        amount: '', 
+        material: '', 
+        vendor: '',
+        remarks: '',
+        invoice: null 
+    });
 
     const categoryMaterials = {
         road: ['Asphalt/Bitumen', 'Gravel/Crushed Stone', 'Concrete', 'Sand', 'Cement', 'Steel Rebar', 'Labor/Wages', 'Machinery Rental'],
@@ -40,6 +48,7 @@ export default function ProjectDetail() {
                 milestoneAPI.getAll({ project: id }),
             ]);
             setProject(projRes.data.project);
+            setIsTampered(projRes.data.isTampered || false);
             setMilestones(msRes.data.milestones || []);
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
@@ -101,29 +110,38 @@ export default function ProjectDetail() {
 
     const handleLogExpense = async (e) => {
         e.preventDefault();
+        
         if (expenseForm.date !== expenseForm.invoiceDate) {
-            alert('Error: The Expenditure Date and Invoice Date must match exactly to proceed!');
+            alert('CRITICAL ERROR: Expenditure date must exactly match the date printed on the invoice!');
             return;
         }
-        if (!invoiceFile) {
-            alert('Error: Please upload the invoice bill to proceed.');
+
+        if (!expenseForm.invoice) {
+            alert('Please upload the material invoice!');
             return;
         }
 
         const formData = new FormData();
-        formData.append('date', expenseForm.date);
-        formData.append('invoiceDate', expenseForm.invoiceDate);
-        formData.append('amount', expenseForm.amount);
-        formData.append('material', expenseForm.material);
-        formData.append('vendorName', expenseForm.vendorName);
-        formData.append('remarks', expenseForm.remarks);
-        formData.append('invoice', invoiceFile);
+        Object.keys(expenseForm).forEach(key => {
+            if (key === 'invoice') {
+                formData.append('invoice', expenseForm.invoice);
+            } else {
+                formData.append(key, expenseForm[key]);
+            }
+        });
 
         try {
             await projectAPI.logExpenditure(id, formData);
             setShowExpenseModal(false);
-            setExpenseForm({ date: new Date().toISOString().split('T')[0], invoiceDate: '', amount: '', material: '', vendorName: '', remarks: '' });
-            setInvoiceFile(null);
+            setExpenseForm({ 
+                date: new Date().toISOString().split('T')[0], 
+                invoiceDate: new Date().toISOString().split('T')[0],
+                amount: '', 
+                material: '', 
+                vendor: '',
+                remarks: '',
+                invoice: null 
+            });
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error logging expense'); }
     };
@@ -142,17 +160,28 @@ export default function ProjectDetail() {
                         <span className="tx-tag">⛓️ Verified on Blockchain</span>
                     </div>
                     <h1 className="page-title">{project.title}</h1>
-                    <p className="page-subtitle">
-                        <FiMapPin /> {project.location?.address}
-                        {user?.role === 'engineer' && ` • Ward ${project.location?.ward} (${project.location?.area})`}
-                        {` • ${project.category?.replace('_', ' ')}`}
-                    </p>
+                    <p className="page-subtitle"><FiMapPin /> {project.location?.address}, Ward {project.location?.ward} • {project.category?.replace('_', ' ')}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Current Status</div>
                     <span className={`status-badge ${project.status}`} style={{ fontSize: '14px', padding: '6px 16px' }}>{project.status?.replace('_', ' ')}</span>
                 </div>
             </div>
+            
+            {isTampered && (
+                <div className="glass-card" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', marginBottom: '20px', padding: '15px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#ef4444' }}>
+                        <span style={{ fontSize: '24px' }}>🚨</span>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>TAMPER DETECTED: AUDIT FAILED</h3>
+                            <p style={{ margin: '4px 0 0', fontSize: '13px', opacity: 0.9 }}>
+                                The cryptographic hashes for this project's expenditures do not match the original records. 
+                                This project has been flagged for immediate investigation by Citizens and the Administration.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Quick Actions Bar */}
             {(['engineer', 'admin', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && project.contractor?._id === user?._id)) && (
@@ -274,17 +303,25 @@ export default function ProjectDetail() {
                     <div className="table-container">
                         <table className="table">
                             <thead>
-                                <tr><th>Date</th><th>Material</th><th>Supplier/Vendor</th><th>Amount Spent</th><th>Invoice</th><th>Integrity</th></tr>
+                                <tr><th>Date</th><th>Material</th><th>Vendor/Supplier</th><th>Amount Spent</th><th>Invoice Proof</th><th>Audit Status</th></tr>
                             </thead>
                             <tbody>
                                 {project.expenditures.sort((a, b) => new Date(b.date) - new Date(a.date)).map((exp, idx) => (
-                                    <tr key={idx} style={{ background: exp.isTampered ? 'rgba(239, 68, 68, 0.1)' : 'transparent' }}>
+                                    <tr key={idx}>
                                         <td style={{ fontSize: '13px' }}>{new Date(exp.date).toLocaleDateString()}</td>
                                         <td style={{ fontWeight: 500 }}>{exp.material}</td>
-                                        <td style={{ fontSize: '13px' }}>{exp.vendorName}</td>
+                                        <td style={{ fontSize: '13px' }}>{exp.vendor}</td>
                                         <td style={{ fontWeight: 600, color: 'var(--accent-red)' }}>{formatCurrency(exp.amount)}</td>
-                                        <td><a href={`${exp.invoiceUrl}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{ padding: '2px 8px', fontSize: '10px' }}>View Bill</a></td>
-                                        <td>{exp.isTampered ? <span className="badge badge-rejected" title="Data altered after hash generation!">TAMPERED</span> : <span className="badge badge-approved" title={`SHA256: ${exp.expenseHash}`}>VERIFIED</span>}</td>
+                                        <td>
+                                            <a href={`${exp.invoiceUrl}`} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-blue)', textDecoration: 'none' }}>
+                                                📄 View Invoice
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span className="tx-tag" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--accent-green)' }}>
+                                                🔒 SHA-256 Verified
+                                            </span>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -463,19 +500,23 @@ export default function ProjectDetail() {
             {/* Log Expense Modal for Contractor */}
             {showExpenseModal && (
                 <div className="modal-overlay" onClick={() => setShowExpenseModal(false)}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()}>
                         <h3 className="modal-title">Log Material Expense</h3>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '13px' }}>Update the spent budget for: <strong>{project.title}</strong>. This entry will be hashed (SHA-256) for audit integrity.</p>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>Update the spent budget for: <strong>{project.title}</strong></p>
                         <form onSubmit={handleLogExpense}>
-                            <div className="grid-2">
+                            <div className="grid-2" style={{ gap: '15px' }}>
                                 <div className="form-group">
-                                    <label className="form-label">Date of Expenditure</label>
+                                    <label className="form-label">Expenditure Date</label>
                                     <input className="form-input" type="date" value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Invoice Date</label>
+                                    <label className="form-label">Invoice Date (Must Match)</label>
                                     <input className="form-input" type="date" value={expenseForm.invoiceDate} onChange={(e) => setExpenseForm({ ...expenseForm, invoiceDate: e.target.value })} required />
                                 </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Vendor / Supplier Name</label>
+                                <input className="form-input" type="text" placeholder="e.g. Bharath Steels Ltd." value={expenseForm.vendor} onChange={(e) => setExpenseForm({ ...expenseForm, vendor: e.target.value })} required />
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Material / Expense Type</label>
@@ -487,23 +528,22 @@ export default function ProjectDetail() {
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Vendor / Supplier Name</label>
-                                <input className="form-input" type="text" value={expenseForm.vendorName} onChange={(e) => setExpenseForm({ ...expenseForm, vendorName: e.target.value })} required placeholder="Name of the supplier" />
-                            </div>
-                            <div className="form-group">
                                 <label className="form-label">Amount Spent (₹)</label>
                                 <input className="form-input" type="number" min="1" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} required />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Upload Invoice / Bill (PDF/Image)</label>
-                                <input type="file" onChange={(e) => setInvoiceFile(e.target.files[0])} required style={{ display: 'block', width: '100%', padding: '8px', border: '1px dashed var(--glass-border)', borderRadius: '8px', background: 'rgba(255,255,255,0.02)' }} />
+                                <label className="form-label">Upload Official Invoice (PDF/Image)</label>
+                                <input className="form-input" type="file" onChange={(e) => setExpenseForm({ ...expenseForm, invoice: e.target.files[0] })} required />
+                                <small style={{ color: 'var(--text-muted)', fontSize: '10px' }}>This bill will be SHA-256 hashed and cannot be altered later.</small>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Remarks (Optional)</label>
+                                <label className="form-label">Remarks</label>
                                 <input className="form-input" type="text" placeholder="Additional details..." value={expenseForm.remarks} onChange={(e) => setExpenseForm({ ...expenseForm, remarks: e.target.value })} />
                             </div>
                             <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                                <button type="submit" className="btn btn-primary" disabled={!expenseForm.invoiceDate || expenseForm.date !== expenseForm.invoiceDate || !invoiceFile}>Save Expense & Generate Hash</button>
+                                <button type="submit" className="btn btn-primary" disabled={expenseForm.date !== expenseForm.invoiceDate}>
+                                    {expenseForm.date !== expenseForm.invoiceDate ? 'Date Mismatch' : 'Lock & Save Expenditure'}
+                                </button>
                                 <button type="button" className="btn btn-outline" onClick={() => setShowExpenseModal(false)}>Cancel</button>
                             </div>
                         </form>
