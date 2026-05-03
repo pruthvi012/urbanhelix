@@ -256,13 +256,38 @@ const notifyGrievanceResolution = async (grievance, status) => {
 };
 
 /**
- * Notify all citizens about public updates (like photos uploaded or bills)
+ * Notify all citizens (and admins) about public updates (like photos uploaded or bills)
  */
 const notifyAllCitizens = async (title, body, data = {}) => {
     try {
-        const citizens = await User.find({ role: 'citizen' });
-        for (const citizen of citizens) {
-            await sendPushNotification(citizen._id, title, body, data);
+        // Create a single global broadcast notification (recipient: null) so it appears in EVERYONE's bell
+        await Notification.create({
+            recipient: null,
+            title,
+            message: body,
+            type: data.type || 'public_update',
+            relatedEntity: data.relatedEntity || null
+        });
+
+        // Find all users who should get the push popup (citizens + admins for visibility)
+        const targetUsers = await User.find({ role: { $in: ['citizen', 'admin', 'financial_officer'] } });
+        
+        if (admin.apps.length) {
+            const allTokens = [];
+            targetUsers.forEach(u => {
+                if (u.pushTokens && u.pushTokens.length > 0) {
+                    allTokens.push(...u.pushTokens);
+                }
+            });
+
+            if (allTokens.length > 0) {
+                const message = {
+                    notification: { title, body },
+                    data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+                    tokens: allTokens,
+                };
+                await admin.messaging().sendMulticast(message);
+            }
         }
     } catch (error) {
         console.error('Error notifying citizens:', error);
