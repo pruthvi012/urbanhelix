@@ -201,6 +201,25 @@ export default function ProjectDetail() {
                 </div>
             )}
 
+            {/* Prominent Assign Contractor Banner for Engineers */}
+            {['engineer', 'admin'].includes(user?.role) && project.status === 'approved' && !project.contractor && (
+                <div className="glass-card" style={{ marginBottom: '20px', padding: '20px 24px', background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(16,185,129,0.1))', border: '2px solid rgba(59,130,246,0.4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <span style={{ fontSize: '36px' }}>👷</span>
+                        <div>
+                            <div style={{ fontWeight: 800, fontSize: '17px', color: 'var(--text-primary)', marginBottom: '4px' }}>Action Required: Assign a Contractor</div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>This project has been approved by Finance. Please assign a contractor to begin execution.</div>
+                            <div style={{ fontSize: '12px', color: 'var(--accent-blue)', marginTop: '4px', fontWeight: 600 }}>
+                                🔑 Project Code: <span style={{ letterSpacing: '1px' }}>{project.projectCode}</span> — Share this with the assigned contractor.
+                            </div>
+                        </div>
+                    </div>
+                    <button className="btn btn-primary" onClick={openAssign} style={{ fontWeight: 800, fontSize: '15px', padding: '12px 28px', whiteSpace: 'nowrap' }}>
+                        👷 Assign Contractor
+                    </button>
+                </div>
+            )}
+
             {/* Quick Actions Bar */}
             {(['engineer', 'admin', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && project.contractor?._id === user?._id)) && (
                 <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -208,8 +227,11 @@ export default function ProjectDetail() {
                     {user?.role === 'financial_officer' && project.status === 'proposed' && (
                         <button className="btn btn-success btn-sm" onClick={handleApprove}>Approve Project</button>
                     )}
-                    {['engineer', 'admin'].includes(user?.role) && project.status === 'approved' && !project.contractor && (
-                        <button className="btn btn-primary btn-sm" onClick={openAssign}>Assign Contractor</button>
+                    {['engineer', 'admin'].includes(user?.role) && ['approved', 'in_progress'].includes(project.status) && !project.contractor && (
+                        <button className="btn btn-primary" onClick={openAssign} style={{ fontWeight: 700, fontSize: '14px', padding: '8px 20px' }}>👷 Assign Contractor</button>
+                    )}
+                    {['engineer', 'admin'].includes(user?.role) && project.status === 'approved' && project.contractor && (
+                        <button className="btn btn-outline btn-sm" onClick={openAssign}>🔄 Reassign Contractor</button>
                     )}
                     {(['engineer', 'admin'].includes(user?.role) || (user?.role === 'contractor' && project.contractor?._id === user?._id)) &&
                         ['approved', 'in_progress', 'verification'].includes(project.status) && (

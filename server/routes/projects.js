@@ -334,7 +334,10 @@ router.put('/:id/approve', protect, authorize('financial_officer'), async (req, 
         }
 
         project.status = 'approved';
-        project.engineer = req.user._id;
+        // Only set engineer if not already assigned (proposedBy is typically the engineer)
+        if (!project.engineer) {
+            project.engineer = project.proposedBy;
+        }
         project.allocatedBudget = allocatedBudget;
         project.statusHistory.push({
             status: 'approved',
