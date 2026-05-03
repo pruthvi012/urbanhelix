@@ -21,23 +21,30 @@ const messaging = getMessaging(app);
 
 export const requestForToken = async () => {
   try {
-    const currentToken = await getToken(messaging, {
-      vapidKey: "BFc2NhjfUyThm7CQLByaSFHQW4-dKltyAYa7PKFGcnqUbd6AtgKuVefIW39JeRWyZPA_stzzLzuYxFNoQ5Dyfv0" // Get this from Firebase Console Settings > Cloud Messaging
-    });
+    console.log('Requesting notification permission...');
+    const permission = await Notification.requestPermission();
     
-    if (currentToken) {
-      console.log("Push token:", currentToken);
-      // Send token to server
-      const token = localStorage.getItem('urbanhelix_token');
-      if (token) {
-        await axios.post('/api/notifications/subscribe', 
-          { token: currentToken },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+    if (permission === 'granted') {
+      const currentToken = await getToken(messaging, {
+        vapidKey: "BFc2NhjfUyThm7CQLByaSFHQW4-dKltyAYa7PKFGcnqUbd6AtgKuVefIW39JeRWyZPA_stzzLzuYxFNoQ5Dyfv0" // Get this from Firebase Console Settings > Cloud Messaging
+      });
+      
+      if (currentToken) {
+        console.log("Push token:", currentToken);
+        // Send token to server
+        const token = localStorage.getItem('urbanhelix_token');
+        if (token) {
+          await axios.post('/api/notifications/subscribe', 
+            { token: currentToken },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        }
+        return currentToken;
+      } else {
+        console.log('No registration token available. Request permission to generate one.');
       }
-      return currentToken;
     } else {
-      console.log('No registration token available. Request permission to generate one.');
+      console.log('Notification permission denied or dismissed.');
     }
   } catch (err) {
     console.log('An error occurred while retrieving token. ', err);
