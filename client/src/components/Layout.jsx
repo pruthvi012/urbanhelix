@@ -114,9 +114,12 @@ export default function Layout() {
                     <button className="mobile-menu-btn" onClick={() => setShowMobileMenu(true)}>
                         <FiMenu size={24} />
                     </button>
-                    <div className="search-bar">
-                        <FiSearch className="search-icon" />
-                        <input type="text" placeholder="Search projects, transactions, records..." />
+                    <div className="header-brand" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <img src="/bbmp-logo.png" alt="BBMP Logo" style={{ height: '40px', objectFit: 'contain' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 800, fontSize: '16px', letterSpacing: '0.5px', color: 'var(--text-primary)' }}>BBMP</span>
+                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>South Zone Dashboard</span>
+                        </div>
                     </div>
                     <div className="header-actions">
                         <NotificationBell />
