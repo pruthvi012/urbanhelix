@@ -13,6 +13,7 @@ import Funds from './pages/Funds';
 import Grievances from './pages/Grievances';
 import Audit from './pages/Audit';
 import Analytics from './pages/Analytics';
+import ContractorExpenses from './pages/ContractorExpenses';
 import './index.css';
 
 function ProtectedRoute({ children }) {
@@ -43,6 +44,7 @@ function AppRoutes() {
                 <Route path="grievances" element={<Grievances />} />
                 <Route path="audit" element={<Audit />} />
                 <Route path="analytics" element={<Analytics />} />
+                <Route path="expenses" element={<ContractorExpenses />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

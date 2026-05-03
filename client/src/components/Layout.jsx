@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiGrid, FiFolder, FiCheckSquare, FiDollarSign, FiAlertCircle, FiShield, FiBarChart2, FiLogOut, FiUsers, FiSearch, FiMenu, FiX, FiPlusCircle } from 'react-icons/fi';
+import { FiGrid, FiFolder, FiCheckSquare, FiDollarSign, FiAlertCircle, FiShield, FiBarChart2, FiLogOut, FiUsers, FiSearch, FiMenu, FiX, FiPlusCircle, FiClipboard } from 'react-icons/fi';
 import ChatBot from './ChatBot';
 import NotificationBell from './NotificationBell';
 import { requestForToken } from '../firebase';
@@ -26,6 +26,7 @@ const NAV_ITEMS = {
     contractor: [
         { to: '/', icon: <FiGrid />, label: 'Dashboard' },
         { to: '/projects', icon: <FiFolder />, label: 'My Projects' },
+        { to: '/expenses', icon: <FiClipboard />, label: 'Log Expense' },
     ],
     financial_officer: [
         { to: '/', icon: <FiGrid />, label: 'Dashboard' },
