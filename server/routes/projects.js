@@ -237,8 +237,8 @@ router.put('/:id', protect, async (req, res) => {
     }
 });
 
-// PUT /api/projects/:id/approve — engineer approves project
-router.put('/:id/approve', protect, authorize('engineer', 'admin'), async (req, res) => {
+// PUT /api/projects/:id/approve — financial officer approves project
+router.put('/:id/approve', protect, authorize('financial_officer'), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
@@ -432,6 +432,17 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
             body,
             'system'
         );
+
+        // Broadcast to all citizens if photos or reports (bills) were uploaded
+        if (req.files && (req.files.progressPhoto || req.files.report)) {
+            const publicTitle = 'Project Progress / Bill Updated';
+            const publicBody = `New progress photos or bills have been uploaded for project: ${project.title}.`;
+            await notificationService.notifyAllCitizens(
+                publicTitle,
+                publicBody,
+                { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
+            );
+        }
 
         res.json({ success: true, project });
     } catch (error) {

@@ -107,10 +107,10 @@ export default function ProjectDetail() {
             </div>
 
             {/* Quick Actions Bar */}
-            {(['engineer', 'admin'].includes(user?.role) || (user?.role === 'contractor' && project.contractor?._id === user?._id)) && (
+            {(['engineer', 'admin', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && project.contractor?._id === user?._id)) && (
                 <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>ACTIONS:</span>
-                    {['engineer', 'admin'].includes(user?.role) && project.status === 'proposed' && (
+                    {user?.role === 'financial_officer' && project.status === 'proposed' && (
                         <button className="btn btn-success btn-sm" onClick={handleApprove}>Approve Project</button>
                     )}
                     {['engineer', 'admin'].includes(user?.role) && project.status === 'approved' && !project.contractor && (
@@ -124,7 +124,7 @@ export default function ProjectDetail() {
                                     <input type="file" onChange={(e) => setProgressFile(e.target.files[0])} style={{ fontSize: '11px' }} />
                                 </div>
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '10px', marginBottom: 0 }}>Report PDF</label>
+                                    <label className="form-label" style={{ fontSize: '10px', marginBottom: 0 }}>Bill / Report PDF</label>
                                     <input type="file" onChange={(e) => setReportFile(e.target.files[0])} style={{ fontSize: '11px' }} />
                                 </div>
                                 <button className="btn btn-outline btn-sm" onClick={handleUpdateStatus}>Update Progress</button>
@@ -204,7 +204,7 @@ export default function ProjectDetail() {
                             )}
                             {project.reportUrl && (
                                 <a href={`${project.reportUrl}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{ flex: 1 }}>
-                                    <FiFileText /> View DPR Report
+                                    <FiFileText /> View Bill / Report
                                 </a>
                             )}
                         </div>

@@ -255,6 +255,20 @@ const notifyGrievanceResolution = async (grievance, status) => {
     });
 };
 
+/**
+ * Notify all citizens about public updates (like photos uploaded or bills)
+ */
+const notifyAllCitizens = async (title, body, data = {}) => {
+    try {
+        const citizens = await User.find({ role: 'citizen' });
+        for (const citizen of citizens) {
+            await sendPushNotification(citizen._id, title, body, data);
+        }
+    } catch (error) {
+        console.error('Error notifying citizens:', error);
+    }
+};
+
 module.exports = {
     sendPushNotification,
     notifyProjectAssignment,
@@ -266,5 +280,6 @@ module.exports = {
     notifyMilestoneSubmission,
     notifyMilestoneUpdate,
     notifyGrievanceResolution,
-    notifyProjectStakeholders
+    notifyProjectStakeholders,
+    notifyAllCitizens
 };
