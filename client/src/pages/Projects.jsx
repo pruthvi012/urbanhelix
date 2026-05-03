@@ -345,7 +345,7 @@ export default function Projects() {
 
     <script>window.onload = function() { setTimeout(() => { window.print(); }, 1000); }</script>
 </body>
-</html>\`;
+</html>`;
 
             const win = window.open('', '_blank');
             win.document.write(html);
