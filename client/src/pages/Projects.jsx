@@ -448,7 +448,18 @@ export default function Projects() {
                                                                     )}
                                                                     {(['engineer', 'admin'].includes(user?.role) || (user?.role === 'contractor' && p.contractor?._id === user?._id)) &&
                                                                         ['approved', 'in_progress', 'verification'].includes(p.status) && (
-                                                                            <button className="btn btn-outline btn-sm" onClick={() => handleUpdateStatus(p._id)}>Status</button>
+                                                                            <>
+                                                                                <button className="btn btn-outline btn-sm" onClick={() => handleUpdateStatus(p._id)}>Status</button>
+                                                                                {user?.role === 'contractor' && p.projectCode && (
+                                                                                    <Link 
+                                                                                        to={`/expenses?code=${p.projectCode}`} 
+                                                                                        className="btn btn-primary btn-sm"
+                                                                                        style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                                                                    >
+                                                                                        💰 Log Expense
+                                                                                    </Link>
+                                                                                )}
+                                                                            </>
                                                                         )}
                                                                 </div>
                                                             </td>

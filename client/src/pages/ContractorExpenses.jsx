@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { projectAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useLocation } from 'react-router-dom';
 import { FiDollarSign, FiUpload, FiMapPin, FiCamera, FiCheckCircle } from 'react-icons/fi';
 
 const CATEGORY_MATERIALS = {
@@ -32,7 +33,6 @@ export default function ContractorExpenses() {
     const [gpsLoading, setGpsLoading] = useState(false);
     const [projectCode, setProjectCode] = useState('');
     const [codeSearched, setCodeSearched] = useState(false);
-
     const [form, setForm] = useState({
         date: new Date().toISOString().split('T')[0],
         invoiceDate: new Date().toISOString().split('T')[0],
@@ -40,6 +40,25 @@ export default function ContractorExpenses() {
         invoice: null, progressPhoto: null,
         gpsLat: '', gpsLng: ''
     });
+    const location = useLocation();
+
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        const code = queryParams.get('code');
+        if (code) {
+            setProjectCode(code.toUpperCase());
+            // We can't call searchProject directly here because it uses state that might not be updated yet
+        }
+    }, [location]);
+
+    // Use a separate useEffect to trigger search when projectCode changes from URL
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        const code = queryParams.get('code');
+        if (code && projectCode === code.toUpperCase() && !codeSearched) {
+            searchProject();
+        }
+    }, [projectCode, location]);
 
     const searchProject = async () => {
         if (!projectCode.trim()) return;
