@@ -177,6 +177,12 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin'), upload.fiel
 
         // Notify admins about new proposal
         await notificationService.notifyProjectProposal(project);
+        
+        await notificationService.notifyAllCitizens(
+            'New Project Proposed',
+            `A new project "${project.title}" has been proposed.`,
+            { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
+        );
 
         res.status(201).json({ success: true, project });
     } catch (error) {
@@ -331,6 +337,12 @@ router.put('/:id/approve', protect, authorize('financial_officer'), async (req, 
             'project_approved'
         );
 
+        await notificationService.notifyAllCitizens(
+            'Project Approved',
+            `Project "${project.title}" has been officially approved with a budget of ₹${project.allocatedBudget.toLocaleString()}.`,
+            { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
+        );
+
         res.json({ success: true, project });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -375,6 +387,12 @@ router.put('/:id/assign', protect, authorize('engineer', 'admin'), async (req, r
             'Contractor Assigned to Project',
             `A contractor has been assigned to project: ${project.title}. Work has officially started.`,
             'system'
+        );
+
+        await notificationService.notifyAllCitizens(
+            'Contractor Assigned',
+            `A contractor has been assigned to project: ${project.title}. Work has officially started!`,
+            { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
         );
 
         res.json({ success: true, project });
@@ -433,16 +451,12 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
             'system'
         );
 
-        // Broadcast to all citizens if photos or reports (bills) were uploaded
-        if (req.files && (req.files.progressPhoto || req.files.report)) {
-            const publicTitle = 'Project Progress / Bill Updated';
-            const publicBody = `New progress photos or bills have been uploaded for project: ${project.title}.`;
-            await notificationService.notifyAllCitizens(
-                publicTitle,
-                publicBody,
-                { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
-            );
-        }
+        // Broadcast to all citizens
+        await notificationService.notifyAllCitizens(
+            title,
+            body,
+            { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
+        );
 
         res.json({ success: true, project });
     } catch (error) {
