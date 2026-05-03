@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiAlertTriangle, FiShieldOff } from 'react-icons/fi';
+import { FiAlertTriangle, FiShieldOff, FiX } from 'react-icons/fi';
 import { auditAPI } from '../services/api';
 
 export default function GlobalTamperWarning() {
     const [isTampered, setIsTampered] = useState(false);
     const [tamperDetails, setTamperDetails] = useState(null);
+    const [dismissed, setDismissed] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
 
     useEffect(() => {
         const checkIntegrity = async () => {
+            if (dismissed) return; // Don't keep checking if they dismissed it for this session
+            
             try {
                 const res = await auditAPI.verifyChain();
                 if (res.data && res.data.valid === false) {
@@ -25,81 +28,93 @@ export default function GlobalTamperWarning() {
         };
 
         checkIntegrity();
-        // Check every 5 seconds for the demo!
         const interval = setInterval(checkIntegrity, 5000);
         return () => clearInterval(interval);
-    }, []);
+    }, [dismissed]);
 
-    if (!isTampered) return null;
+    if (!isTampered || dismissed) return null;
 
-    // Do not block the actual audit page so they can see the details
+    // Do not show on audit page
     if (location.pathname === '/audit') return null;
 
     return (
         <div style={{
             position: 'fixed',
             top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(239, 68, 68, 0.95)',
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(4px)',
             zIndex: 99999,
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'white',
-            padding: '20px',
-            textAlign: 'center',
-            backdropFilter: 'blur(10px)'
+            padding: '20px'
         }}>
-            <FiShieldOff style={{ fontSize: '100px', marginBottom: '20px', animation: 'pulse 2s infinite' }} />
-            <h1 style={{ fontSize: '48px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '10px', textShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
-                🚨 SYSTEM LOCKDOWN 🚨
-            </h1>
-            <h2 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '30px' }}>
-                CRITICAL DATA CORRUPTION DETECTED
-            </h2>
-            <div style={{ 
-                background: 'rgba(0,0,0,0.3)', 
-                padding: '30px', 
+            <div style={{
+                background: '#1e293b',
+                border: '1px solid #ef4444',
                 borderRadius: '16px',
-                border: '2px solid rgba(255,255,255,0.2)',
-                maxWidth: '600px'
+                padding: '30px',
+                maxWidth: '400px',
+                width: '100%',
+                position: 'relative',
+                boxShadow: '0 20px 25px -5px rgba(239, 68, 68, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.5)',
+                textAlign: 'center',
+                animation: 'slideUp 0.3s ease-out'
             }}>
-                <p style={{ fontSize: '20px', lineHeight: '1.6', marginBottom: '20px' }}>
-                    The cryptographic hash chain has been broken. An unauthorized modification to financial records was detected.
+                <button 
+                    onClick={() => setDismissed(true)}
+                    style={{
+                        position: 'absolute',
+                        top: '15px',
+                        right: '15px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#94a3b8',
+                        cursor: 'pointer',
+                        padding: '5px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '20px'
+                    }}
+                >
+                    <FiX />
+                </button>
+
+                <FiShieldOff style={{ fontSize: '48px', color: '#ef4444', marginBottom: '15px' }} />
+                
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#f8fafc', marginBottom: '10px' }}>
+                    Tampering Detected
+                </h2>
+                
+                <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' }}>
+                    The cryptographic hash chain validation failed. Discrepancies were found in {tamperDetails?.errors?.length || 1} financial record(s).
                 </p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontSize: '24px', fontWeight: 'bold', color: '#fca5a5' }}>
-                    <FiAlertTriangle />
-                    <span>{tamperDetails?.errors?.length || 1} Block(s) Compromised</span>
-                </div>
+
+                <button 
+                    onClick={() => {
+                        setDismissed(true);
+                        navigate('/audit');
+                    }}
+                    className="btn btn-primary"
+                    style={{
+                        width: '100%',
+                        background: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px 0',
+                        fontSize: '14px',
+                        fontWeight: 600
+                    }}
+                >
+                    View Audit Report
+                </button>
             </div>
-            
-            <button 
-                onClick={() => navigate('/audit')}
-                style={{
-                    marginTop: '40px',
-                    padding: '16px 40px',
-                    fontSize: '22px',
-                    fontWeight: 800,
-                    backgroundColor: 'white',
-                    color: '#ef4444',
-                    border: 'none',
-                    borderRadius: '50px',
-                    cursor: 'pointer',
-                    boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
-                    transition: 'transform 0.2s ease',
-                    textTransform: 'uppercase'
-                }}
-                onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
-                onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
-            >
-                View Audit Report
-            </button>
 
             <style>{`
-                @keyframes pulse {
-                    0% { transform: scale(1); opacity: 1; }
-                    50% { transform: scale(1.1); opacity: 0.8; }
-                    100% { transform: scale(1); opacity: 1; }
+                @keyframes slideUp {
+                    from { transform: translateY(20px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
                 }
             `}</style>
         </div>
