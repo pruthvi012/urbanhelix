@@ -5,7 +5,7 @@ const AuditLog = require('../models/AuditLog');
 const Notification = require('../models/Notification');
 const HashChainService = require('../services/hashChainService');
 const BlockchainService = require('../services/blockchainService');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize, optionalAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const notificationService = require('../services/notificationService');
 const FundTransaction = require('../models/FundTransaction');
@@ -19,10 +19,20 @@ const calculateEntryHash = (data) => {
     return crypto.createHash('sha256').update(str).digest('hex');
 };
 
+const generateProjectCode = async () => {
+    let code;
+    let exists = true;
+    while (exists) {
+        code = 'UHX-' + crypto.randomBytes(3).toString('hex').toUpperCase();
+        exists = await Project.exists({ projectCode: code });
+    }
+    return code;
+};
+
 // GET /api/projects — list all (public)
-router.get('/', async (req, res) => {
+router.get('/', optionalAuth, async (req, res) => {
     try {
-        const { status, department, category, page = 1, limit = 20, ward, wardNo, area } = req.query;
+        const { status, department, category, page = 1, limit = 20, ward, wardNo, area, projectCode } = req.query;
         const filter = {};
         if (status) filter.status = status;
         if (department) filter.department = department;
@@ -30,8 +40,9 @@ router.get('/', async (req, res) => {
         if (ward) filter['location.ward'] = ward;
         if (wardNo) filter['location.wardNo'] = parseInt(wardNo);
         if (area) filter['location.area'] = area;
+        if (projectCode) filter.projectCode = projectCode;
 
-        const projects = await Project.find(filter)
+        let projects = await Project.find(filter)
             .populate('department', 'name ward')
             .populate('proposedBy', 'name email')
             .populate('engineer', 'name email')
@@ -42,14 +53,27 @@ router.get('/', async (req, res) => {
 
         const total = await Project.countDocuments(filter);
 
-        res.json({ success: true, projects, total, page: parseInt(page), totalPages: Math.ceil(total / limit) });
+        // Sanitize projectCode for non-engineers/admins unless they searched specifically by it
+        const userRole = req.user?.role;
+        const canSeeCode = userRole === 'admin' || userRole === 'engineer';
+        
+        const sanitizedProjects = projects.map(p => {
+            const pObj = p.toObject();
+            // Allow contractor to see the code IF they searched for it explicitly, otherwise hide it
+            if (!canSeeCode && (!projectCode || pObj.projectCode !== projectCode)) {
+                delete pObj.projectCode;
+            }
+            return pObj;
+        });
+
+        res.json({ success: true, projects: sanitizedProjects, total, page: parseInt(page), totalPages: Math.ceil(total / limit) });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
 // GET /api/projects/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id)
             .populate('department', 'name ward')
@@ -59,6 +83,12 @@ router.get('/:id', async (req, res) => {
             .populate('statusHistory.changedBy', 'name role');
 
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+        
+        let pObj = project.toObject();
+        const userRole = req.user?.role;
+        if (userRole !== 'admin' && userRole !== 'engineer' && (!req.user || req.user._id.toString() !== pObj.contractor?._id?.toString())) {
+            delete pObj.projectCode;
+        }
 
         // Verify expenditures integrity
         let isTampered = false;
@@ -87,7 +117,7 @@ router.get('/:id', async (req, res) => {
             );
         }
 
-        res.json({ success: true, project, isTampered });
+        res.json({ success: true, project: pObj, isTampered });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -138,9 +168,12 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin'), upload.fiel
                 console.error("Failed to parse location JSON", e);
             }
         }
+        
+        const projectCode = await generateProjectCode();
 
         const projectData = {
             ...req.body,
+            projectCode,
             location: locationData,
             proposedBy: req.user._id,
             status: 'proposed',

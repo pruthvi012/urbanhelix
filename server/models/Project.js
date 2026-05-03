@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const projectSchema = new mongoose.Schema({
+    projectCode: { type: String, unique: true, sparse: true },
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
     category: {

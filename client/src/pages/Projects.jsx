@@ -17,7 +17,8 @@ export default function Projects() {
     const [wardSearch, setWardSearch] = useState('');
     const [contractors, setContractors] = useState([]);
     const [gpsCameraRequested, setGpsCameraRequested] = useState(false);
-    const [filter, setFilter] = useState({ status: '', category: '', wardNo: '', area: '' });
+    const [filter, setFilter] = useState({ status: '', category: '', wardNo: '', area: '', projectCode: '' });
+    const [searchInput, setSearchInput] = useState('');
     const [imageFile, setImageFile] = useState(null);
     const [reportFile, setReportFile] = useState(null);
     const [form, setForm] = useState({
@@ -37,6 +38,16 @@ export default function Projects() {
             if (filter.category) params.category = filter.category;
             if (filter.wardNo) params.wardNo = filter.wardNo;
             if (filter.area) params.area = filter.area;
+            
+            if (user?.role === 'contractor') {
+                if (!filter.projectCode) {
+                    setProjects([]);
+                    setLoading(false);
+                    return;
+                }
+                params.projectCode = filter.projectCode;
+            }
+
             const [projRes, deptRes, wardRes] = await Promise.all([
                 projectAPI.getAll(params),
                 deptAPI.getAll(),
@@ -287,43 +298,62 @@ export default function Projects() {
                 <p className="page-subtitle">Municipal infrastructure projects lifecycle</p>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                <select className="form-select" style={{ width: 'auto' }} value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}>
-                    <option value="">All Status</option>
-                    <option value="proposed">Proposed</option>
-                    <option value="approved">Approved</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="verification">Verification</option>
-                    <option value="completed">Completed</option>
-                </select>
-                <select className="form-select" style={{ width: 'auto' }} value={filter.category} onChange={(e) => setFilter({ ...filter, category: e.target.value })}>
-                    <option value="">All Categories</option>
-                    <option value="road">Road</option>
-                    <option value="water_supply">Water Supply</option>
-                    <option value="sanitation">Sanitation</option>
-                    <option value="electricity">Electricity</option>
-                    <option value="park">Park</option>
-                    <option value="bridge">Bridge</option>
-                    <option value="building">Building</option>
-                    <option value="drainage">Drainage</option>
-                </select>
-                <select className="form-select" style={{ width: 'auto' }} value={filter.wardNo} onChange={(e) => setFilter({ ...filter, wardNo: e.target.value, area: '' })}>
-                    <option value="">All Wards</option>
-                    {wards.map(w => <option key={w._id} value={w.wardNo}>Ward {w.wardNo}: {w.name}</option>)}
-                </select>
-                {filter.wardNo && (
-                    <select className="form-select" style={{ width: 'auto' }} value={filter.area} onChange={(e) => setFilter({ ...filter, area: e.target.value })}>
-                        <option value="">All Areas</option>
-                        {(wards.find(w => w.wardNo === parseInt(filter.wardNo))?.areas || []).map(a => (
-                            <option key={a} value={a}>{a}</option>
-                        ))}
+            {user?.role === 'contractor' ? (
+                <div className="glass-card" style={{ padding: '24px', marginBottom: '32px', textAlign: 'center' }}>
+                    <h3 style={{ marginBottom: '16px', color: 'var(--text-primary)' }}>Access Assigned Project</h3>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '14px' }}>
+                        Please enter the unique Project Code provided by the BBMP Engineer to view and manage your assigned project.
+                    </p>
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', maxWidth: '400px', margin: '0 auto' }}>
+                        <input 
+                            className="form-input" 
+                            placeholder="e.g., UHX-A1B2C" 
+                            value={searchInput} 
+                            onChange={(e) => setSearchInput(e.target.value.toUpperCase())}
+                            style={{ flex: 1, textTransform: 'uppercase' }}
+                        />
+                        <button className="btn btn-primary" onClick={() => setFilter({ ...filter, projectCode: searchInput })}>Search Project</button>
+                    </div>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                    <select className="form-select" style={{ width: 'auto' }} value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}>
+                        <option value="">All Status</option>
+                        <option value="proposed">Proposed</option>
+                        <option value="approved">Approved</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="verification">Verification</option>
+                        <option value="completed">Completed</option>
                     </select>
-                )}
-                <button className="btn btn-outline" onClick={() => setShowWardDir(true)}>📂 Ward Directory</button>
-                {user?.role === 'engineer' && (
-                    <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Proposal</button>
-                )}
-            </div>
+                    <select className="form-select" style={{ width: 'auto' }} value={filter.category} onChange={(e) => setFilter({ ...filter, category: e.target.value })}>
+                        <option value="">All Categories</option>
+                        <option value="road">Road</option>
+                        <option value="water_supply">Water Supply</option>
+                        <option value="sanitation">Sanitation</option>
+                        <option value="electricity">Electricity</option>
+                        <option value="park">Park</option>
+                        <option value="bridge">Bridge</option>
+                        <option value="building">Building</option>
+                        <option value="drainage">Drainage</option>
+                    </select>
+                    <select className="form-select" style={{ width: 'auto' }} value={filter.wardNo} onChange={(e) => setFilter({ ...filter, wardNo: e.target.value, area: '' })}>
+                        <option value="">All Wards</option>
+                        {wards.map(w => <option key={w._id} value={w.wardNo}>Ward {w.wardNo}: {w.name}</option>)}
+                    </select>
+                    {filter.wardNo && (
+                        <select className="form-select" style={{ width: 'auto' }} value={filter.area} onChange={(e) => setFilter({ ...filter, area: e.target.value })}>
+                            <option value="">All Areas</option>
+                            {(wards.find(w => w.wardNo === parseInt(filter.wardNo))?.areas || []).map(a => (
+                                <option key={a} value={a}>{a}</option>
+                            ))}
+                        </select>
+                    )}
+                    <button className="btn btn-outline" onClick={() => setShowWardDir(true)}>📂 Ward Directory</button>
+                    {user?.role === 'engineer' && (
+                        <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Proposal</button>
+                    )}
+                </div>
+            )}
 
             <div className="projects-categorized">
                 {['road', 'drainage', 'water_supply', 'sanitation', 'electricity', 'park', 'bridge', 'building', 'other']
@@ -374,6 +404,11 @@ export default function Projects() {
                                                                     <Link to={`/projects/${p._id}`} style={{ color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 500 }}>
                                                                         {p.title}
                                                                     </Link>
+                                                                    {['engineer', 'admin'].includes(user?.role) && p.projectCode && (
+                                                                        <div style={{ fontSize: '11px', color: 'var(--accent-green)', fontWeight: 700, marginTop: '4px' }}>
+                                                                            Code: {p.projectCode}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </td>

@@ -26,11 +26,6 @@ const NAV_ITEMS = {
     contractor: [
         { to: '/', icon: <FiGrid />, label: 'Dashboard' },
         { to: '/projects', icon: <FiFolder />, label: 'My Projects' },
-        { to: '/milestones', icon: <FiCheckSquare />, label: 'Milestones' },
-        { to: '/funds', icon: <FiDollarSign />, label: 'Payments' },
-        { to: '/grievances', icon: <FiAlertCircle />, label: 'Citizen Complaints' },
-        { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
-
     ],
     financial_officer: [
         { to: '/', icon: <FiGrid />, label: 'Dashboard' },

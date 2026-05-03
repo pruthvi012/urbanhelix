@@ -157,6 +157,9 @@ export default function ProjectDetail() {
                 <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                         <span className="badge badge-pending" style={{ fontSize: '10px' }}>ID: {project._id.substring(0, 8).toUpperCase()}</span>
+                        {['engineer', 'admin'].includes(user?.role) && project.projectCode && (
+                            <span className="badge" style={{ fontSize: '10px', background: 'var(--accent-blue)', color: '#fff' }}>Code: {project.projectCode}</span>
+                        )}
                         <span className="tx-tag">⛓️ Verified on Blockchain</span>
                     </div>
                     <h1 className="page-title">{project.title}</h1>
