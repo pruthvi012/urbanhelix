@@ -108,7 +108,12 @@ export default function Projects() {
                 if (imageFile) formData.append('image', imageFile);
                 if (reportFile) formData.append('report', reportFile);
                 if (budgetProof) formData.append('budgetEstimateProof', budgetProof);
-                await projectAPI.create(formData);
+                const res = await projectAPI.create(formData);
+                // Show the auto-generated contractor code
+                if (res.data.contractorCode) {
+                    setGeneratedCode(res.data.contractorCode);
+                    setShowCodeModal(true);
+                }
             }
             
             setShowModal(false);
@@ -151,17 +156,12 @@ export default function Projects() {
 
     const handleAssign = async (contractorId) => {
         try {
-            const res = await projectAPI.assign(selectedProject._id, {
+            await projectAPI.assign(selectedProject._id, {
                 contractorId,
                 startDate: new Date(),
                 expectedEndDate: new Date(Date.now() + 180 * 86400000),
             });
             setShowAssignModal(false);
-            // Show the generated contractor code
-            if (res.data.contractorCode) {
-                setGeneratedCode(res.data.contractorCode);
-                setShowCodeModal(true);
-            }
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error'); }
     };
@@ -778,25 +778,27 @@ export default function Projects() {
                 <div className="modal-overlay" onClick={() => setShowCodeModal(false)}>
                     <div className="modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔑</div>
-                        <h3 className="modal-title" style={{ marginBottom: '8px' }}>Contractor Access Code Generated</h3>
+                        <h3 className="modal-title" style={{ marginBottom: '8px' }}>Project Proposal Submitted!</h3>
+                        <p style={{ color: 'var(--accent-green)', marginBottom: '8px', fontSize: '14px', fontWeight: 600 }}>✅ Proposal recorded successfully.</p>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '13px' }}>
-                            Share this unique code with the assigned contractor. They must enter it in their account to access this project.
+                            A unique Contractor Access Code has been auto-generated for this project. Share this code with the contractor once assigned — they will need it to access the project in their account.
                         </p>
                         <div style={{ background: 'rgba(0,0,0,0.3)', border: '2px dashed var(--accent-blue)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>Contractor Access Code</div>
                             <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 800, letterSpacing: '3px', color: 'var(--accent-blue)' }}>
                                 {generatedCode}
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                             <button className="btn btn-primary" onClick={() => { navigator.clipboard.writeText(generatedCode); alert('Code copied to clipboard!'); }}>
-                                Copy Code
+                                📋 Copy Code
                             </button>
                             <button className="btn btn-outline" onClick={() => setShowCodeModal(false)}>
                                 Done
                             </button>
                         </div>
                         <p style={{ marginTop: '16px', fontSize: '11px', color: 'var(--text-muted)' }}>
-                            ⚠️ This code is shown only once. Please note it down or copy it now.
+                            ⚠️ Save this code now! Each project gets a unique code that never repeats.
                         </p>
                     </div>
                 </div>

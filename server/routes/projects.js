@@ -200,6 +200,17 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin'), upload.fiel
             projectData.isBudgetLocked = true;
         }
 
+        // Auto-generate unique contractor access code
+        let contractorCode;
+        let isUnique = false;
+        while (!isUnique) {
+            const codeRaw = crypto.randomBytes(4).toString('hex').toUpperCase();
+            contractorCode = `UHX-${codeRaw}`;
+            const existing = await Project.findOne({ contractorCode });
+            if (!existing) isUnique = true;
+        }
+        projectData.contractorCode = contractorCode;
+
         const project = await Project.create(projectData);
 
         // Blockchain: Create Project on-chain
@@ -254,7 +265,7 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin'), upload.fiel
             { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
         );
 
-        res.status(201).json({ success: true, project });
+        res.status(201).json({ success: true, project, contractorCode: project.contractorCode });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -427,12 +438,7 @@ router.put('/:id/assign', protect, authorize('engineer', 'admin'), async (req, r
 
         const { contractorId, startDate, expectedEndDate } = req.body;
 
-        // Generate unique contractor access code
-        const codeRaw = crypto.randomBytes(4).toString('hex').toUpperCase();
-        const contractorCode = `UHX-${codeRaw}`;
-
         project.contractor = contractorId;
-        project.contractorCode = contractorCode;
         project.contractorCodeVerified = false;
         project.status = 'in_progress';
         project.startDate = startDate || new Date();
@@ -471,7 +477,7 @@ router.put('/:id/assign', protect, authorize('engineer', 'admin'), async (req, r
             { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
         );
 
-        res.json({ success: true, project, contractorCode });
+        res.json({ success: true, project });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
