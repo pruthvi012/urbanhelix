@@ -191,8 +191,12 @@ export default function ContractorExpenses() {
                         <div className="glass-card" style={{ marginBottom: '20px', padding: '16px 20px', background: 'rgba(16,185,129,0.1)', border: '1px solid var(--accent-green)', display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <FiCheckCircle size={24} style={{ color: 'var(--accent-green)' }} />
                             <div>
-                                <div style={{ fontWeight: 700, color: 'var(--accent-green)' }}>Expense Submitted Successfully!</div>
-                                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>The assigned engineer has been notified for physical verification. Your entry is SHA-256 hashed and tamper-proof.</div>
+                                <div style={{ fontWeight: 700, color: 'var(--accent-green)' }}>🚀 Expense Logged & Hashed Successfully!</div>
+                                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                    Your material expenditure has been cryptographically secured. 
+                                    <strong> Status: Waiting for Engineer's Physical Site Verification.</strong> 
+                                    Once verified, it will be automatically sent to the Finance Department for payment release.
+                                </div>
                             </div>
                         </div>
                     )}
@@ -323,9 +327,12 @@ export default function ContractorExpenses() {
 
                                                 <td>
                                                     {exp.engineerVerified
-                                                        ? <span className="tx-tag" style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--accent-green)' }}>✅ Verified</span>
-                                                        : <span className="tx-tag" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24' }}>⏳ Pending</span>
+                                                        ? <span className="tx-tag" style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--accent-green)' }}>✅ Verified by Engineer</span>
+                                                        : <span className="tx-tag" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24' }}>⏳ Waiting for Engineer Review</span>
                                                     }
+                                                    {exp.readyForPayment && !exp.paid && (
+                                                        <div style={{ fontSize: '10px', color: 'var(--accent-blue)', marginTop: '4px', fontWeight: 600 }}>💰 Ready for Payment Release</div>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}

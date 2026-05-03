@@ -764,6 +764,15 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             });
         }
 
+        // Notify Contractor for confirmation
+        await Notification.create({
+            user: req.user._id,
+            title: '✅ Expense Logged (Pending Review)',
+            message: `Your expenditure of ₹${expAmount.toLocaleString()} for "${material}" has been submitted. It is now waiting for the Engineer's physical verification.`,
+            type: 'system',
+            relatedEntity: { entityType: 'Project', entityId: project._id }
+        });
+
         res.json({ success: true, project });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
