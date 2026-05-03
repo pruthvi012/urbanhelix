@@ -9,6 +9,7 @@ const { protect, authorize, optionalAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const notificationService = require('../services/notificationService');
 const FundTransaction = require('../models/FundTransaction');
+const User = require('../models/User');
 const crypto = require('crypto');
 
 const router = express.Router();
@@ -138,8 +139,8 @@ router.get('/:id', optionalAuth, async (req, res) => {
     }
 });
 
-// POST /api/projects — propose a new project (citizen, engineer, admin)
-router.post('/', protect, authorize('citizen', 'engineer', 'admin'), upload.fields([
+// POST /api/projects — propose a new project (citizen, engineer, admin, finance)
+router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_officer'), upload.fields([
     { name: 'image', maxCount: 1 }, 
     { name: 'report', maxCount: 1 },
     { name: 'budgetEstimateProof', maxCount: 1 }
@@ -580,7 +581,7 @@ router.get('/stats/overview', async (req, res) => {
 });
 
 // PUT /api/projects/:id/revision — revise budget for a locked project
-router.put('/:id/revision', protect, authorize('engineer', 'admin'), async (req, res) => {
+router.put('/:id/revision', protect, authorize('engineer', 'admin', 'financial_officer'), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
@@ -833,7 +834,7 @@ router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'adm
 });
 
 // PUT /api/projects/:id/expenditure/:expId/release — finance releases payment
-router.put('/:id/expenditure/:expId/release', protect, authorize('finance', 'admin'), async (req, res) => {
+router.put('/:id/expenditure/:expId/release', protect, authorize('financial_officer', 'admin'), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
@@ -849,6 +850,17 @@ router.put('/:id/expenditure/:expId/release', protect, authorize('finance', 'adm
         exp.releasedByFinance = req.user._id;
         exp.releasedAt = new Date();
 
+        // Update contractor bank details if provided
+        if (project.contractor && (req.body.accountNumber || req.body.ifscCode)) {
+            await User.findByIdAndUpdate(project.contractor, {
+                bankDetails: {
+                    accountNumber: req.body.accountNumber,
+                    ifscCode: req.body.ifscCode,
+                    bankName: req.body.bankName
+                }
+            });
+        }
+
         await project.save();
 
         await AuditLog.create({
@@ -856,7 +868,7 @@ router.put('/:id/expenditure/:expId/release', protect, authorize('finance', 'adm
             action: 'disburse',
             resourceType: 'project',
             resourceId: project._id,
-            details: `Finance RELEASED payment: ₹${exp.amount.toLocaleString()} for ${exp.material} on project ${project.title}`,
+            details: `Finance RELEASED payment: ₹${exp.amount.toLocaleString()} to A/C ${req.body.accountNumber || 'N/A'} for ${exp.material} on project ${project.title}`,
         });
 
         res.json({ success: true, expenditure: exp, message: 'Payment released successfully' });

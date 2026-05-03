@@ -77,8 +77,8 @@ router.get('/me', protect, async (req, res) => {
     }
 });
 
-// GET /api/auth/users  — list all users (admin)
-router.get('/users', protect, async (req, res) => {
+// GET /api/auth/users  — list all users (admin/engineer/finance)
+router.get('/users', protect, authorize('admin', 'engineer', 'financial_officer'), async (req, res) => {
     try {
         const { role } = req.query;
         const filter = {};

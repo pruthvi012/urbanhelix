@@ -28,8 +28,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/departments — create (admin/engineer)
-router.post('/', protect, authorize('admin', 'engineer'), async (req, res) => {
+// POST /api/departments — create (admin/engineer/finance)
+router.post('/', protect, authorize('admin', 'engineer', 'financial_officer'), async (req, res) => {
     try {
         const department = await Department.create(req.body);
 
@@ -62,7 +62,7 @@ router.post('/', protect, authorize('admin', 'engineer'), async (req, res) => {
 });
 
 // PUT /api/departments/:id/allocate — allocate budget
-router.put('/:id/allocate', protect, authorize('admin', 'engineer'), async (req, res) => {
+router.put('/:id/allocate', protect, authorize('admin', 'engineer', 'financial_officer'), async (req, res) => {
     try {
         const { amount } = req.body;
         const department = await Department.findById(req.params.id);
