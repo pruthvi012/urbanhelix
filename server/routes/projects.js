@@ -53,6 +53,29 @@ router.get('/:id', async (req, res) => {
 
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
+        // VERIFY EXPENSE HASHES (Tamper Detection)
+        let tamperedFound = false;
+        if (project.expenditures && project.expenditures.length > 0) {
+            const crypto = require('crypto');
+            project.expenditures.forEach(exp => {
+                const dataString = `${exp.amount}-${exp.material}-${new Date(exp.date).toISOString()}-${exp.invoiceUrl}-${exp.vendorName}`;
+                const calculatedHash = crypto.createHash('sha256').update(dataString).digest('hex');
+                if (calculatedHash !== exp.expenseHash && !exp.isTampered) {
+                    exp.isTampered = true;
+                    tamperedFound = true;
+                }
+            });
+            if (tamperedFound) {
+                await project.save();
+                // Notify citizens and admins
+                await notificationService.notifyAllCitizens(
+                    'SECURITY ALERT: Invoice Tampered',
+                    `CRITICAL: Tampering detected in project "${project.title}". An expenditure amount or invoice was illegally altered after upload!`,
+                    { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
+                );
+            }
+        }
+
         res.json({ success: true, project });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -579,26 +602,43 @@ router.put('/:id/revision', protect, authorize('engineer', 'admin'), async (req,
 });
 
 // POST /api/projects/:id/expenditure — log contractor expenditure
-router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), async (req, res) => {
+router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), upload.single('invoice'), async (req, res) => {
     try {
+        const crypto = require('crypto');
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        const { date, amount, material, remarks } = req.body;
+        const { date, invoiceDate, amount, material, vendorName, remarks } = req.body;
 
-        if (!date || !amount || !material) {
-            return res.status(400).json({ success: false, message: 'Date, amount, and material are required' });
+        if (!date || !invoiceDate || !amount || !material || !vendorName) {
+            return res.status(400).json({ success: false, message: 'All fields (including Vendor Name and Invoice Date) are required.' });
+        }
+        if (date !== invoiceDate) {
+            return res.status(400).json({ success: false, message: 'Expenditure date and Invoice Date must match exactly.' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'Invoice bill upload is required to proceed.' });
         }
 
         const expAmount = Number(amount);
+        const invoiceUrl = `/uploads/projects/${req.file.filename}`;
+
+        // Create SHA-256 Hash
+        const dataString = `${expAmount}-${material}-${new Date(date).toISOString()}-${invoiceUrl}-${vendorName}`;
+        const expenseHash = crypto.createHash('sha256').update(dataString).digest('hex');
 
         // Record expenditure
         project.expenditures.push({
             date: new Date(date),
+            invoiceDate: new Date(invoiceDate),
             amount: expAmount,
             material,
+            vendorName,
+            invoiceUrl,
             remarks: remarks || '',
-            recordedBy: req.user._id
+            recordedBy: req.user._id,
+            expenseHash,
+            isTampered: false
         });
 
         // Update total spent budget
@@ -612,6 +652,8 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), as
                     projectId: project._id,
                     amount: expAmount,
                     material,
+                    vendorName,
+                    expenseHash,
                     loggedBy: req.user.name
                 },
                 { entityType: 'project', entityId: project._id },
@@ -628,7 +670,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), as
             action: 'log_expenditure',
             resourceType: 'project',
             resourceId: project._id,
-            details: `Logged expenditure of ₹${expAmount.toLocaleString()} for ${material}`,
+            details: `Logged expenditure of ₹${expAmount.toLocaleString()} for ${material} (Vendor: ${vendorName})`,
         });
 
         res.json({ success: true, project });

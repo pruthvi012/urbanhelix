@@ -64,11 +64,16 @@ const projectSchema = new mongoose.Schema({
     isBudgetLocked: { type: Boolean, default: false },
     expenditures: [{
         date: { type: Date, required: true },
+        invoiceDate: { type: Date, required: true },
         amount: { type: Number, required: true },
         material: { type: String, required: true },
+        vendorName: { type: String, required: true },
+        invoiceUrl: { type: String, required: true },
         remarks: { type: String },
         recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        timestamp: { type: Date, default: Date.now }
+        timestamp: { type: Date, default: Date.now },
+        expenseHash: { type: String, required: true },
+        isTampered: { type: Boolean, default: false }
     }],
     budgetRevisionHistory: [{
         oldBudget: Number,

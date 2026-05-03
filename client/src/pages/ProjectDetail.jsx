@@ -16,7 +16,8 @@ export default function ProjectDetail() {
     const [progressFile, setProgressFile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showExpenseModal, setShowExpenseModal] = useState(false);
-    const [expenseForm, setExpenseForm] = useState({ date: new Date().toISOString().split('T')[0], amount: '', material: '', remarks: '' });
+    const [expenseForm, setExpenseForm] = useState({ date: new Date().toISOString().split('T')[0], invoiceDate: '', amount: '', material: '', vendorName: '', remarks: '' });
+    const [invoiceFile, setInvoiceFile] = useState(null);
 
     const categoryMaterials = {
         road: ['Asphalt/Bitumen', 'Gravel/Crushed Stone', 'Concrete', 'Sand', 'Cement', 'Steel Rebar', 'Labor/Wages', 'Machinery Rental'],
@@ -100,10 +101,29 @@ export default function ProjectDetail() {
 
     const handleLogExpense = async (e) => {
         e.preventDefault();
+        if (expenseForm.date !== expenseForm.invoiceDate) {
+            alert('Error: The Expenditure Date and Invoice Date must match exactly to proceed!');
+            return;
+        }
+        if (!invoiceFile) {
+            alert('Error: Please upload the invoice bill to proceed.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('date', expenseForm.date);
+        formData.append('invoiceDate', expenseForm.invoiceDate);
+        formData.append('amount', expenseForm.amount);
+        formData.append('material', expenseForm.material);
+        formData.append('vendorName', expenseForm.vendorName);
+        formData.append('remarks', expenseForm.remarks);
+        formData.append('invoice', invoiceFile);
+
         try {
-            await projectAPI.logExpenditure(id, expenseForm);
+            await projectAPI.logExpenditure(id, formData);
             setShowExpenseModal(false);
-            setExpenseForm({ date: new Date().toISOString().split('T')[0], amount: '', material: '', remarks: '' });
+            setExpenseForm({ date: new Date().toISOString().split('T')[0], invoiceDate: '', amount: '', material: '', vendorName: '', remarks: '' });
+            setInvoiceFile(null);
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error logging expense'); }
     };
@@ -250,15 +270,17 @@ export default function ProjectDetail() {
                     <div className="table-container">
                         <table className="table">
                             <thead>
-                                <tr><th>Date</th><th>Material</th><th>Amount Spent</th><th>Remarks</th></tr>
+                                <tr><th>Date</th><th>Material</th><th>Supplier/Vendor</th><th>Amount Spent</th><th>Invoice</th><th>Integrity</th></tr>
                             </thead>
                             <tbody>
                                 {project.expenditures.sort((a, b) => new Date(b.date) - new Date(a.date)).map((exp, idx) => (
-                                    <tr key={idx}>
+                                    <tr key={idx} style={{ background: exp.isTampered ? 'rgba(239, 68, 68, 0.1)' : 'transparent' }}>
                                         <td style={{ fontSize: '13px' }}>{new Date(exp.date).toLocaleDateString()}</td>
                                         <td style={{ fontWeight: 500 }}>{exp.material}</td>
+                                        <td style={{ fontSize: '13px' }}>{exp.vendorName}</td>
                                         <td style={{ fontWeight: 600, color: 'var(--accent-red)' }}>{formatCurrency(exp.amount)}</td>
-                                        <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{exp.remarks || '—'}</td>
+                                        <td><a href={`${exp.invoiceUrl}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{ padding: '2px 8px', fontSize: '10px' }}>View Bill</a></td>
+                                        <td>{exp.isTampered ? <span className="badge badge-rejected" title="Data altered after hash generation!">TAMPERED</span> : <span className="badge badge-approved" title={`SHA256: ${exp.expenseHash}`}>VERIFIED</span>}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -437,13 +459,19 @@ export default function ProjectDetail() {
             {/* Log Expense Modal for Contractor */}
             {showExpenseModal && (
                 <div className="modal-overlay" onClick={() => setShowExpenseModal(false)}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
                         <h3 className="modal-title">Log Material Expense</h3>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>Update the spent budget for: <strong>{project.title}</strong></p>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '13px' }}>Update the spent budget for: <strong>{project.title}</strong>. This entry will be hashed (SHA-256) for audit integrity.</p>
                         <form onSubmit={handleLogExpense}>
-                            <div className="form-group">
-                                <label className="form-label">Date of Expenditure</label>
-                                <input className="form-input" type="date" value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
+                            <div className="grid-2">
+                                <div className="form-group">
+                                    <label className="form-label">Date of Expenditure</label>
+                                    <input className="form-input" type="date" value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Invoice Date</label>
+                                    <input className="form-input" type="date" value={expenseForm.invoiceDate} onChange={(e) => setExpenseForm({ ...expenseForm, invoiceDate: e.target.value })} required />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Material / Expense Type</label>
@@ -455,15 +483,23 @@ export default function ProjectDetail() {
                                 </select>
                             </div>
                             <div className="form-group">
+                                <label className="form-label">Vendor / Supplier Name</label>
+                                <input className="form-input" type="text" value={expenseForm.vendorName} onChange={(e) => setExpenseForm({ ...expenseForm, vendorName: e.target.value })} required placeholder="Name of the supplier" />
+                            </div>
+                            <div className="form-group">
                                 <label className="form-label">Amount Spent (₹)</label>
                                 <input className="form-input" type="number" min="1" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} required />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Remarks / Description</label>
-                                <input className="form-input" type="text" placeholder="e.g. Purchased from local vendor" value={expenseForm.remarks} onChange={(e) => setExpenseForm({ ...expenseForm, remarks: e.target.value })} />
+                                <label className="form-label">Upload Invoice / Bill (PDF/Image)</label>
+                                <input type="file" onChange={(e) => setInvoiceFile(e.target.files[0])} required style={{ display: 'block', width: '100%', padding: '8px', border: '1px dashed var(--glass-border)', borderRadius: '8px', background: 'rgba(255,255,255,0.02)' }} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Remarks (Optional)</label>
+                                <input className="form-input" type="text" placeholder="Additional details..." value={expenseForm.remarks} onChange={(e) => setExpenseForm({ ...expenseForm, remarks: e.target.value })} />
                             </div>
                             <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                                <button type="submit" className="btn btn-primary">Save Expense</button>
+                                <button type="submit" className="btn btn-primary" disabled={!expenseForm.invoiceDate || expenseForm.date !== expenseForm.invoiceDate || !invoiceFile}>Save Expense & Generate Hash</button>
                                 <button type="button" className="btn btn-outline" onClick={() => setShowExpenseModal(false)}>Cancel</button>
                             </div>
                         </form>
