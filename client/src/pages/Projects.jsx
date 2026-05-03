@@ -57,6 +57,12 @@ export default function Projects() {
             setProjects(projRes.data.projects || []);
             setDepartments(deptRes.data.departments || []);
             setWards(wardRes.data.wards || []);
+
+            // Auto-retry if wards are empty (handles seeding delay)
+            if ((!wardRes.data.wards || wardRes.data.wards.length === 0) && user?.role === 'engineer') {
+                console.log('⏳ Wards empty, retrying in 3s...');
+                setTimeout(loadData, 3000);
+            }
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
@@ -552,15 +558,16 @@ export default function Projects() {
                             </div>
 
                             <div className="ward-area-section" style={{ 
-                                background: '#f8fafc', 
+                                background: 'rgba(15, 23, 42, 0.5)', 
                                 padding: '20px', 
-                                borderRadius: '12px', 
-                                border: '1px solid #e2e8f0',
-                                marginBottom: '24px'
+                                borderRadius: '16px', 
+                                border: '1px solid var(--border-glass)',
+                                marginBottom: '24px',
+                                boxShadow: 'inset 0 4px 20px rgba(0,0,0,0.3)'
                             }}>
                                 <div className="grid-2" style={{ gap: '24px' }}>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label style={{ display: 'block', marginBottom: '10px', fontWeight: 600, color: '#1e293b' }}>1. Select Ward</label>
+                                        <label style={{ display: 'block', marginBottom: '12px', fontWeight: 700, color: 'var(--text-primary)', fontSize: '14px' }}>1. Select Ward</label>
                                         <div style={{ 
                                             maxHeight: '200px', 
                                             overflowY: 'auto', 
@@ -579,8 +586,9 @@ export default function Projects() {
                                                 style={{ marginBottom: '12px', height: '38px', fontSize: '13px', background: 'rgba(255,255,255,0.03)', borderColor: 'var(--border-glass)' }}
                                             />
                                             {wards.length === 0 && (
-                                                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-                                                    Loading ward data... if this persists, click "Ward Directory" to refresh.
+                                                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+                                                    <div className="spinner" style={{ width: '20px', height: '20px', margin: '0 auto 10px' }}></div>
+                                                    Fetching BBMP Ward Data...
                                                 </div>
                                             )}
                                             {Array.from(new Set(wards.map(w => w.assemblyConstituency))).map(ac => {
@@ -628,7 +636,7 @@ export default function Projects() {
                                     </div>
 
                                     <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label style={{ display: 'block', marginBottom: '10px', fontWeight: 600, color: '#1e293b' }}>2. Select Area / Locality</label>
+                                        <label style={{ display: 'block', marginBottom: '12px', fontWeight: 700, color: 'var(--text-primary)', fontSize: '14px' }}>2. Select Area / Locality</label>
                                         {!form.location.ward ? (
                                             <div style={{ 
                                                 height: '100px',
