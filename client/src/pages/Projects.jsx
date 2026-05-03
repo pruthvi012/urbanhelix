@@ -22,7 +22,7 @@ export default function Projects() {
     const [imageFile, setImageFile] = useState(null);
     const [reportFile, setReportFile] = useState(null);
     const [form, setForm] = useState({
-        title: '', description: '', category: 'road', estimatedBudget: '', enteredBudget: '', department: '', priority: 'medium',
+        title: '', description: '', category: 'road', estimatedBudget: '', enteredBudget: '', department: '', priority: 'medium', contractor: '',
         location: { ward: '', area: '', address: '' }, spentBudget: 0
     });
     const [budgetProof, setBudgetProof] = useState(null);
@@ -45,12 +45,11 @@ export default function Projects() {
             if (filter.area) params.area = filter.area;
             
             if (user?.role === 'contractor') {
-                if (!filter.projectCode) {
-                    setProjects([]);
-                    setLoading(false);
-                    return;
+                if (filter.projectCode) {
+                    params.projectCode = filter.projectCode;
+                } else {
+                    params.contractor = user._id;
                 }
-                params.projectCode = filter.projectCode;
             }
 
             const [projRes, deptRes, wardRes] = await Promise.all([
@@ -117,7 +116,7 @@ export default function Projects() {
             
             setShowModal(false);
             setSelectedProject(null);
-            setForm({ title: '', description: '', category: 'road', estimatedBudget: '', enteredBudget: '', department: '', priority: 'medium', location: { ward: '', area: '', address: '' }, spentBudget: 0 });
+            setForm({ title: '', description: '', category: 'road', estimatedBudget: '', enteredBudget: '', department: '', priority: 'medium', contractor: '', location: { ward: '', area: '', address: '' }, spentBudget: 0 });
             setImageFile(null);
             setReportFile(null);
             setBudgetProof(null);
@@ -226,12 +225,36 @@ export default function Projects() {
             const utilRate = p.allocatedBudget > 0 ? ((p.spentBudget || 0) / p.allocatedBudget * 100).toFixed(1) : '0';
             const remaining = (p.allocatedBudget || 0) - (p.spentBudget || 0);
 
+            const getAbsoluteUrl = (url) => {
+                if (!url) return '';
+                if (url.startsWith('http')) return url;
+                return `http://localhost:5000${url}`;
+            };
+
             const photos = (p.progressPhotos || []).map((ph, i) => `
-                <tr>
-                    <td>${i + 1}</td>
-                    <td>${ph.description || 'No description'}</td>
-                    <td>${fmtDate(ph.timestamp)}</td>
-                </tr>
+                <div style="margin-bottom: 20px; break-inside: avoid;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">Progress Photo #${i + 1} - ${fmtDate(ph.timestamp)}</div>
+                    <img src="${getAbsoluteUrl(ph.url)}" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0;" />
+                    <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Description: ${ph.description || 'No description provided'}</div>
+                </div>
+            `).join('');
+
+            const expPhotos = (p.expenditures || []).filter(e => e.progressPhotoUrl).map((e, i) => `
+                <div style="margin-bottom: 20px; break-inside: avoid;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">Expenditure Proof: ${e.material} (₹${e.amount.toLocaleString()})</div>
+                    <div style="display: flex; gap: 10px;">
+                        <div style="flex: 1;">
+                            <div style="font-size: 10px; color: #64748b;">Site Progress:</div>
+                            <img src="${getAbsoluteUrl(e.progressPhotoUrl)}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px;" />
+                        </div>
+                        ${e.verificationPhotoUrl ? `
+                        <div style="flex: 1;">
+                            <div style="font-size: 10px; color: #64748b;">Engineer Verification:</div>
+                            <img src="${getAbsoluteUrl(e.verificationPhotoUrl)}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px;" />
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
             `).join('');
 
             const html = `
@@ -239,83 +262,90 @@ export default function Projects() {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>BBMP Report - ${p.title}</title>
+    <title>BBMP Official Report - ${p.title}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 13px; color: #1e293b; background: #fff; padding: 30px; }
-        .header { background: #1e3a5f; color: white; text-align: center; padding: 20px; border-radius: 8px; margin-bottom: 24px; }
-        .header h1 { font-size: 28px; letter-spacing: 4px; margin-bottom: 4px; }
-        .header h2 { font-size: 14px; font-weight: normal; margin-bottom: 4px; }
-        .header p { font-size: 12px; opacity: 0.8; }
-        .report-title { font-size: 20px; font-weight: bold; color: #1e3a5f; margin-bottom: 4px; }
-        .generated { font-size: 11px; color: #64748b; margin-bottom: 24px; }
-        .section-title { font-size: 15px; font-weight: bold; color: #1e3a5f; border-bottom: 2px solid #1e3a5f; padding-bottom: 6px; margin: 20px 0 12px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-        th { background: #1e3a5f; color: white; padding: 10px 14px; text-align: left; font-size: 12px; }
-        td { padding: 9px 14px; border-bottom: 1px solid #e2e8f0; }
-        tr:nth-child(even) td { background: #f8fafc; }
-        .label-col { font-weight: bold; color: #334155; width: 45%; }
-        .fin-label { font-weight: bold; color: #334155; width: 60%; }
-        .highlight { color: #059669; font-weight: bold; }
-        .warning { color: #dc2626; font-weight: bold; }
-        .footer { margin-top: 30px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px; }
-        @media print { body { padding: 10px; } }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; color: #1e293b; background: #fff; padding: 40px; line-height: 1.5; }
+        .header { background: #1e3a5f; color: white; text-align: center; padding: 30px; border-radius: 12px; margin-bottom: 30px; position: relative; overflow: hidden; }
+        .header::after { content: "OFFICIAL"; position: absolute; top: 10px; right: -30px; background: rgba(255,255,255,0.2); transform: rotate(45deg); padding: 5px 40px; font-weight: bold; font-size: 10px; }
+        .header h1 { font-size: 32px; letter-spacing: 5px; margin-bottom: 5px; font-weight: 900; }
+        .header h2 { font-size: 16px; font-weight: normal; margin-bottom: 5px; opacity: 0.9; }
+        .header p { font-size: 11px; opacity: 0.7; }
+        .report-title { font-size: 24px; font-weight: bold; color: #1e3a5f; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; }
+        .generated { font-size: 11px; color: #64748b; margin-bottom: 30px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+        .section-title { font-size: 16px; font-weight: 800; color: #1e3a5f; border-left: 4px solid #1e3a5f; padding-left: 12px; margin: 30px 0 15px; text-transform: uppercase; letter-spacing: 1px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th { background: #f1f5f9; color: #475569; padding: 12px 15px; text-align: left; font-size: 11px; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 10px 15px; border-bottom: 1px solid #f1f5f9; }
+        .label-col { font-weight: 600; color: #64748b; width: 35%; background: #f8fafc; }
+        .highlight { color: #10b981; font-weight: bold; }
+        .warning { color: #ef4444; font-weight: bold; }
+        .footer { margin-top: 50px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 2px solid #f1f5f9; padding-top: 20px; }
+        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media print { body { padding: 0; } .header { border-radius: 0; } }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>BBMP</h1>
         <h2>Bruhat Bengaluru Mahanagara Palike</h2>
-        <p>South Zone | UrbanHelixX Civic Monitoring Portal</p>
+        <p>South Zone | UrbanHelixX Blockchain Audit Division</p>
     </div>
 
-    <div class="report-title">Project Status Report</div>
-    <div class="generated">Generated on: ${new Date().toLocaleString('en-IN')}</div>
+    <div class="report-title">
+        <span>Project Audit Certificate</span>
+        <span style="font-size: 14px; background: #1e3a5f; color: white; padding: 4px 12px; border-radius: 20px;">${p.projectCode || 'N/A'}</span>
+    </div>
+    <div class="generated">System Generated ID: ${p._id} | Timestamp: ${new Date().toLocaleString('en-IN')}</div>
 
-    <div class="section-title">Project Details</div>
+    <div class="section-title">I. Project Identification</div>
     <table>
-        <tr><td class="label-col">Project Name</td><td>${p.title || 'N/A'}</td></tr>
-        <tr><td class="label-col">Category</td><td>${(p.category || 'N/A').replace(/_/g, ' ').toUpperCase()}</td></tr>
-        <tr><td class="label-col">Current Status</td><td><strong>${(p.status || 'N/A').replace(/_/g, ' ').toUpperCase()}</strong></td></tr>
-        <tr><td class="label-col">Priority</td><td>${(p.priority || 'N/A').toUpperCase()}</td></tr>
-        <tr><td class="label-col">Ward</td><td>${p.location?.ward || 'N/A'}</td></tr>
-        <tr><td class="label-col">Area / Locality</td><td>${p.location?.area || 'N/A'}</td></tr>
-        <tr><td class="label-col">Specific Address</td><td>${p.location?.address || 'N/A'}</td></tr>
-        <tr><td class="label-col">Proposed By</td><td>${p.proposedBy?.name || 'N/A'}</td></tr>
-        <tr><td class="label-col">Proposal Date</td><td>${fmtDate(p.createdAt)}</td></tr>
-        <tr><td class="label-col">Assigned Engineer</td><td class="${p.engineer?.name ? '' : 'warning'}">${p.engineer?.name || 'Not Yet Assigned'}</td></tr>
-        <tr><td class="label-col">Assigned Contractor</td><td class="${p.contractor?.name ? '' : 'warning'}">${p.contractor?.name || 'Not Yet Assigned'}</td></tr>
-        <tr><td class="label-col">Start Date</td><td>${fmtDate(p.startDate)}</td></tr>
-        <tr><td class="label-col">Expected Completion</td><td>${fmtDate(p.expectedEndDate)}</td></tr>
+        <tr><td class="label-col">Official Title</td><td><strong>${p.title || 'N/A'}</strong></td></tr>
+        <tr><td class="label-col">Department / Category</td><td>${(p.category || 'N/A').replace(/_/g, ' ').toUpperCase()}</td></tr>
+        <tr><td class="label-col">Location (Ward)</td><td>Ward ${p.location?.wardNo}: ${p.location?.ward || 'N/A'}</td></tr>
+        <tr><td class="label-col">Area / Address</td><td>${p.location?.area || 'N/A'} - ${p.location?.address || 'N/A'}</td></tr>
+        <tr><td class="label-col">Lifecycle Status</td><td><span style="padding: 2px 8px; border-radius: 4px; background: #dcfce7; color: #166534; font-weight: bold;">${(p.status || 'N/A').toUpperCase()}</span></td></tr>
     </table>
 
-    <div class="section-title">Financial Summary</div>
+    <div class="section-title">II. Personnel & Accountability</div>
     <table>
-        <tr><th class="fin-label">Financial Metric</th><th>Amount</th></tr>
-        <tr><td class="fin-label">Proposed Budget (Estimated)</td><td>${fmt(p.estimatedBudget)}</td></tr>
-        <tr><td class="fin-label">Allocated Budget (Approved)</td><td>${fmt(p.allocatedBudget)}</td></tr>
-        <tr><td class="fin-label">Spent to Date</td><td>${fmt(p.spentBudget)}</td></tr>
-        <tr><td class="fin-label">Remaining Balance</td><td class="${remaining >= 0 ? 'highlight' : 'warning'}">${fmt(remaining)}</td></tr>
-        <tr><td class="fin-label">Budget Utilization</td><td>${utilRate}%</td></tr>
-        <tr><td class="fin-label">Budget Lock Status</td><td>${p.isBudgetLocked ? 'LOCKED & VERIFIED' : 'PROVISIONAL'}</td></tr>
+        <tr><td class="label-col">Proposing Authority</td><td>${p.proposedBy?.name || 'N/A'} (${p.proposedBy?.role || 'Citizen'})</td></tr>
+        <tr><td class="label-col">Supervising Engineer</td><td>${p.engineer?.name || 'N/A'}</td></tr>
+        <tr><td class="label-col">Executing Contractor</td><td>${p.contractor?.name || 'N/A'}</td></tr>
+    </table>
+
+    <div class="section-title">III. Financial Audit Trail</div>
+    <table>
+        <tr><th style="width: 50%;">Metric</th><th>Value</th></tr>
+        <tr><td class="label-col">Allocated Budget</td><td><strong>${fmt(p.allocatedBudget)}</strong></td></tr>
+        <tr><td class="label-col">Total Expenditure Verified</td><td><strong>${fmt(p.spentBudget)}</strong></td></tr>
+        <tr><td class="label-col">Budget Utilization</td><td><span class="${utilRate > 90 ? 'warning' : 'highlight'}">${utilRate}%</span></td></tr>
+        <tr><td class="label-col">Blockchain Status</td><td><span class="highlight">⛓️ SECURED & VERIFIED</span></td></tr>
     </table>
 
     ${p.progressPhotos?.length > 0 ? `
-    <div class="section-title">Progress Photo Log (${p.progressPhotos.length} photos)</div>
-    <table>
-        <tr><th>#</th><th>Description</th><th>Uploaded On</th></tr>
+    <div class="section-title">IV. Visual Evidence (Site Logs)</div>
+    <div class="photo-grid">
         ${photos}
-    </table>
+    </div>
+    ` : ''}
+
+    ${p.expenditures?.length > 0 ? `
+    <div class="section-title">V. Expenditure Proofs & Field Verification</div>
+    <div>
+        ${expPhotos}
+    </div>
     ` : ''}
 
     <div class="footer">
-        BBMP | UrbanHelixX Civic Audit System | Blockchain Verified Report<br/>
-        This is an auto-generated document. For official use, contact BBMP South Zone Office.
+        <p>This document serves as an official Project Audit Certificate (PAC) generated by the UrbanHelixX System.</p>
+        <p>Verification Hash: ${p.transactionHash || 'Blockchain Record Pending'}</p>
+        <p style="margin-top: 10px;">&copy; ${new Date().getFullYear()} BBMP South Zone. All Rights Reserved.</p>
     </div>
 
-    <script>window.onload = function() { window.print(); }</script>
+    <script>window.onload = function() { setTimeout(() => { window.print(); }, 1000); }</script>
 </body>
-</html>`;
+</html>\`;
 
             const win = window.open('', '_blank');
             win.document.write(html);
@@ -336,24 +366,29 @@ export default function Projects() {
                 <p className="page-subtitle">Municipal infrastructure projects lifecycle</p>
             </div>
 
-            {user?.role === 'contractor' ? (
-                <div className="glass-card" style={{ padding: '24px', marginBottom: '32px', textAlign: 'center' }}>
-                    <h3 style={{ marginBottom: '16px', color: 'var(--text-primary)' }}>Access Assigned Project</h3>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '14px' }}>
-                        Please enter the unique Project Code provided by the BBMP Engineer to view and manage your assigned project.
-                    </p>
-                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', maxWidth: '400px', margin: '0 auto' }}>
-                        <input 
-                            className="form-input" 
-                            placeholder="e.g., UHX-A1B2C" 
-                            value={searchInput} 
-                            onChange={(e) => setSearchInput(e.target.value.toUpperCase())}
-                            style={{ flex: 1, textTransform: 'uppercase' }}
-                        />
-                        <button className="btn btn-primary" onClick={() => setFilter({ ...filter, projectCode: searchInput })}>Search Project</button>
+            {user?.role === 'contractor' && (
+                <div className="glass-card" style={{ padding: '24px', marginBottom: '32px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+                        <div>
+                            <h3 style={{ marginBottom: '6px', color: 'var(--text-primary)' }}>Your Assigned Projects</h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Projects assigned to you by the BBMP Engineering Department.</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <input 
+                                className="form-input" 
+                                placeholder="🔍 Project Code..." 
+                                value={searchInput} 
+                                onChange={(e) => setSearchInput(e.target.value.toUpperCase())}
+                                style={{ width: '180px', textTransform: 'uppercase' }}
+                            />
+                            <button className="btn btn-primary" onClick={() => setFilter({ ...filter, projectCode: searchInput })}>Access Project</button>
+                            {filter.projectCode && <button className="btn btn-outline" onClick={() => { setFilter({ ...filter, projectCode: '' }); setSearchInput(''); }}>Clear Search</button>}
+                        </div>
                     </div>
                 </div>
-            ) : (
+            )}
+            
+            {user?.role !== 'contractor' && (
                 <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
                     <select className="form-select" style={{ width: 'auto' }} value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}>
                         <option value="">All Status</option>
@@ -388,7 +423,15 @@ export default function Projects() {
                     )}
                     <button className="btn btn-outline" onClick={() => setShowWardDir(true)}>📂 Ward Directory</button>
                     {user?.role === 'engineer' && (
-                        <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Proposal</button>
+                        <button className="btn btn-primary" onClick={async () => {
+                            setForm({ title: '', description: '', category: 'road', estimatedBudget: '', enteredBudget: '', department: '', priority: 'medium', contractor: '', location: { ward: '', area: '', address: '' }, spentBudget: 0 });
+                            setSelectedProject(null);
+                            try {
+                                const res = await authAPI.getUsers('contractor');
+                                setContractors(res.data.users || []);
+                            } catch (e) { }
+                            setShowModal(true);
+                        }}>+ New Proposal</button>
                     )}
                 </div>
             )}
@@ -574,6 +617,8 @@ export default function Projects() {
                                         <option value="other">Other</option>
                                     </select>
                                 </div>
+                            </div>
+                            <div className="grid-2">
                                 <div className="form-group">
                                     <label className="form-label">Priority</label>
                                     <select className="form-select" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
@@ -747,8 +792,22 @@ export default function Projects() {
                                 <label className="form-label">Specific Location / Landmark</label>
                                 <input className="form-input" value={form.location.address} onChange={(e) => setForm({ ...form, location: { ...form.location, address: e.target.value } })} placeholder="e.g., Near Gali Anjenaya Temple" />
                             </div>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-                                <button type="submit" className="btn btn-primary">Submit Proposal</button>
+
+                            <div className="form-group" style={{ background: 'rgba(37, 99, 235, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(37, 99, 235, 0.2)', marginTop: '20px' }}>
+                                <label className="form-label" style={{ color: '#2563eb', fontWeight: 700 }}>👷 Final Step: Assign Contractor</label>
+                                <select className="form-select" value={form.contractor} onChange={(e) => setForm({ ...form, contractor: e.target.value })} style={{ borderColor: '#2563eb' }}>
+                                    <option value="">-- No Contractor --</option>
+                                    {contractors.map(c => (
+                                        <option key={c._id} value={c._id}>{c.name} ({c.email})</option>
+                                    ))}
+                                </select>
+                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                                    The assigned contractor will receive a notification and the secure Project Code to start logging expenses.
+                                </p>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                                <button type="submit" className="btn btn-primary" style={{ padding: '12px 32px', fontWeight: 800 }}>Submit Project & Assign</button>
                                 <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
                             </div>
                         </form>

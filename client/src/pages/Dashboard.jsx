@@ -549,6 +549,158 @@ function CategorySection({ initialCategory }) {
     );
 }
 
+function ContractorDashboard({ user }) {
+    const [stats, setStats] = useState({ totalProjects: 0, completedProjects: 0, totalBudget: 0, totalSpent: 0 });
+    const [projects, setProjects] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const loadContractorData = async () => {
+        setLoading(true);
+        try {
+            const res = await projectAPI.getAll({ contractor: user._id });
+            const myProjects = res.data.projects || [];
+            setProjects(myProjects);
+            
+            const totalBudget = myProjects.reduce((acc, p) => acc + (p.allocatedBudget || p.estimatedBudget || 0), 0);
+            const totalSpent = myProjects.reduce((acc, p) => acc + (p.spentBudget || 0), 0);
+            const completed = myProjects.filter(p => p.status === 'completed').length;
+            
+            setStats({
+                totalProjects: myProjects.length,
+                completedProjects: completed,
+                totalBudget,
+                totalSpent
+            });
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { loadContractorData(); }, []);
+
+    const formatCurrency = (value) => {
+        if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)} Cr`;
+        if (value >= 100000) return `₹${(value / 100000).toFixed(2)} L`;
+        return `₹${value?.toLocaleString()}`;
+    };
+
+    if (loading) return <div className="loading"><div className="spinner"></div> Loading Contractor Workspace...</div>;
+
+    return (
+        <div className="premium-dashboard">
+            <div className="premium-header">
+                <div className="premium-header-title">Contractor Workspace — {user.name}</div>
+                <div className="premium-header-meta">
+                    <FiCalendar /> {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </div>
+            </div>
+
+            <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+                <div className="summary-card glass-card">
+                    <div className="card-label">TOTAL PROJECTS</div>
+                    <div className="card-value">{stats.totalProjects}</div>
+                    <div className="card-sublabel">Assigned to you</div>
+                </div>
+                <div className="summary-card glass-card">
+                    <div className="card-label">COMPLETED</div>
+                    <div className="card-value" style={{ color: 'var(--accent-green)' }}>{stats.completedProjects}</div>
+                    <div className="card-sublabel">Fully verified works</div>
+                </div>
+                <div className="summary-card glass-card">
+                    <div className="card-label">TOTAL ALLOCATED</div>
+                    <div className="card-value" style={{ color: 'var(--accent-blue)' }}>{formatCurrency(stats.totalBudget)}</div>
+                    <div className="card-sublabel">Total project budgets</div>
+                </div>
+                <div className="summary-card glass-card">
+                    <div className="card-label">TOTAL SPENT</div>
+                    <div className="card-value" style={{ color: 'var(--accent-red)' }}>{formatCurrency(stats.totalSpent)}</div>
+                    <div className="card-sublabel">Expenditure logged</div>
+                </div>
+            </div>
+
+            <div className="glass-card" style={{ padding: '24px' }}>
+                <div className="section-header" style={{ marginBottom: '24px' }}>
+                    <h3 className="section-title">My Assigned Projects</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Real-time status and financial tracking of your ongoing BBMP projects</p>
+                </div>
+
+                <div className="table-container">
+                    <table className="table">
+                        <thead>
+                            <tr>
+                                <th>Project Name</th>
+                                <th>Location</th>
+                                <th>Status</th>
+                                <th>Budget</th>
+                                <th>Spent</th>
+                                <th>Progress</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {projects.map(p => (
+                                <tr key={p._id}>
+                                    <td style={{ fontWeight: 600 }}>{p.title}</td>
+                                    <td style={{ fontSize: '13px' }}>Ward {p.location?.wardNo}, {p.location?.area}</td>
+                                    <td><span className={`status-badge ${p.status}`}>{p.status.replace('_', ' ')}</span></td>
+                                    <td style={{ fontWeight: 700, color: 'var(--accent-blue)' }}>{formatCurrency(p.allocatedBudget)}</td>
+                                    <td style={{ fontWeight: 700, color: 'var(--accent-red)' }}>{formatCurrency(p.spentBudget)}</td>
+                                    <td>
+                                        <div style={{ width: '100px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', height: '6px' }}>
+                                            <div style={{ 
+                                                width: `${Math.min(100, (p.spentBudget / p.allocatedBudget) * 100)}%`, 
+                                                background: 'linear-gradient(90deg, var(--accent-blue), var(--accent-green))',
+                                                borderRadius: '10px',
+                                                height: '100%'
+                                            }} />
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <a href={`/projects/${p._id}`} className="btn btn-outline btn-sm" style={{ textDecoration: 'none' }}>Manage</a>
+                                    </td>
+                                </tr>
+                            ))}
+                            {projects.length === 0 && (
+                                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No projects assigned yet.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '32px' }}>
+                <div className="glass-card" style={{ padding: '24px' }}>
+                    <h3 className="section-title">Quick Actions</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '20px' }}>
+                        <a href="/expenses" className="glass-card" style={{ padding: '20px', textAlign: 'center', textDecoration: 'none', border: '1px solid rgba(59,130,246,0.3)', background: 'rgba(59,130,246,0.05)' }}>
+                            <div style={{ fontSize: '24px', marginBottom: '8px' }}>💰</div>
+                            <div style={{ fontWeight: 700, color: 'var(--accent-blue)' }}>Log New Expense</div>
+                        </a>
+                        <a href="/projects" className="glass-card" style={{ padding: '20px', textAlign: 'center', textDecoration: 'none', border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.05)' }}>
+                            <div style={{ fontSize: '24px', marginBottom: '8px' }}>📂</div>
+                            <div style={{ fontWeight: 700, color: 'var(--accent-green)' }}>Project Reports</div>
+                        </a>
+                    </div>
+                </div>
+                
+                <div className="glass-card" style={{ padding: '24px' }}>
+                    <h3 className="section-title">Audit Compliance</h3>
+                    <div style={{ marginTop: '16px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                        <p>✅ Ensure all expenditure entries have a matching invoice date.</p>
+                        <p>✅ Site progress photos must be captured physically via GPS camera.</p>
+                        <p>✅ Material selections are strictly whitelisted based on project category.</p>
+                        <p style={{ marginTop: '12px', padding: '10px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.2)' }}>
+                            ⚠️ <strong>Note:</strong> Finance will only release payments for Engineer-verified expenditures.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function Dashboard() {
     const { user } = useAuth();
     const [stats, setStats] = useState(null);
@@ -604,9 +756,13 @@ export default function Dashboard() {
     };
 
     useEffect(() => {
-        loadData();
-    }, [category]);
+        if (user?.role !== 'contractor') {
+            loadData();
+        }
+    }, [category, user]);
 
+    if (user?.role === 'contractor') return <ContractorDashboard user={user} />;
+    
     if (loading) return <div className="loading"><div className="spinner"></div> Loading premium dashboard...</div>;
 
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -660,9 +816,17 @@ export default function Dashboard() {
                         time: new Date(p.createdAt).toLocaleDateString(),
                         status: p.status === 'completed' ? 'completed' : p.status === 'in_progress' ? 'started' : 'pending'
                     }))} />
+                    <SpendingBreakdown data={analytics?.projectsByCategory?.map(c => ({
+                        name: c._id.charAt(0).toUpperCase() + c._id.slice(1).replace('_', ' '),
+                        value: c.totalBudget,
+                        color: c._id === 'road' ? '#6366f1' : c._id === 'water_supply' ? '#0ea5e9' : '#f59e0b'
+                    }))} />
                     <FundAllocationStatus percentage={75} />
                 </div>
-                <ExpenseAudit />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <WardOverview wards={analytics?.wardWiseProjectStatus} />
+                    <ExpenseAudit />
+                </div>
             </div>
         </div>
     );

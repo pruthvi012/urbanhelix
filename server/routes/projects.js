@@ -8,6 +8,7 @@ const BlockchainService = require('../services/blockchainService');
 const { protect, authorize, optionalAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const notificationService = require('../services/notificationService');
+const { notifyCitizensOnly } = notificationService;
 const FundTransaction = require('../models/FundTransaction');
 const User = require('../models/User');
 const crypto = require('crypto');
@@ -46,7 +47,7 @@ const generateProjectCode = async () => {
 // GET /api/projects — list all (public)
 router.get('/', optionalAuth, async (req, res) => {
     try {
-        const { status, department, category, page = 1, limit = 20, ward, wardNo, area, projectCode } = req.query;
+        const { status, department, category, page = 1, limit = 20, ward, wardNo, area, projectCode, contractor } = req.query;
         const filter = {};
         if (status) filter.status = status;
         if (department) filter.department = department;
@@ -54,6 +55,7 @@ router.get('/', optionalAuth, async (req, res) => {
         if (ward) filter['location.ward'] = ward;
         if (wardNo) filter['location.wardNo'] = parseInt(wardNo);
         if (area) filter['location.area'] = area;
+        if (contractor) filter.contractor = contractor;
         if (projectCode) {
             filter.projectCode = { $regex: new RegExp('^' + projectCode.trim() + '$', 'i') };
         }
@@ -115,7 +117,8 @@ router.get('/:id', optionalAuth, async (req, res) => {
                     material: exp.material,
                     date: exp.date,
                     invoiceUrl: exp.invoiceUrl,
-                    vendor: exp.vendor
+                    vendor: exp.vendor,
+                    progressPhotoUrl: exp.progressPhotoUrl
                 });
                 if (currentHash !== exp.entryHash) {
                     isTampered = true;
@@ -125,12 +128,16 @@ router.get('/:id', optionalAuth, async (req, res) => {
         }
 
         if (isTampered) {
-            // Trigger emergency notifications if not already handled
-            await notificationService.notifyAllCitizens(
-                '🚨 TAMPER ALERT: Project Expenditure Audit Failed',
-                `Warning: Cryptographic audit failed for project "${project.title}". Financial records may have been tampered with.`,
-                { type: 'tamper_alert', relatedEntity: { entityType: 'Project', entityId: project._id } }
-            );
+            // Only notify citizens — and only ONCE per tamper event (track via a flag on project)
+            if (!project.tamperNotified) {
+                await notifyCitizensOnly(
+                    '🚨 FINANCIAL FRAUD ALERT',
+                    `A security breach has been detected on project "${project.title}"! Cryptographic records were tampered. Funds are at risk. Investigation initiated.`,
+                    { type: 'emergency', relatedEntity: { entityType: 'Project', entityId: project._id } }
+                );
+                // Mark so we don't re-notify on every page load
+                await project.constructor.findByIdAndUpdate(project._id, { tamperNotified: true });
+            }
         }
 
         res.json({ success: true, project: pObj, isTampered });
@@ -199,9 +206,9 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_o
 
         // Handle uploaded files
         if (req.files) {
-            if (req.files.image) projectData.imageUrl = `/uploads/projects/${req.files.image[0].filename}`;
-            if (req.files.report) projectData.reportUrl = `/uploads/projects/${req.files.report[0].filename}`;
-            if (req.files.budgetEstimateProof) projectData.budgetEstimateProofUrl = `/uploads/projects/${req.files.budgetEstimateProof[0].filename}`;
+            if (req.files.image) projectData.imageUrl = req.files.image[0].location || `/uploads/projects/${req.files.image[0].filename}`;
+            if (req.files.report) projectData.reportUrl = req.files.report[0].location || `/uploads/projects/${req.files.report[0].filename}`;
+            if (req.files.budgetEstimateProof) projectData.budgetEstimateProofUrl = req.files.budgetEstimateProof[0].location || `/uploads/projects/${req.files.budgetEstimateProof[0].filename}`;
         }
 
         // Budget Locking Logic
@@ -502,10 +509,10 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
 
         // Handle uploaded files
         if (req.files) {
-            if (req.files.report) project.reportUrl = `/uploads/projects/${req.files.report[0].filename}`;
+            if (req.files.report) project.reportUrl = req.files.report[0].location || `/uploads/projects/${req.files.report[0].filename}`;
             if (req.files.progressPhoto) {
                 project.progressPhotos.push({
-                    url: `/uploads/projects/${req.files.progressPhoto[0].filename}`,
+                    url: req.files.progressPhoto[0].location || `/uploads/projects/${req.files.progressPhoto[0].filename}`,
                     description: remarks || `Progress update for ${status}`,
                     timestamp: new Date()
                 });

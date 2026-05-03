@@ -9,6 +9,7 @@ import { requestForToken } from '../firebase';
 const NAV_ITEMS = {
     citizen: [
         { to: '/', icon: <FiGrid />, label: 'Dashboard' },
+        { to: '/analytics', icon: <FiBarChart2 />, label: 'Analytics' },
         { to: '/projects', icon: <FiFolder />, label: 'Projects' },
         { to: '/grievances', icon: <FiAlertCircle />, label: 'Report a Problem' },
         { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },

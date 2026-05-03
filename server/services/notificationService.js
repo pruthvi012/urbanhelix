@@ -262,6 +262,31 @@ const notifyGrievanceResolution = async (grievance, status) => {
 };
 
 /**
+ * Notify ONLY citizens about tamper alerts (not admins, engineers, etc.)
+ */
+const notifyCitizensOnly = async (title, body, data = {}) => {
+    try {
+        // Find ONLY citizens
+        const citizens = await User.find({ role: 'citizen' });
+        
+        // Create individual notification for each citizen (NOT a broadcast null record)
+        for (const citizen of citizens) {
+            await Notification.create({
+                recipient: citizen._id,
+                title,
+                message: body,
+                type: 'fraud_alert',
+                relatedEntity: data.relatedEntity || null
+            });
+        }
+
+        console.log(`✅ Tamper alert sent to ${citizens.length} citizens only.`);
+    } catch (error) {
+        console.error('Error notifying citizens only:', error);
+    }
+};
+
+/**
  * Notify all citizens (and admins) about public updates (like photos uploaded or bills)
  */
 const notifyAllCitizens = async (title, body, data = {}) => {
@@ -312,5 +337,6 @@ module.exports = {
     notifyMilestoneUpdate,
     notifyGrievanceResolution,
     notifyProjectStakeholders,
-    notifyAllCitizens
+    notifyAllCitizens,
+    notifyCitizensOnly
 };
