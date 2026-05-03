@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { FiGrid, FiFolder, FiCheckSquare, FiDollarSign, FiAlertCircle, FiShield, FiBarChart2, FiLogOut, FiUsers, FiSearch, FiMenu, FiX, FiPlusCircle } from 'react-icons/fi';
 import ChatBot from './ChatBot';
 import NotificationBell from './NotificationBell';
+import { requestForToken } from '../firebase';
 
 const NAV_ITEMS = {
     citizen: [
@@ -55,6 +56,14 @@ export default function Layout() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [showNotificationPrompt, setShowNotificationPrompt] = useState(
+        window.Notification?.permission === 'default'
+    );
+
+    const handleEnableNotifications = async () => {
+        await requestForToken();
+        setShowNotificationPrompt(false);
+    };
 
     const handleLogout = () => {
         logout();
@@ -188,6 +197,27 @@ export default function Layout() {
             )}
 
             <ChatBot />
+
+            {/* Global Notification Prompt */}
+            {showNotificationPrompt && (
+                <div className="modal-overlay" style={{ zIndex: 9999 }}>
+                    <div className="glass-card" style={{ maxWidth: '400px', width: '90%', margin: '0 auto', textAlign: 'center', padding: '30px 20px', background: 'var(--bg-glass-heavy)', border: '1px solid var(--accent-blue)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
+                        <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 2s infinite' }}>🔔</div>
+                        <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px', color: '#fff' }}>Never Miss an Update!</h2>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', lineHeight: 1.6 }}>
+                            Get instant pop-up alerts on your phone when new projects are assigned or progress photos are uploaded in your city.
+                        </p>
+                        <div style={{ display: 'flex', gap: '12px', flexDirection: 'column' }}>
+                            <button className="btn btn-primary" style={{ width: '100%', padding: '12px', fontSize: '15px' }} onClick={handleEnableNotifications}>
+                                Yes, Notify Me Instantly!
+                            </button>
+                            <button className="btn btn-outline" style={{ width: '100%', border: 'none', color: 'var(--text-muted)' }} onClick={() => setShowNotificationPrompt(false)}>
+                                Maybe Later
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
