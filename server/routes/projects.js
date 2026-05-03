@@ -11,6 +11,7 @@ const notificationService = require('../services/notificationService');
 const FundTransaction = require('../models/FundTransaction');
 
 const router = express.Router();
+const crypto = require('crypto');
 
 // GET /api/projects — list all (public)
 router.get('/', async (req, res) => {
@@ -36,6 +37,52 @@ router.get('/', async (req, res) => {
         const total = await Project.countDocuments(filter);
 
         res.json({ success: true, projects, total, page: parseInt(page), totalPages: Math.ceil(total / limit) });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// POST /api/projects/verify-code — contractor verifies access code to unlock project
+router.post('/verify-code', protect, authorize('contractor'), async (req, res) => {
+    try {
+        const { code } = req.body;
+        if (!code) return res.status(400).json({ success: false, message: 'Access code is required.' });
+
+        const project = await Project.findOne({ contractorCode: code.trim().toUpperCase() })
+            .populate('department', 'name ward')
+            .populate('proposedBy', 'name email')
+            .populate('engineer', 'name email')
+            .populate('contractor', 'name email');
+
+        if (!project) return res.status(404).json({ success: false, message: 'Invalid code. No project found with this access code.' });
+
+        if (project.contractor?._id?.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'This code belongs to a different contractor.' });
+        }
+
+        project.contractorCodeVerified = true;
+        await project.save();
+
+        res.json({ success: true, message: 'Project unlocked successfully!', project });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// GET /api/projects/my-projects — contractor gets only their verified projects
+router.get('/my-projects', protect, authorize('contractor'), async (req, res) => {
+    try {
+        const projects = await Project.find({
+            contractor: req.user._id,
+            contractorCodeVerified: true
+        })
+            .populate('department', 'name ward')
+            .populate('proposedBy', 'name email')
+            .populate('engineer', 'name email')
+            .populate('contractor', 'name email')
+            .sort({ createdAt: -1 });
+
+        res.json({ success: true, projects });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -372,7 +419,7 @@ router.put('/:id/approve', protect, authorize('financial_officer'), async (req, 
     }
 });
 
-// PUT /api/projects/:id/assign — assign contractor
+// PUT /api/projects/:id/assign — assign contractor + generate access code
 router.put('/:id/assign', protect, authorize('engineer', 'admin'), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -380,7 +427,13 @@ router.put('/:id/assign', protect, authorize('engineer', 'admin'), async (req, r
 
         const { contractorId, startDate, expectedEndDate } = req.body;
 
+        // Generate unique contractor access code
+        const codeRaw = crypto.randomBytes(4).toString('hex').toUpperCase();
+        const contractorCode = `UHX-${codeRaw}`;
+
         project.contractor = contractorId;
+        project.contractorCode = contractorCode;
+        project.contractorCodeVerified = false;
         project.status = 'in_progress';
         project.startDate = startDate || new Date();
         project.expectedEndDate = expectedEndDate;
@@ -418,11 +471,12 @@ router.put('/:id/assign', protect, authorize('engineer', 'admin'), async (req, r
             { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
         );
 
-        res.json({ success: true, project });
+        res.json({ success: true, project, contractorCode });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
 
 // PUT /api/projects/:id/status — update project status
 router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'), upload.fields([{ name: 'report', maxCount: 1 }, { name: 'progressPhoto', maxCount: 1 }]), async (req, res) => {

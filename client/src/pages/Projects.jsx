@@ -27,11 +27,23 @@ export default function Projects() {
     const [budgetProof, setBudgetProof] = useState(null);
     const [showRevisionModal, setShowRevisionModal] = useState(false);
     const [revisionForm, setRevisionForm] = useState({ newBudget: '', reason: '' });
+    const [contractorCodeInput, setContractorCodeInput] = useState('');
+    const [codeError, setCodeError] = useState('');
+    const [codeSuccess, setCodeSuccess] = useState('');
+    const [generatedCode, setGeneratedCode] = useState(null);
+    const [showCodeModal, setShowCodeModal] = useState(false);
 
     useEffect(() => { loadData(); }, [filter]);
 
     const loadData = async () => {
         try {
+            // Contractors only see their verified projects
+            if (user?.role === 'contractor') {
+                const projRes = await projectAPI.getMyProjects();
+                setProjects(projRes.data.projects || []);
+                setLoading(false);
+                return;
+            }
             const params = {};
             if (filter.status) params.status = filter.status;
             if (filter.category) params.category = filter.category;
@@ -139,14 +151,33 @@ export default function Projects() {
 
     const handleAssign = async (contractorId) => {
         try {
-            await projectAPI.assign(selectedProject._id, {
+            const res = await projectAPI.assign(selectedProject._id, {
                 contractorId,
                 startDate: new Date(),
                 expectedEndDate: new Date(Date.now() + 180 * 86400000),
             });
             setShowAssignModal(false);
+            // Show the generated contractor code
+            if (res.data.contractorCode) {
+                setGeneratedCode(res.data.contractorCode);
+                setShowCodeModal(true);
+            }
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error'); }
+    };
+
+    const handleVerifyCode = async (e) => {
+        e.preventDefault();
+        setCodeError('');
+        setCodeSuccess('');
+        try {
+            const res = await projectAPI.verifyCode({ code: contractorCodeInput });
+            setCodeSuccess(`Project "${res.data.project?.title}" unlocked successfully!`);
+            setContractorCodeInput('');
+            loadData();
+        } catch (err) {
+            setCodeError(err.response?.data?.message || 'Invalid code. Please try again.');
+        }
     };
 
     const handleUpdateStatus = async (id) => {
@@ -283,10 +314,28 @@ export default function Projects() {
     return (
         <div>
             <div className="page-header">
-                <h1 className="page-title">Projects</h1>
-                <p className="page-subtitle">Municipal infrastructure projects lifecycle</p>
+                <h1 className="page-title">{user?.role === 'contractor' ? 'My Projects' : 'Projects'}</h1>
+                <p className="page-subtitle">{user?.role === 'contractor' ? 'Enter your project access code to view assigned work' : 'Municipal infrastructure projects lifecycle'}</p>
             </div>
 
+            {/* CONTRACTOR CODE ENTRY UI */}
+            {user?.role === 'contractor' && (
+                <div className="glass-card" style={{ marginBottom: '24px', padding: '24px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>🔐 Enter Project Access Code</h3>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '13px' }}>You will receive a unique access code (e.g. UHX-XXXXXXXX) from the assigned engineer. Enter it below to unlock your project.</p>
+                    <form onSubmit={handleVerifyCode} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        <div className="form-group" style={{ flex: 1, minWidth: '200px', marginBottom: 0 }}>
+                            <input className="form-input" type="text" placeholder="UHX-XXXXXXXX" value={contractorCodeInput} onChange={(e) => setContractorCodeInput(e.target.value.toUpperCase())} required style={{ fontFamily: 'monospace', fontSize: '16px', letterSpacing: '2px', textTransform: 'uppercase' }} />
+                        </div>
+                        <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>Unlock Project</button>
+                    </form>
+                    {codeError && <div style={{ marginTop: '12px', padding: '10px', borderRadius: '8px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: '13px', fontWeight: 600 }}>{codeError}</div>}
+                    {codeSuccess && <div style={{ marginTop: '12px', padding: '10px', borderRadius: '8px', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '13px', fontWeight: 600 }}>{codeSuccess}</div>}
+                </div>
+            )}
+
+            {/* Filters (hidden for contractors) */}
+            {user?.role !== 'contractor' && (
             <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
                 <select className="form-select" style={{ width: 'auto' }} value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}>
                     <option value="">All Status</option>
@@ -324,6 +373,7 @@ export default function Projects() {
                     <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Proposal</button>
                 )}
             </div>
+            )}
 
             <div className="projects-categorized">
                 {['road', 'drainage', 'water_supply', 'sanitation', 'electricity', 'park', 'bridge', 'building', 'other']
@@ -719,6 +769,35 @@ export default function Projects() {
                         <div style={{ marginTop: '20px', textAlign: 'right' }}>
                             <button className="btn btn-primary" onClick={() => setShowWardDir(false)}>Close Directory</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Generated Contractor Code Modal */}
+            {showCodeModal && generatedCode && (
+                <div className="modal-overlay" onClick={() => setShowCodeModal(false)}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔑</div>
+                        <h3 className="modal-title" style={{ marginBottom: '8px' }}>Contractor Access Code Generated</h3>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '13px' }}>
+                            Share this unique code with the assigned contractor. They must enter it in their account to access this project.
+                        </p>
+                        <div style={{ background: 'rgba(0,0,0,0.3)', border: '2px dashed var(--accent-blue)', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+                            <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 800, letterSpacing: '3px', color: 'var(--accent-blue)' }}>
+                                {generatedCode}
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                            <button className="btn btn-primary" onClick={() => { navigator.clipboard.writeText(generatedCode); alert('Code copied to clipboard!'); }}>
+                                Copy Code
+                            </button>
+                            <button className="btn btn-outline" onClick={() => setShowCodeModal(false)}>
+                                Done
+                            </button>
+                        </div>
+                        <p style={{ marginTop: '16px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                            ⚠️ This code is shown only once. Please note it down or copy it now.
+                        </p>
                     </div>
                 </div>
             )}

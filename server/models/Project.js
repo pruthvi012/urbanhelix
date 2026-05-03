@@ -12,6 +12,8 @@ const projectSchema = new mongoose.Schema({
     proposedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     engineer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     contractor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    contractorCode: { type: String, default: null, unique: true, sparse: true },
+    contractorCodeVerified: { type: Boolean, default: false },
     estimatedBudget: { type: Number, required: true },
     allocatedBudget: { type: Number, default: 0 },
     spentBudget: { type: Number, default: 0 },
