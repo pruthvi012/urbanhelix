@@ -14,8 +14,8 @@ const crypto = require('crypto');
 const router = express.Router();
 
 const calculateEntryHash = (data) => {
-    const { amount, material, date, invoiceUrl, vendor, progressPhotoUrl, gpsLat, gpsLng } = data;
-    const str = `${amount}|${material}|${new Date(date).toISOString()}|${invoiceUrl}|${vendor}|${progressPhotoUrl||''}|${gpsLat||''}|${gpsLng||''}`;
+    const { amount, material, date, invoiceUrl, vendor, progressPhotoUrl } = data;
+    const str = `${amount}|${material}|${new Date(date).toISOString()}|${invoiceUrl}|${vendor}|${progressPhotoUrl||''}`;
     return crypto.createHash('sha256').update(str).digest('hex');
 };
 
@@ -671,7 +671,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
         const project = await Project.findById(req.params.id).populate('engineer', 'name _id');
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        const { date, invoiceDate, amount, material, vendor, remarks, gpsLat, gpsLng } = req.body;
+        const { date, invoiceDate, amount, material, vendor, remarks } = req.body;
 
         if (!date || !invoiceDate || !amount || !material || !vendor) {
             return res.status(400).json({ success: false, message: 'All fields (date, invoiceDate, amount, material, vendor) are required' });
@@ -709,9 +709,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
         // Calculate Cryptographic Hash including all fields
         const entryHash = calculateEntryHash({
             amount: expAmount, material, date, invoiceUrl, vendor,
-            progressPhotoUrl,
-            gpsLat: gpsLat ? parseFloat(gpsLat) : null,
-            gpsLng: gpsLng ? parseFloat(gpsLng) : null
+            progressPhotoUrl
         });
 
         // Record expenditure (pending engineer verification)
@@ -723,8 +721,6 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             vendor,
             invoiceUrl,
             progressPhotoUrl,
-            gpsLat: gpsLat ? parseFloat(gpsLat) : null,
-            gpsLng: gpsLng ? parseFloat(gpsLng) : null,
             entryHash,
             remarks: remarks || '',
             recordedBy: req.user._id,

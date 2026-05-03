@@ -22,8 +22,7 @@ export default function ProjectDetail() {
         date: new Date().toISOString().split('T')[0], 
         invoiceDate: new Date().toISOString().split('T')[0],
         amount: '', material: '', vendor: '', remarks: '',
-        invoice: null, progressPhoto: null,
-        gpsLat: '', gpsLng: ''
+        invoice: null, progressPhoto: null
     });
 
     const CATEGORY_MATERIALS = {
@@ -105,17 +104,7 @@ export default function ProjectDetail() {
         return `₹${amt.toLocaleString()}`;
     };
 
-    const captureGPS = () => {
-        setGpsLoading(true);
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                setExpenseForm(f => ({ ...f, gpsLat: pos.coords.latitude.toFixed(6), gpsLng: pos.coords.longitude.toFixed(6) }));
-                setGpsLoading(false);
-            },
-            () => { alert('Could not get GPS location. Please enable location access.'); setGpsLoading(false); },
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
-    };
+
 
     const handleVerifyExpense = async (expId, verified) => {
         const remarks = verified ? 'Physically verified at site' : prompt('Reason for rejection:') || 'Rejected';
@@ -133,7 +122,6 @@ export default function ProjectDetail() {
         }
         if (!expenseForm.invoice) { alert('Invoice/bill upload is mandatory!'); return; }
         if (!expenseForm.progressPhoto) { alert('Geo-tagged progress photo is mandatory!'); return; }
-        if (!expenseForm.gpsLat || !expenseForm.gpsLng) { alert('GPS location is required. Click "Capture GPS" first.'); return; }
 
         const remaining = (project.allocatedBudget || project.estimatedBudget) - project.spentBudget;
         if (Number(expenseForm.amount) > remaining) {
@@ -148,15 +136,13 @@ export default function ProjectDetail() {
         formData.append('material', expenseForm.material);
         formData.append('vendor', expenseForm.vendor);
         formData.append('remarks', expenseForm.remarks);
-        formData.append('gpsLat', expenseForm.gpsLat);
-        formData.append('gpsLng', expenseForm.gpsLng);
         formData.append('invoice', expenseForm.invoice);
         formData.append('progressPhoto', expenseForm.progressPhoto);
 
         try {
             await projectAPI.logExpenditure(id, formData);
             setShowExpenseModal(false);
-            setExpenseForm({ date: new Date().toISOString().split('T')[0], invoiceDate: new Date().toISOString().split('T')[0], amount: '', material: '', vendor: '', remarks: '', invoice: null, progressPhoto: null, gpsLat: '', gpsLng: '' });
+            setExpenseForm({ date: new Date().toISOString().split('T')[0], invoiceDate: new Date().toISOString().split('T')[0], amount: '', material: '', vendor: '', remarks: '', invoice: null, progressPhoto: null });
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error logging expense'); }
     };
@@ -343,7 +329,7 @@ export default function ProjectDetail() {
                     <div className="table-container">
                         <table className="table">
                             <thead>
-                                <tr><th>Date</th><th>Material</th><th>Vendor</th><th>Amount</th><th>Invoice</th><th>Site Photo & GPS</th><th>Hash</th><th>Engineer Verification</th></tr>
+                                <tr><th>Date</th><th>Material</th><th>Vendor</th><th>Amount</th><th>Invoice</th><th>Site Photo</th><th>Hash</th><th>Engineer Verification</th></tr>
                             </thead>
                             <tbody>
                                 {project.expenditures.sort((a, b) => new Date(b.date) - new Date(a.date)).map((exp) => (
@@ -357,7 +343,6 @@ export default function ProjectDetail() {
                                         </td>
                                         <td>
                                             {exp.progressPhotoUrl && <a href={exp.progressPhotoUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', textDecoration: 'none', marginRight: '4px' }}>📸 Photo</a>}
-                                            {exp.gpsLat && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>📍 {parseFloat(exp.gpsLat).toFixed(4)},{parseFloat(exp.gpsLng).toFixed(4)}</span>}
                                         </td>
                                         <td><span className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', fontSize: '10px' }}>🔒 SHA-256</span></td>
                                         <td>
@@ -608,22 +593,14 @@ export default function ProjectDetail() {
                                 <input className="form-input" type="file" accept="image/*" capture="environment" onChange={(e) => setExpenseForm({ ...expenseForm, progressPhoto: e.target.files[0] })} required />
                                 <small style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Take a photo at the work site. Photo location must match the ward.</small>
                             </div>
-                            <div className="form-group">
-                                <label className="form-label">📍 GPS Location <span style={{ color: 'var(--accent-red)' }}>*Required</span></label>
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    <button type="button" className="btn btn-outline btn-sm" onClick={captureGPS} disabled={gpsLoading}>
-                                        {gpsLoading ? '⏳ Getting GPS...' : '📍 Capture My GPS Location'}
-                                    </button>
-                                    {expenseForm.gpsLat && <span style={{ fontSize: '11px', color: 'var(--accent-green)', fontWeight: 600 }}>✅ {expenseForm.gpsLat}, {expenseForm.gpsLng}</span>}
-                                </div>
-                            </div>
+
                             <div className="form-group">
                                 <label className="form-label">Remarks (Optional)</label>
                                 <input className="form-input" type="text" placeholder="Additional details..." value={expenseForm.remarks} onChange={(e) => setExpenseForm({ ...expenseForm, remarks: e.target.value })} />
                             </div>
                             <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-                                <button type="submit" className="btn btn-primary" disabled={expenseForm.date !== expenseForm.invoiceDate || !expenseForm.gpsLat}>
-                                    {expenseForm.date !== expenseForm.invoiceDate ? '⚠️ Fix Date Mismatch' : !expenseForm.gpsLat ? '📍 GPS Required' : '🔒 Lock & Submit Expense'}
+                                <button type="submit" className="btn btn-primary" disabled={expenseForm.date !== expenseForm.invoiceDate}>
+                                    {expenseForm.date !== expenseForm.invoiceDate ? '⚠️ Fix Date Mismatch' : '🔒 Lock & Submit Expense'}
                                 </button>
                                 <button type="button" className="btn btn-outline" onClick={() => setShowExpenseModal(false)}>Cancel</button>
                             </div>

@@ -37,8 +37,7 @@ export default function ContractorExpenses() {
         date: new Date().toISOString().split('T')[0],
         invoiceDate: new Date().toISOString().split('T')[0],
         amount: '', material: '', vendor: '', remarks: '',
-        invoice: null, progressPhoto: null,
-        gpsLat: '', gpsLng: ''
+        invoice: null, progressPhoto: null
     });
     const location = useLocation();
 
@@ -87,24 +86,13 @@ export default function ContractorExpenses() {
         } finally { setLoading(false); }
     };
 
-    const captureGPS = () => {
-        setGpsLoading(true);
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                setForm(f => ({ ...f, gpsLat: pos.coords.latitude.toFixed(6), gpsLng: pos.coords.longitude.toFixed(6) }));
-                setGpsLoading(false);
-            },
-            () => { alert('Could not get GPS. Please enable location access.'); setGpsLoading(false); },
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
-    };
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (form.date !== form.invoiceDate) { alert('Expenditure date must exactly match the invoice date!'); return; }
         if (!form.invoice) { alert('Invoice/bill upload is mandatory!'); return; }
         if (!form.progressPhoto) { alert('Site progress photo is mandatory!'); return; }
-        if (!form.gpsLat || !form.gpsLng) { alert('GPS location is required. Tap "Capture GPS" first.'); return; }
 
         const remaining = (selectedProject.allocatedBudget || selectedProject.estimatedBudget) - selectedProject.spentBudget;
         if (Number(form.amount) > remaining) { alert(`Amount exceeds remaining budget of ${formatCurrency(remaining)}!`); return; }
@@ -116,8 +104,6 @@ export default function ContractorExpenses() {
         formData.append('material', form.material);
         formData.append('vendor', form.vendor);
         formData.append('remarks', form.remarks);
-        formData.append('gpsLat', form.gpsLat);
-        formData.append('gpsLng', form.gpsLng);
         formData.append('invoice', form.invoice);
         formData.append('progressPhoto', form.progressPhoto);
 
@@ -125,7 +111,7 @@ export default function ContractorExpenses() {
         try {
             await projectAPI.logExpenditure(selectedProject._id, formData);
             setSuccess(true);
-            setForm({ date: new Date().toISOString().split('T')[0], invoiceDate: new Date().toISOString().split('T')[0], amount: '', material: '', vendor: '', remarks: '', invoice: null, progressPhoto: null, gpsLat: '', gpsLng: '' });
+            setForm({ date: new Date().toISOString().split('T')[0], invoiceDate: new Date().toISOString().split('T')[0], amount: '', material: '', vendor: '', remarks: '', invoice: null, progressPhoto: null });
             // Refresh project to update remaining budget
             const res = await projectAPI.getAll({ projectCode: projectCode.trim() });
             const found = (res.data.projects || []).filter(p => p.contractor?._id === user?._id || p.contractor === user?._id);
@@ -142,7 +128,7 @@ export default function ContractorExpenses() {
         <div>
             <div className="page-header">
                 <h1 className="page-title">💰 Log Work Expense</h1>
-                <p className="page-subtitle">Submit material expenses with invoice proof and GPS verification</p>
+                <p className="page-subtitle">Submit material expenses with invoice proof</p>
             </div>
 
             {/* Step 1: Enter Project Code */}
@@ -288,22 +274,7 @@ export default function ContractorExpenses() {
                                 <small style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Take a live photo at the actual work site. Location must match the project ward to prevent fake submissions.</small>
                             </div>
 
-                            {/* GPS */}
-                            <div className="form-group" style={{ background: 'rgba(255,255,255,0.03)', border: '1px dashed var(--glass-border)', borderRadius: '12px', padding: '16px' }}>
-                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <FiMapPin /> GPS Location <span style={{ color: 'var(--accent-red)', fontSize: '11px' }}>*Mandatory</span>
-                                </label>
-                                <button type="button" className={`btn ${form.gpsLat ? 'btn-outline' : 'btn-primary'} btn-sm`} onClick={captureGPS} disabled={gpsLoading} style={{ marginBottom: '8px' }}>
-                                    {gpsLoading ? '⏳ Capturing GPS...' : form.gpsLat ? '🔄 Recapture GPS' : '📍 Capture My GPS Location'}
-                                </button>
-                                {form.gpsLat ? (
-                                    <div style={{ fontSize: '13px', color: 'var(--accent-green)', fontWeight: 600, background: 'rgba(16,185,129,0.1)', padding: '8px 12px', borderRadius: '8px' }}>
-                                        ✅ Location captured: {form.gpsLat}, {form.gpsLng}
-                                    </div>
-                                ) : (
-                                    <small style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'block' }}>Tap the button above to capture your current GPS coordinates. You must be at the work site.</small>
-                                )}
-                            </div>
+
 
                             {/* Remarks */}
                             <div className="form-group">
@@ -319,12 +290,11 @@ export default function ContractorExpenses() {
                                 <button
                                     type="submit"
                                     className="btn btn-primary"
-                                    disabled={submitting || form.date !== form.invoiceDate || !form.gpsLat}
+                                    disabled={submitting || form.date !== form.invoiceDate}
                                     style={{ width: '100%', padding: '14px', fontSize: '16px', fontWeight: 700 }}
                                 >
                                     {submitting ? '⏳ Submitting...' :
                                         form.date !== form.invoiceDate ? '⚠️ Fix Date Mismatch to Continue' :
-                                        !form.gpsLat ? '📍 Capture GPS to Continue' :
                                         '🔒 Lock & Submit Expense Entry'}
                                 </button>
                             </div>
@@ -340,7 +310,7 @@ export default function ContractorExpenses() {
                             <div className="table-container">
                                 <table className="table">
                                     <thead>
-                                        <tr><th>Date</th><th>Material</th><th>Vendor</th><th>Amount</th><th>Invoice</th><th>GPS</th><th>Engineer Status</th></tr>
+                                        <tr><th>Date</th><th>Material</th><th>Vendor</th><th>Amount</th><th>Invoice</th><th>Engineer Status</th></tr>
                                     </thead>
                                     <tbody>
                                         {[...selectedProject.expenditures].reverse().map((exp) => (
@@ -350,7 +320,7 @@ export default function ContractorExpenses() {
                                                 <td style={{ fontSize: '13px' }}>{exp.vendor}</td>
                                                 <td style={{ fontWeight: 700, color: 'var(--accent-red)' }}>{formatCurrency(exp.amount)}</td>
                                                 <td><a href={exp.invoiceUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent-blue)', textDecoration: 'none' }}>📄 View</a></td>
-                                                <td><span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{exp.gpsLat ? `📍 ${parseFloat(exp.gpsLat).toFixed(3)},${parseFloat(exp.gpsLng).toFixed(3)}` : '—'}</span></td>
+
                                                 <td>
                                                     {exp.engineerVerified
                                                         ? <span className="tx-tag" style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--accent-green)' }}>✅ Verified</span>
