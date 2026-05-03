@@ -1,5 +1,6 @@
-const Ward = require('../models/Ward');
-const Department = require('../models/Department');
+const mongoose = require('mongoose');
+const Ward = mongoose.model('Ward');
+const Department = mongoose.model('Department');
 
 const seedWards = [
     { wardNo: 156, name: 'Kempapura Agrahara', assemblyConstituency: 'Vijayanagar AC (167)', areas: ['RPC Layout', 'Binny Layout', 'Hosahalli Main Road'] },
@@ -51,8 +52,8 @@ const seedAll = async () => {
 
         console.log('🏁 Data seeding verification complete.');
     } catch (err) {
-        console.error('❌ Seeding failed at stage:', err.message);
-        throw err; // Re-throw to be caught by server.js
+        console.error('❌ SEEDING CRITICAL FAILURE:', err);
+        throw err; // Re-throw to be caught by server.js or route
     }
 };
 
