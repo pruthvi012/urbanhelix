@@ -356,6 +356,8 @@ export default function Projects() {
                     <option value="building">Building</option>
                     <option value="drainage">Drainage</option>
                 </select>
+                {user?.role === 'engineer' && (
+                <>
                 <select className="form-select" style={{ width: 'auto' }} value={filter.wardNo} onChange={(e) => setFilter({ ...filter, wardNo: e.target.value, area: '' })}>
                     <option value="">All Wards</option>
                     {wards.map(w => <option key={w._id} value={w.wardNo}>Ward {w.wardNo}: {w.name}</option>)}
@@ -369,8 +371,8 @@ export default function Projects() {
                     </select>
                 )}
                 <button className="btn btn-outline" onClick={() => setShowWardDir(true)}>📂 Ward Directory</button>
-                {user?.role === 'engineer' && (
-                    <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Proposal</button>
+                <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Proposal</button>
+                </>
                 )}
             </div>
             )}
@@ -397,8 +399,12 @@ export default function Projects() {
                                             <thead>
                                                 <tr>
                                                     <th>Project</th>
-                                                    <th>Ward</th>
-                                                    <th>Area</th>
+                                                    {user?.role === 'engineer' && (
+                                                        <>
+                                                            <th>Ward</th>
+                                                            <th>Area</th>
+                                                        </>
+                                                    )}
                                                     <th>Status</th>
                                                     {user?.role !== 'citizen' && (
                                                         <>
@@ -427,10 +433,14 @@ export default function Projects() {
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td style={{ fontSize: '13px' }}>
-                                                            {p.location?.ward}
-                                                        </td>
-                                                        <td style={{ fontSize: '13px' }}>{p.location?.area}</td>
+                                                        {user?.role === 'engineer' && (
+                                                            <>
+                                                                <td style={{ fontSize: '13px' }}>
+                                                                    {p.location?.ward}
+                                                                </td>
+                                                                <td style={{ fontSize: '13px' }}>{p.location?.area}</td>
+                                                            </>
+                                                        )}
                                                         <td>
                                                             <span className={`status-badge ${p.status}`}>{p.status.replace('_', ' ')}</span>
                                                         </td>

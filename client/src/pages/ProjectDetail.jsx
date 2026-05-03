@@ -142,7 +142,11 @@ export default function ProjectDetail() {
                         <span className="tx-tag">⛓️ Verified on Blockchain</span>
                     </div>
                     <h1 className="page-title">{project.title}</h1>
-                    <p className="page-subtitle"><FiMapPin /> {project.location?.address}, Ward {project.location?.ward} • {project.category?.replace('_', ' ')}</p>
+                    <p className="page-subtitle">
+                        <FiMapPin /> {project.location?.address}
+                        {user?.role === 'engineer' && ` • Ward ${project.location?.ward} (${project.location?.area})`}
+                        {` • ${project.category?.replace('_', ' ')}`}
+                    </p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Current Status</div>

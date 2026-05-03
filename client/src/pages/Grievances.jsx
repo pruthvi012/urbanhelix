@@ -135,10 +135,12 @@ export default function Grievances() {
                                     )}
                                 </div>
                                 <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>{g.title}</h3>
-                                <div style={{ display: 'flex', gap: '15px', marginBottom: '12px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><FiMapPin size={14} /> Ward: {g.ward}</span>
-                                    <span>Area: {g.area}</span>
-                                </div>
+                                {user?.role === 'engineer' && (
+                                    <div style={{ display: 'flex', gap: '15px', marginBottom: '12px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><FiMapPin size={14} /> Ward: {g.ward}</span>
+                                        <span>Area: {g.area}</span>
+                                    </div>
+                                )}
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.6, marginBottom: '15px' }}>{g.description}</p>
                                 
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '15px' }}>
