@@ -57,7 +57,7 @@ export default function Layout() {
     const navigate = useNavigate();
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [showNotificationPrompt, setShowNotificationPrompt] = useState(
-        window.Notification?.permission === 'default'
+        window.Notification && (window.Notification.permission === 'default' || window.Notification.permission === 'denied')
     );
 
     const handleEnableNotifications = async () => {
@@ -204,17 +204,34 @@ export default function Layout() {
                     <div className="glass-card" style={{ maxWidth: '400px', width: '90%', margin: '0 auto', textAlign: 'center', padding: '30px 20px', background: 'var(--bg-glass-heavy)', border: '1px solid var(--accent-blue)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
                         <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 2s infinite' }}>🔔</div>
                         <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px', color: '#fff' }}>Never Miss an Update!</h2>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', lineHeight: 1.6 }}>
-                            Get instant pop-up alerts on your phone when new projects are assigned or progress photos are uploaded in your city.
-                        </p>
-                        <div style={{ display: 'flex', gap: '12px', flexDirection: 'column' }}>
-                            <button className="btn btn-primary" style={{ width: '100%', padding: '12px', fontSize: '15px' }} onClick={handleEnableNotifications}>
-                                Yes, Notify Me Instantly!
-                            </button>
-                            <button className="btn btn-outline" style={{ width: '100%', border: 'none', color: 'var(--text-muted)' }} onClick={() => setShowNotificationPrompt(false)}>
-                                Maybe Later
-                            </button>
-                        </div>
+                        
+                        {window.Notification?.permission === 'denied' ? (
+                            <>
+                                <p style={{ color: 'var(--accent-red)', fontSize: '14px', marginBottom: '24px', lineHeight: 1.6, fontWeight: 'bold' }}>
+                                    Notifications are currently BLOCKED in your phone's browser settings.
+                                </p>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '24px' }}>
+                                    To receive updates, please tap the lock icon next to the URL in your browser, go to Site Settings, and change Notifications to "Allow".
+                                </p>
+                                <button className="btn btn-outline" style={{ width: '100%', border: 'none', color: 'var(--text-muted)' }} onClick={() => setShowNotificationPrompt(false)}>
+                                    I understand, dismiss
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', lineHeight: 1.6 }}>
+                                    Get instant pop-up alerts on your phone when new projects are assigned or progress photos are uploaded in your city.
+                                </p>
+                                <div style={{ display: 'flex', gap: '12px', flexDirection: 'column' }}>
+                                    <button className="btn btn-primary" style={{ width: '100%', padding: '12px', fontSize: '15px' }} onClick={handleEnableNotifications}>
+                                        Yes, Notify Me Instantly!
+                                    </button>
+                                    <button className="btn btn-outline" style={{ width: '100%', border: 'none', color: 'var(--text-muted)' }} onClick={() => setShowNotificationPrompt(false)}>
+                                        Maybe Later
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
