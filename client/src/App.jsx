@@ -15,6 +15,7 @@ import Audit from './pages/Audit';
 import Analytics from './pages/Analytics';
 import ContractorExpenses from './pages/ContractorExpenses';
 import './index.css';
+import GlobalTamperWarning from './components/GlobalTamperWarning';
 
 function ProtectedRoute({ children }) {
     const { user, loading } = useAuth();
@@ -32,22 +33,25 @@ function PublicRoute({ children }) {
 
 function AppRoutes() {
     return (
-        <Routes>
-            <Route path="/install" element={<Install />} />
-            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-                <Route index element={<Dashboard />} />
-                <Route path="projects" element={<Projects />} />
-                <Route path="projects/:id" element={<ProjectDetail />} />
-                <Route path="milestones" element={<Milestones />} />
-                <Route path="funds" element={<Funds />} />
-                <Route path="grievances" element={<Grievances />} />
-                <Route path="audit" element={<Audit />} />
-                <Route path="analytics" element={<Analytics />} />
-                <Route path="expenses" element={<ContractorExpenses />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <>
+            <GlobalTamperWarning />
+            <Routes>
+                <Route path="/install" element={<Install />} />
+                <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+                <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="projects" element={<Projects />} />
+                    <Route path="projects/:id" element={<ProjectDetail />} />
+                    <Route path="milestones" element={<Milestones />} />
+                    <Route path="funds" element={<Funds />} />
+                    <Route path="grievances" element={<Grievances />} />
+                    <Route path="audit" element={<Audit />} />
+                    <Route path="analytics" element={<Analytics />} />
+                    <Route path="expenses" element={<ContractorExpenses />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        </>
     );
 }
 
