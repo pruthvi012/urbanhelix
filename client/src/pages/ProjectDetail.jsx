@@ -54,10 +54,8 @@ export default function ProjectDetail() {
     };
 
     const handleApprove = async () => {
-        const budget = prompt('Enter allocated budget amount:');
-        if (!budget) return;
         try {
-            await projectAPI.approve(id, { allocatedBudget: Number(budget), remarks: 'Approved from details' });
+            await projectAPI.approve(id, { allocatedBudget: Number(project.estimatedBudget), remarks: 'Approved from details' });
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error'); }
     };
@@ -157,8 +155,8 @@ export default function ProjectDetail() {
                 <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                         <span className="badge badge-pending" style={{ fontSize: '10px' }}>ID: {project._id.substring(0, 8).toUpperCase()}</span>
-                        {['engineer', 'admin'].includes(user?.role) && project.projectCode && (
-                            <span className="badge" style={{ fontSize: '10px', background: 'var(--accent-blue)', color: '#fff' }}>Code: {project.projectCode}</span>
+                        {['engineer', 'admin', 'financial_officer'].includes(user?.role) && project.projectCode && (
+                            <span className="badge" style={{ fontSize: '14px', background: 'rgba(255,59,59,0.1)', color: '#ff3b3b', fontWeight: 900, border: '1px solid #ff3b3b' }}>🔑 CODE: {project.projectCode}</span>
                         )}
                         <span className="tx-tag">⛓️ Verified on Blockchain</span>
                     </div>

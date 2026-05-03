@@ -130,11 +130,9 @@ export default function Projects() {
         } catch (err) { alert(err.response?.data?.message || 'Error revising budget'); }
     };
 
-    const handleApprove = async (id) => {
-        const budget = prompt('Enter allocated budget amount:');
-        if (!budget) return;
+    const handleApprove = async (id, estimatedBudget) => {
         try {
-            await projectAPI.approve(id, { allocatedBudget: Number(budget), remarks: 'Approved' });
+            await projectAPI.approve(id, { allocatedBudget: Number(estimatedBudget), remarks: 'Approved' });
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error'); }
     };
@@ -405,8 +403,8 @@ export default function Projects() {
                                                                         {p.title}
                                                                     </Link>
                                                                     {['engineer', 'admin', 'financial_officer'].includes(user?.role) && p.projectCode && (
-                                                                        <div style={{ fontSize: '11px', color: 'var(--accent-green)', fontWeight: 700, marginTop: '4px' }}>
-                                                                            Code: {p.projectCode}
+                                                                        <div style={{ fontSize: '14px', color: '#ff3b3b', fontWeight: 900, marginTop: '6px', background: 'rgba(255,59,59,0.1)', padding: '4px 8px', borderRadius: '4px', display: 'inline-block' }}>
+                                                                            🔑 CODE: {p.projectCode}
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -443,7 +441,7 @@ export default function Projects() {
                                                             <td>
                                                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                                                     {user?.role === 'financial_officer' && p.status === 'proposed' && (
-                                                                        <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id)}>Approve</button>
+                                                                        <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget)}>Approve</button>
                                                                     )}
                                                                     {['engineer', 'admin'].includes(user?.role) && p.status === 'approved' && !p.contractor && (
                                                                         <button className="btn btn-primary btn-sm" onClick={() => openAssign(p)}>Assign</button>
