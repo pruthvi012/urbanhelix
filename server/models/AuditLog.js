@@ -4,7 +4,7 @@ const auditLogSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     action: {
         type: String,
-        enum: ['create', 'update', 'delete', 'approve', 'reject', 'login', 'verify', 'allocate', 'disburse', 'revision'],
+        enum: ['create', 'update', 'delete', 'approve', 'reject', 'login', 'verify', 'allocate', 'disburse', 'revision', 'log_expenditure', 'verify_expenditure'],
         required: true,
     },
     resourceType: {
