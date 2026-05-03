@@ -586,8 +586,8 @@ export default function Dashboard() {
             if (analyticsData?.departmentSpending) {
                 const totalBudget = analyticsData.departmentSpending.reduce((acc, curr) => acc + (curr.totalBudget || curr.allocatedBudget), 0);
                 const totalSpent = analyticsData.departmentSpending.reduce((acc, curr) => acc + curr.spentBudget, 0);
-                const totalAllocated = analyticsData.departmentSpending.reduce((acc, curr) => acc + curr.allocatedBudget, 0);
-                setStats({ totalBudget, totalSpent, totalReleased: totalAllocated });
+                const totalReleased = analyticsData.departmentSpending.reduce((acc, curr) => acc + (curr.totalReleasedFunds || 0), 0);
+                setStats({ totalBudget, totalSpent, totalReleased });
             } else {
                 try {
                     const statsRes = await projectAPI.getStats();

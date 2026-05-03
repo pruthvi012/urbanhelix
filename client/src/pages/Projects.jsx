@@ -29,6 +29,7 @@ export default function Projects() {
     const [showRevisionModal, setShowRevisionModal] = useState(false);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [showReleaseModal, setShowReleaseModal] = useState(false);
+    const [releaseForm, setReleaseForm] = useState({ accountNumber: '', ifscCode: '', bankName: '' });
     const [lightboxUrl, setLightboxUrl] = useState(null);
     const [verifyForm, setVerifyForm] = useState({ verified: true, remarks: '', photo: null, expenditureId: '' });
     const [revisionForm, setRevisionForm] = useState({ newBudget: '', reason: '' });
@@ -160,10 +161,19 @@ export default function Projects() {
     };
 
     const handleRelease = async (projectId, expId) => {
-        if (!window.confirm('Release payment to contractor bank account?')) return;
+        if (!releaseForm.accountNumber || !releaseForm.ifscCode) {
+            alert('Please enter Bank Account Number and IFSC Code to release payment!');
+            return;
+        }
+        if (!window.confirm(`Release payment to Account ${releaseForm.accountNumber}?`)) return;
+        
         try {
-            await projectAPI.releaseExpenditure(projectId, expId);
+            await projectAPI.releaseExpenditure(projectId, expId, releaseForm);
             loadData();
+            // Optional: Close modal if no more pending
+            const p = projects.find(proj => proj._id === projectId);
+            const pending = p.expenditures.filter(e => e.readyForPayment && !e.financeReleased).length;
+            if (pending <= 1) setShowReleaseModal(false);
         } catch (err) { alert(err.response?.data?.message || 'Error'); }
     };
 
@@ -873,13 +883,24 @@ export default function Projects() {
                             <button className="btn-close" onClick={() => setShowReleaseModal(false)}>&times;</button>
                         </div>
                         <div style={{ marginBottom: '20px' }}>
-                            <div style={{ padding: '12px', background: 'rgba(251,191,36,0.1)', borderRadius: '8px', border: '1px solid #fbbf24', marginBottom: '16px' }}>
-                                <h4 style={{ color: '#fbbf24', margin: '0 0 8px 0' }}>🏦 Contractor Bank Details</h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px' }}>
-                                    <div><strong>Name:</strong> {selectedProject?.contractor?.name}</div>
-                                    <div><strong>Bank:</strong> {selectedProject?.contractor?.bankDetails?.bankName || 'Not Set'}</div>
-                                    <div><strong>Account No:</strong> {selectedProject?.contractor?.bankDetails?.accountNumber || 'Not Set'}</div>
-                                    <div><strong>IFSC Code:</strong> {selectedProject?.contractor?.bankDetails?.ifscCode || 'Not Set'}</div>
+                            <div style={{ padding: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid var(--border-glass)', marginBottom: '20px' }}>
+                                <h4 style={{ color: 'var(--accent-blue)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>🏦 Enter Disbursement Details</h4>
+                                <div className="grid-2">
+                                    <div className="form-group">
+                                        <label className="form-label">Bank Name</label>
+                                        <input className="form-input" value={releaseForm.bankName} onChange={e => setReleaseForm({...releaseForm, bankName: e.target.value})} placeholder="e.g. State Bank of India" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Account Number</label>
+                                        <input className="form-input" value={releaseForm.accountNumber} onChange={e => setReleaseForm({...releaseForm, accountNumber: e.target.value})} placeholder="Enter 12-16 digit A/C No." />
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">IFSC Code</label>
+                                    <input className="form-input" value={releaseForm.ifscCode} onChange={e => setReleaseForm({...releaseForm, ifscCode: e.target.value.toUpperCase()})} placeholder="e.g. SBIN0001234" />
+                                </div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                                    💡 <strong>Contractor:</strong> {selectedProject?.contractor?.name}
                                 </div>
                             </div>
                             

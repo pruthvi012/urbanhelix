@@ -61,7 +61,7 @@ export const projectAPI = {
     reviseBudget: (id, data) => api.put(`/projects/${id}/revision`, data),
     logExpenditure: (id, data) => api.post(`/projects/${id}/expenditure`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
     verifyExpenditure: (projectId, expId, data) => api.put(`/projects/${projectId}/expenditure/${expId}/verify`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
-    releaseExpenditure: (projectId, expId) => api.put(`/projects/${projectId}/expenditure/${expId}/release`),
+    releaseExpenditure: (projectId, expId, data) => api.put(`/projects/${projectId}/expenditure/${expId}/release`, data),
     getMaterials: (category) => api.get(`/projects/materials/${category}`),
     getStats: () => api.get('/projects/stats/overview'),
 };

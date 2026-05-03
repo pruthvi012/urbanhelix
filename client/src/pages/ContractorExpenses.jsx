@@ -330,8 +330,11 @@ export default function ContractorExpenses() {
                                                         ? <span className="tx-tag" style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--accent-green)' }}>✅ Verified by Engineer</span>
                                                         : <span className="tx-tag" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24' }}>⏳ Waiting for Engineer Review</span>
                                                     }
-                                                    {exp.readyForPayment && !exp.paid && (
+                                                    {exp.readyForPayment && !exp.financeReleased && (
                                                         <div style={{ fontSize: '10px', color: 'var(--accent-blue)', marginTop: '4px', fontWeight: 600 }}>💰 Ready for Payment Release</div>
+                                                    )}
+                                                    {exp.financeReleased && (
+                                                        <div style={{ fontSize: '10px', color: 'var(--accent-green)', marginTop: '4px', fontWeight: 600 }}>💳 Funds Disbursed to A/C</div>
                                                     )}
                                                 </td>
                                             </tr>

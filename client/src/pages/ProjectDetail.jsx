@@ -17,9 +17,12 @@ export default function ProjectDetail() {
     const [loading, setLoading] = useState(true);
     const [showExpenseModal, setShowExpenseModal] = useState(false);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
+    const [showReleaseModal, setShowReleaseModal] = useState(false);
+    const [releaseForm, setReleaseForm] = useState({ accountNumber: '', ifscCode: '', bankName: '' });
     const [selectedExp, setSelectedExp] = useState(null);
     const [lightboxUrl, setLightboxUrl] = useState(null);
     const [verifyForm, setVerifyForm] = useState({ verified: true, remarks: '', photo: null });
+    const [isTampered, setIsTampered] = useState(false);
     const [expenseForm, setExpenseForm] = useState({ 
         date: new Date().toISOString().split('T')[0], 
         invoiceDate: new Date().toISOString().split('T')[0],
@@ -129,9 +132,16 @@ export default function ProjectDetail() {
     };
 
     const handleReleasePayment = async (expId) => {
-        if (!window.confirm('Are you sure you want to release this payment?')) return;
+        if (!releaseForm.accountNumber || !releaseForm.ifscCode) {
+            alert('Please enter Bank Account Number and IFSC Code!');
+            return;
+        }
+        if (!window.confirm(`Release ₹${formatCurrency(selectedExp?.amount)} to A/C ${releaseForm.accountNumber}?`)) return;
+
         try {
-            await projectAPI.releaseExpenditure(id, expId);
+            await projectAPI.releaseExpenditure(id, expId, releaseForm);
+            setShowReleaseModal(false);
+            setReleaseForm({ accountNumber: '', ifscCode: '', bankName: '' });
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error'); }
     };
@@ -351,7 +361,7 @@ export default function ProjectDetail() {
                     <div className="table-container">
                         <table className="table">
                             <thead>
-                                <tr><th>Date</th><th>Material</th><th>Vendor</th><th>Amount</th><th>Invoice</th><th>Site Photo</th><th>Hash</th><th>Engineer Verification</th></tr>
+                                <tr><th>Date</th><th>Material</th><th>Vendor</th><th>Amount</th><th>Evidence</th><th>Audit Hash</th><th>Status & Actions</th></tr>
                             </thead>
                             <tbody>
                                 {project.expenditures.sort((a, b) => new Date(b.date) - new Date(a.date)).map((exp) => (
@@ -384,8 +394,8 @@ export default function ProjectDetail() {
                                                 )}
 
                                                 {/* Finance Action */}
-                                                {(user?.role === 'finance' || user?.role === 'admin') && exp.readyForPayment && !exp.financeReleased && (
-                                                    <button className="btn btn-accent btn-sm" style={{ fontSize: '11px', background: 'var(--accent-blue)', color: 'white' }} onClick={() => handleReleasePayment(exp._id)}>
+                                                {(user?.role === 'financial_officer' || user?.role === 'admin') && exp.readyForPayment && !exp.financeReleased && (
+                                                    <button className="btn btn-accent btn-sm" style={{ fontSize: '11px', background: 'var(--accent-blue)', color: 'white' }} onClick={() => { setSelectedExp(exp); setShowReleaseModal(true); }}>
                                                         💸 Release Amount
                                                     </button>
                                                 )}
@@ -640,6 +650,39 @@ export default function ProjectDetail() {
                                 <button type="button" className="btn btn-outline" onClick={() => setShowExpenseModal(false)}>Cancel</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* Finance Release Modal */}
+            {showReleaseModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content glass-card" style={{ maxWidth: '500px' }}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">💸 Release Payment</h2>
+                            <button className="btn-close" onClick={() => setShowReleaseModal(false)}>&times;</button>
+                        </div>
+                        <div style={{ padding: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid var(--border-glass)', marginBottom: '20px' }}>
+                            <h4 style={{ color: 'var(--accent-blue)', marginBottom: '16px' }}>🏦 Enter Bank Details</h4>
+                            <div className="form-group">
+                                <label className="form-label">Bank Name</label>
+                                <input className="form-input" value={releaseForm.bankName} onChange={e => setReleaseForm({...releaseForm, bankName: e.target.value})} placeholder="e.g. State Bank of India" />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Account Number</label>
+                                <input className="form-input" value={releaseForm.accountNumber} onChange={e => setReleaseForm({...releaseForm, accountNumber: e.target.value})} placeholder="A/C No." />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">IFSC Code</label>
+                                <input className="form-input" value={releaseForm.ifscCode} onChange={e => setReleaseForm({...releaseForm, ifscCode: e.target.value.toUpperCase()})} placeholder="IFSC Code" />
+                            </div>
+                            <div style={{ marginTop: '10px', fontSize: '14px', fontWeight: 600 }}>
+                                Amount to Release: <span style={{ color: 'var(--accent-red)' }}>{formatCurrency(selectedExp?.amount)}</span>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button className="btn btn-primary" onClick={() => selectedExp && handleReleasePayment(selectedExp._id)}>Confirm Release</button>
+                            <button className="btn btn-outline" onClick={() => setShowReleaseModal(false)}>Cancel</button>
+                        </div>
                     </div>
                 </div>
             )}

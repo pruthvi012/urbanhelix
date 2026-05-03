@@ -108,7 +108,16 @@ router.get('/analytics', async (req, res) => {
                     _id: groupBy,
                     totalBudget: { $sum: '$estimatedBudget' },
                     allocatedBudget: { $sum: '$allocatedBudget' },
-                    spentBudget: { $sum: '$spentBudget' }
+                    spentBudget: { $sum: '$spentBudget' },
+                    totalReleasedFunds: {
+                        $sum: {
+                            $reduce: {
+                                input: "$expenditures",
+                                initialValue: 0,
+                                in: { $add: ["$$value", { $cond: ["$$this.financeReleased", "$$this.amount", 0] }] }
+                            }
+                        }
+                    }
                 }
             },
             {
@@ -116,7 +125,8 @@ router.get('/analytics', async (req, res) => {
                     name: '$_id',
                     totalBudget: 1,
                     allocatedBudget: 1,
-                    spentBudget: 1
+                    spentBudget: 1,
+                    totalReleasedFunds: 1
                 }
             },
             { $sort: { name: 1 } }

@@ -861,6 +861,16 @@ router.put('/:id/expenditure/:expId/release', protect, authorize('financial_offi
             });
         }
 
+        // Record to HashChain
+        try {
+            await HashChainService.addRecord(
+                'payment_released',
+                { projectId: project._id, amount: exp.amount, material: exp.material, account: req.body.accountNumber, releasedBy: req.user.name },
+                { entityType: 'project', entityId: project._id },
+                req.user._id
+            );
+        } catch (err) { console.error('HashChain record failed:', err); }
+
         await project.save();
 
         await AuditLog.create({
@@ -870,6 +880,17 @@ router.put('/:id/expenditure/:expId/release', protect, authorize('financial_offi
             resourceId: project._id,
             details: `Finance RELEASED payment: ₹${exp.amount.toLocaleString()} to A/C ${req.body.accountNumber || 'N/A'} for ${exp.material} on project ${project.title}`,
         });
+
+        // Notify Contractor
+        if (project.contractor) {
+            await Notification.create({
+                user: project.contractor._id || project.contractor,
+                title: '💰 Payment Released!',
+                message: `BBMP Finance has released ₹${exp.amount.toLocaleString()} for "${exp.material}" to your bank account.`,
+                type: 'system',
+                relatedEntity: { entityType: 'Project', entityId: project._id }
+            });
+        }
 
         res.json({ success: true, expenditure: exp, message: 'Payment released successfully' });
     } catch (error) {
