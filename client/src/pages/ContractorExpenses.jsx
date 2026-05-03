@@ -45,12 +45,27 @@ export default function ContractorExpenses() {
         if (!projectCode.trim()) return;
         setLoading(true);
         setCodeSearched(true);
+        setProjects([]);
         try {
             const res = await projectAPI.getAll({ projectCode: projectCode.trim() });
-            const found = (res.data.projects || []).filter(p => p.contractor?._id === user?._id || p.contractor === user?._id);
-            setProjects(found);
-            if (found.length === 1) setSelectedProject(found[0]);
-        } catch (e) { setProjects([]); } finally { setLoading(false); }
+            const allFound = res.data.projects || [];
+            
+            const mine = allFound.filter(p => {
+                const contractorId = p.contractor?._id || p.contractor;
+                const myId = user?._id || user?.id;
+                return contractorId && myId && contractorId.toString() === myId.toString();
+            });
+
+            if (allFound.length > 0 && mine.length === 0) {
+                alert("Project found, but you are not the assigned contractor for this project. Please contact the Engineer.");
+            }
+
+            setProjects(mine);
+            if (mine.length === 1) setSelectedProject(mine[0]);
+        } catch (e) { 
+            console.error("Search error:", e);
+            setProjects([]); 
+        } finally { setLoading(false); }
     };
 
     const captureGPS = () => {

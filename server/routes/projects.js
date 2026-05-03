@@ -53,7 +53,9 @@ router.get('/', optionalAuth, async (req, res) => {
         if (ward) filter['location.ward'] = ward;
         if (wardNo) filter['location.wardNo'] = parseInt(wardNo);
         if (area) filter['location.area'] = area;
-        if (projectCode) filter.projectCode = projectCode;
+        if (projectCode) {
+            filter.projectCode = { $regex: new RegExp('^' + projectCode.trim() + '$', 'i') };
+        }
 
         let projects = await Project.find(filter)
             .populate('department', 'name ward')
