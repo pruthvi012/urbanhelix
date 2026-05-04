@@ -480,7 +480,6 @@ export default function Projects() {
                             ☢️ Nuclear Reset (Delete All)
                         </button>
                     )}
-                </div>
                     <select className="form-select" style={{ width: 'auto' }} value={filter.category} onChange={(e) => setFilter({ ...filter, category: e.target.value })}>
                         <option value="">All Categories</option>
                         <option value="road">Road</option>
@@ -516,19 +515,26 @@ export default function Projects() {
                             setShowModal(true);
                         }}>+ New Proposal</button>
                     )}
-                    {user?.role === 'contractor' && (
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-                            <input 
-                                type="text" 
-                                className="form-input" 
-                                placeholder="Enter Project Code (UHX-...)" 
-                                value={claimCode} 
-                                onChange={(e) => setClaimCode(e.target.value)} 
-                                style={{ width: '220px', margin: 0, height: '36px' }}
-                            />
-                            <button className="btn btn-primary" onClick={handleClaim} style={{ height: '36px', padding: '0 16px' }}>Claim Project</button>
+                </div>
+            )}
+
+            {user?.role === 'contractor' && (
+                <div style={{ marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
+                        <div style={{ flex: 1 }}>
+                            <h4 style={{ margin: 0, fontSize: '14px' }}>Claim New Project</h4>
+                            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Enter the code provided by the Engineer to assign yourself to a project.</p>
                         </div>
-                    )}
+                        <input 
+                            type="text" 
+                            className="form-input" 
+                            placeholder="Enter Project Code (UHX-...)" 
+                            value={claimCode} 
+                            onChange={(e) => setClaimCode(e.target.value)} 
+                            style={{ width: '220px', margin: 0, height: '40px' }}
+                        />
+                        <button className="btn btn-primary" onClick={handleClaim} style={{ height: '40px', padding: '0 24px' }}>Claim Project</button>
+                    </div>
                 </div>
             )}
 
