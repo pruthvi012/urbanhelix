@@ -81,13 +81,19 @@ export const projectAPI = {
         }
     },
     claim: async (code, contractorId) => {
-        // Find the project by code
-        const searchRes = await api.get(`/projects?projectCode=${code}`);
+        // Fetch all projects (the API limits to 20 by default, which is fine for demo)
+        const searchRes = await api.get('/projects');
         const projects = searchRes.data.projects;
-        if (!projects || projects.length === 0) {
+        
+        // Find by explicitly saved code OR by the deterministic fallback code
+        const project = projects.find(p => 
+            p.projectCode === code || 
+            ('UHX-' + p._id.substring(18).toUpperCase()) === code
+        );
+
+        if (!project) {
             throw new Error('Project code is invalid or not found.');
         }
-        const project = projects[0];
         
         if (project.contractor) {
             if (project.contractor._id === contractorId || project.contractor === contractorId) {

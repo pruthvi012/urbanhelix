@@ -150,8 +150,15 @@ export default function Projects() {
         try {
             const res = await projectAPI.approve(id, { allocatedBudget: Number(estimatedBudget), remarks: 'Approved' });
             loadData();
-            if (res.data && res.data.project && res.data.project.projectCode) {
-                alert(`✅ SUCCESS! Project Approved.\n\nCONTRACTOR ASSIGNMENT CODE: ${res.data.project.projectCode}\n\nPlease share this code with the contractor so they can claim this project.`);
+            
+            // If the old server didn't generate a code, we deterministically create one from the ID
+            let code = res.data?.project?.projectCode;
+            if (!code && res.data?.project?._id) {
+                code = 'UHX-' + res.data.project._id.substring(18).toUpperCase();
+            }
+            
+            if (code) {
+                alert(`✅ SUCCESS! Project Approved.\n\nCONTRACTOR ASSIGNMENT CODE: ${code}\n\nPlease share this code with the contractor so they can claim this project.`);
             } else {
                 alert(`✅ Project Approved successfully!`);
             }
@@ -550,9 +557,9 @@ export default function Projects() {
                                                                     <Link to={`/projects/${p._id}`} style={{ color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 500 }}>
                                                                         {p.title}
                                                                     </Link>
-                                                                    {['engineer', 'admin', 'financial_officer'].includes(user?.role) && p.projectCode && (
+                                                                    {['engineer', 'admin', 'financial_officer'].includes(user?.role) && (
                                                                         <div style={{ fontSize: '14px', color: '#ff3b3b', fontWeight: 900, marginTop: '6px', background: 'rgba(255,59,59,0.1)', padding: '4px 8px', borderRadius: '4px', display: 'inline-block' }}>
-                                                                            🔑 CODE: {p.projectCode}
+                                                                            🔑 CODE: {p.projectCode || ('UHX-' + p._id.substring(18).toUpperCase())}
                                                                         </div>
                                                                     )}
                                                                 </div>
