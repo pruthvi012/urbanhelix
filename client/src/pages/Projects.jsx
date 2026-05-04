@@ -34,6 +34,7 @@ export default function Projects() {
     const [lightboxUrl, setLightboxUrl] = useState(null);
     const [verifyForm, setVerifyForm] = useState({ verified: true, remarks: '', photo: null, expenditureId: '' });
     const [revisionForm, setRevisionForm] = useState({ newBudget: '', reason: '' });
+    const [claimCode, setClaimCode] = useState('');
 
     useEffect(() => { loadData(); }, [filter]);
 
@@ -147,12 +148,29 @@ export default function Projects() {
 
     const handleApprove = async (id, estimatedBudget) => {
         try {
-            await projectAPI.approve(id, { allocatedBudget: Number(estimatedBudget), remarks: 'Approved' });
+            const res = await projectAPI.approve(id, { allocatedBudget: Number(estimatedBudget), remarks: 'Approved' });
             loadData();
+            if (res.data && res.data.project && res.data.project.projectCode) {
+                alert(`✅ SUCCESS! Project Approved.\n\nCONTRACTOR ASSIGNMENT CODE: ${res.data.project.projectCode}\n\nPlease share this code with the contractor so they can claim this project.`);
+            } else {
+                alert(`✅ Project Approved successfully!`);
+            }
         } catch (err) { 
             console.error('Approval error:', err);
             const msg = err.response?.data?.message || err.message || 'Approval failed';
             alert(`Approval Error: ${msg}`); 
+        }
+    };
+
+    const handleClaim = async () => {
+        if (!claimCode.trim()) { alert('Please enter a project code'); return; }
+        try {
+            await projectAPI.claim(claimCode.trim(), user._id);
+            alert('✅ Successfully assigned to project!');
+            setClaimCode('');
+            loadData();
+        } catch (err) {
+            alert(`Error claiming project: ${err.message}`);
         }
     };
 
@@ -459,6 +477,19 @@ export default function Projects() {
                             } catch (e) { }
                             setShowModal(true);
                         }}>+ New Proposal</button>
+                    )}
+                    {user?.role === 'contractor' && (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                            <input 
+                                type="text" 
+                                className="form-input" 
+                                placeholder="Enter Project Code (UHX-...)" 
+                                value={claimCode} 
+                                onChange={(e) => setClaimCode(e.target.value)} 
+                                style={{ width: '220px', margin: 0, height: '36px' }}
+                            />
+                            <button className="btn btn-primary" onClick={handleClaim} style={{ height: '36px', padding: '0 16px' }}>Claim Project</button>
+                        </div>
                     )}
                 </div>
             )}
