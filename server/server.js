@@ -69,6 +69,19 @@ app.get('/reset-demo', async (req, res) => {
     } catch (e) { res.send("Error: " + e.message); }
 });
 
+// EMERGENCY: Clear projects only (Trigger via browser URL)
+app.get('/api/clear-all-projects', async (req, res) => {
+    try {
+        const Project = require('./models/Project');
+        const AuditLog = require('./models/AuditLog');
+        const pResult = await Project.deleteMany({});
+        const aResult = await AuditLog.deleteMany({ resourceType: 'project' });
+        res.send(`✅ SUCCESS: Deleted ${pResult.deletedCount} projects and ${aResult.deletedCount} audit logs. Go back to the dashboard to see the clean slate.`);
+    } catch (e) { 
+        res.send("❌ Error: " + e.message); 
+    }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
