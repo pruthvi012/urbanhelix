@@ -152,7 +152,17 @@ export default function Projects() {
         } catch (err) { 
             console.error('Approval error:', err);
             const msg = err.response?.data?.message || err.message || 'Approval failed';
-            alert(`Approval Error: ${msg}`); 
+            const url = err.config?.url || 'unknown';
+            alert(`Approval Error: ${msg}\nURL: ${url}`); 
+        }
+    };
+
+    const checkBackend = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || ''}/api/health`);
+            alert(`Backend OK!\nAPI_URL: ${import.meta.env.VITE_API_URL}\nStatus: ${res.data.status}\nTime: ${res.data.timestamp}`);
+        } catch (e) {
+            alert(`Backend Check Failed!\nAPI_URL: ${import.meta.env.VITE_API_URL}\nError: ${e.message}`);
         }
     };
 
@@ -449,6 +459,7 @@ export default function Projects() {
                         </select>
                     )}
                     <button className="btn btn-outline" onClick={() => setShowWardDir(true)}>📂 Ward Directory</button>
+                    <button className="btn btn-outline" style={{ borderColor: '#ef4444', color: '#ef4444' }} onClick={checkBackend}>🛡️ DEBUG: Check Backend</button>
                     {user?.role === 'engineer' && (
                         <button className="btn btn-primary" onClick={async () => {
                             setForm({ title: '', description: '', category: 'road', estimatedBudget: '', enteredBudget: '', department: '', priority: 'medium', contractor: '', location: { ward: '', area: '', address: '' }, spentBudget: 0 });
