@@ -38,6 +38,12 @@ const getStorage = () => {
         });
     }
 
+    // Use memory storage if S3 is not available — safest for Vercel/Serverless
+    // We only use diskStorage if explicitly asked or if we're in a persistent environment
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+        return multer.memoryStorage();
+    }
+
     return multer.diskStorage({
         destination: (req, file, cb) => {
             let folder = 'others';
@@ -45,7 +51,14 @@ const getStorage = () => {
             else if (req.originalUrl.includes('grievances')) folder = 'grievances';
 
             const dest = path.join(uploadDir, folder);
-            if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+            if (!fs.existsSync(dest)) {
+                try {
+                    fs.mkdirSync(dest, { recursive: true });
+                } catch (err) {
+                    // If disk fails, we can't save here
+                    console.error('Failed to create upload directory:', err);
+                }
+            }
             cb(null, dest);
         },
         filename: (req, file, cb) => {
@@ -58,7 +71,7 @@ const getStorage = () => {
 const fileFilter = (req, file, cb) => {
     const allowedTypes = [
         'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 
-        'application/pdf', 'image/heic', 'image/heif'
+        'application/pdf', 'application/x-pdf', 'image/heic', 'image/heif'
     ];
     if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
