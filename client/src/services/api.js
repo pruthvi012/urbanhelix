@@ -57,11 +57,11 @@ export const projectAPI = {
     update: (id, data) => api.put(`/projects/${id}`, data),
     approve: async (id, data) => {
         try {
-            return await api.put(`/projects/${id}/approve-v2`, data);
+            return await api.put(`/projects/${id}/approve-v2?cb=${Date.now()}`, data);
         } catch (err) {
             if (err.response?.status === 404) {
                 // Fallback to old route if v2 is not yet deployed on backend
-                return await api.put(`/projects/${id}/approve`, data);
+                return await api.put(`/projects/${id}/approve?cb=${Date.now()}`, data);
             }
             throw err;
         }

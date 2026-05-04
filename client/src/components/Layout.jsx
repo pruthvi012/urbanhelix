@@ -67,6 +67,18 @@ export default function Layout() {
         navigate('/login');
     };
 
+    React.useEffect(() => {
+        // Force cleanup of old service workers to bypass PWA cache
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) {
+                    registration.unregister();
+                    console.log('ServiceWorker unregistered');
+                }
+            });
+        }
+    }, []);
+
     const navItems = NAV_ITEMS[user?.role] || NAV_ITEMS.citizen;
     const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
     const roleLabel = (user?.role || '').replace('_', ' ');
@@ -78,8 +90,8 @@ export default function Layout() {
                     <NavLink to="/" className="sidebar-logo">
                         <div className="sidebar-logo-icon">🏛️</div>
                         <div>
-                            <div className="sidebar-logo-text">UrbanHeliX</div>
-                            <div className="sidebar-logo-sub">Municipal Governance v2.1-FALLBACK</div>
+                            <div className="sidebar-logo-text">UrbanHeliX v2.2-FORCE</div>
+                            <div className="sidebar-logo-sub">Municipal Governance (Synced)</div>
                         </div>
                     </NavLink>
                 </div>
