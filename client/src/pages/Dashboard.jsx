@@ -758,6 +758,25 @@ export default function Dashboard() {
     useEffect(() => {
         if (user?.role !== 'contractor') {
             loadData();
+            
+            // Set up polling for notifications every 30 seconds
+            const interval = setInterval(() => {
+                notificationAPI.getAll().then(res => {
+                    const unreadNotifs = res.data.notifications?.filter(n => !n.isRead) || [];
+                    if (unreadNotifs.length > 0) {
+                        const latest = unreadNotifs[0];
+                        setNotification({
+                            show: true,
+                            type: latest.type === 'fraud_alert' ? 'fraud' : 'update',
+                            title: latest.title.toUpperCase(),
+                            message: latest.message
+                        });
+                        notificationAPI.markAsRead(latest._id);
+                    }
+                });
+            }, 30000);
+            
+            return () => clearInterval(interval);
         }
     }, [category, user]);
 

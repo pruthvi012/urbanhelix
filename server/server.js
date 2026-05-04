@@ -85,15 +85,49 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-
 const autoSeeder = require('./utils/autoSeeder');
 
 connectDB().then(async () => {
     await autoSeeder();
+    // BACKGROUND INTEGRITY CHECKER (Demonstration Feature)
+    // This service checks the blockchain integrity every 10 seconds.
+    // If it finds a tamper (like changing dataHash to 'aa'), it creates a global Fraud Alert.
+    const HashChainService = require('./services/hashChainService');
+    const Notification = require('./models/Notification');
+
+    setInterval(async () => {
+        try {
+            const result = await HashChainService.verifyChain();
+            if (!result.valid) {
+                const lastTampered = result.errors[result.errors.length - 1];
+                const message = `CRITICAL: Hash chain tampered in Block #${lastTampered.sequenceNumber}. System security integrity compromised.`;
+                
+                // Check if this alert was recently sent to avoid spamming
+                const existing = await Notification.findOne({ 
+                    type: 'fraud_alert', 
+                    message: { $regex: `Block #${lastTampered.sequenceNumber}` },
+                    createdAt: { $gt: new Date(Date.now() - 60000) } // within last minute
+                });
+
+                if (!existing) {
+                    console.warn('⚠️ TAMPER DETECTED! Creating global fraud alert notification...');
+                    await Notification.create({
+                        title: 'SYSTEM SECURITY ALERT',
+                        message,
+                        type: 'fraud_alert',
+                        isRead: false
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Integrity Checker Error:', err);
+        }
+    }, 10000); // Check every 10 seconds
+
+    const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
-        console.log(`🚀 UrbanHeliX server running on port ${PORT}`);
+        console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+        console.log('✅ Background Integrity Checker Active (10s intervals)');
     });
 });
 
