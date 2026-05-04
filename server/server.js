@@ -24,6 +24,18 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+app.get('/wipe-projects', async (req, res) => {
+    try {
+        const Project = require('./models/Project');
+        const AuditLog = require('./models/AuditLog');
+        await Project.deleteMany({});
+        await AuditLog.deleteMany({ resourceType: 'project' });
+        res.send("Successfully wiped all projects. Refresh your dashboard.");
+    } catch (e) {
+        res.send("Error: " + e.message);
+    }
+});
+
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -67,19 +79,6 @@ app.get('/reset-demo', async (req, res) => {
 
         res.send("DEMO RESET COMPLETE! All projects, hash records, and demo accounts cleared. Admin and Engineer accounts kept.");
     } catch (e) { res.send("Error: " + e.message); }
-});
-
-// EMERGENCY: Clear projects only (Trigger via browser URL)
-app.get('/api/clear-all-projects', async (req, res) => {
-    try {
-        const Project = require('./models/Project');
-        const AuditLog = require('./models/AuditLog');
-        const pResult = await Project.deleteMany({});
-        const aResult = await AuditLog.deleteMany({ resourceType: 'project' });
-        res.send(`✅ SUCCESS: Deleted ${pResult.deletedCount} projects and ${aResult.deletedCount} audit logs. Go back to the dashboard to see the clean slate.`);
-    } catch (e) { 
-        res.send("❌ Error: " + e.message); 
-    }
 });
 
 // Health check

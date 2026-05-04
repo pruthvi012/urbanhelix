@@ -850,16 +850,4 @@ router.get('/materials/:category', (req, res) => {
 });
 
 
-// EMERGENCY: Delete all projects (Temporary for cleanup)
-router.post('/emergency-clear-all', protect, async (req, res) => {
-    try {
-        await Project.deleteMany({});
-        await AuditLog.deleteMany({ resourceType: 'project' });
-        res.json({ success: true, message: 'All projects cleared successfully' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-
 module.exports = router;
