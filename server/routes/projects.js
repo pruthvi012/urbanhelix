@@ -271,6 +271,7 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_o
         );
 
         project.hashChainRecordId = hashRecord._id;
+        project.proofHash = hashRecord.recordHash;
         await project.save();
 
         await AuditLog.create({
@@ -278,7 +279,7 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_o
             action: 'create',
             resourceType: 'project',
             resourceId: project._id,
-            details: `Project "${project.title}" proposed`,
+            details: `Project "${project.title}" (${project.projectCode || 'No Code Yet'}) proposed`,
         });
 
         // Notify admins about new proposal
@@ -325,10 +326,11 @@ router.put('/:id/approve-v2', protect, authorize('admin', 'financial_officer'), 
 
         // Record to HashChain
         try {
-            await HashChainService.addRecord(
+            const hr = await HashChainService.addRecord(
                 'project_approved',
                 {
                     projectId: project._id,
+                    projectCode: project.projectCode,
                     title: project.title,
                     allocatedBudget: project.allocatedBudget,
                     approvedBy: req.user.name
@@ -336,6 +338,9 @@ router.put('/:id/approve-v2', protect, authorize('admin', 'financial_officer'), 
                 { entityType: 'project', entityId: project._id },
                 req.user._id
             );
+            project.hashChainRecordId = hr._id;
+            project.proofHash = hr.recordHash;
+            await project.save();
         } catch (err) { console.error('HashChain record failed:', err); }
 
         if (project.department) {
@@ -396,10 +401,11 @@ router.put('/:id/assign', protect, authorize('engineer', 'admin'), async (req, r
         });
         await project.save();
 
-        await HashChainService.addRecord(
+        const hr = await HashChainService.addRecord(
             'project_status_change',
             {
                 projectId: project._id,
+                projectCode: project.projectCode,
                 title: project.title,
                 newStatus: 'in_progress',
                 contractor: contractorId,
@@ -408,6 +414,9 @@ router.put('/:id/assign', protect, authorize('engineer', 'admin'), async (req, r
             { entityType: 'project', entityId: project._id },
             req.user._id
         );
+
+        project.hashChainRecordId = hr._id;
+        await project.save();
 
         // Notify all stakeholders about contractor assignment
         await notificationService.notifyProjectStakeholders(
@@ -460,12 +469,15 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
         
         await project.save();
 
-        await HashChainService.addRecord(
+        const hr = await HashChainService.addRecord(
             'project_status_change',
-            { projectId: project._id, title: project.title, newStatus: status, changedBy: req.user.name },
+            { projectId: project._id, projectCode: project.projectCode, title: project.title, newStatus: status, changedBy: req.user.name },
             { entityType: 'project', entityId: project._id },
             req.user._id
         );
+
+        project.hashChainRecordId = hr._id;
+        await project.save();
 
         const title = req.files && req.files.progressPhoto ? 'New Progress Photos Uploaded' : 'Project Status Updated';
         const body = req.files && req.files.progressPhoto 
@@ -567,6 +579,7 @@ router.put('/:id/revision', protect, authorize('engineer', 'admin', 'financial_o
                 'budget_revision',
                 {
                     projectId: project._id,
+                    projectCode: project.projectCode,
                     oldBudget,
                     newBudget: Number(newBudget),
                     reason,
@@ -578,6 +591,8 @@ router.put('/:id/revision', protect, authorize('engineer', 'admin', 'financial_o
             
             revision.transactionHash = hashRecord.recordHash; // Using internal hash as a reference if no blockchain tx yet
             project.lastTransactionHash = hashRecord.recordHash;
+            project.hashChainRecordId = hashRecord._id;
+            project.proofHash = hashRecord.recordHash;
         } catch (err) {
             console.error('HashChain record failed:', err);
         }
@@ -589,7 +604,7 @@ router.put('/:id/revision', protect, authorize('engineer', 'admin', 'financial_o
             action: 'revision',
             resourceType: 'project',
             resourceId: project._id,
-            details: `Budget revised from ₹${oldBudget.toLocaleString()} to ₹${Number(newBudget).toLocaleString()}. Reason: ${reason}`,
+            details: `Project "${project.title}" (${project.projectCode}): Budget revised from ₹${oldBudget.toLocaleString()} to ₹${Number(newBudget).toLocaleString()}. Reason: ${reason}`,
         });
 
         // Notify all stakeholders about budget revision
@@ -692,14 +707,15 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
         // Update total spent budget
         project.spentBudget += expAmount;
 
-        // Record to HashChain
         try {
-            await HashChainService.addRecord(
+            const hashRecord = await HashChainService.addRecord(
                 'expenditure_logged',
-                { projectId: project._id, amount: expAmount, material, vendor, entryHash, loggedBy: req.user.name },
+                { projectId: project._id, projectCode: project.projectCode, amount: expAmount, material, vendor, entryHash, loggedBy: req.user.name },
                 { entityType: 'project', entityId: project._id },
                 req.user._id
             );
+            project.hashChainRecordId = hashRecord._id;
+            project.proofHash = hashRecord.recordHash;
         } catch (err) {
             console.error('HashChain record failed:', err);
         }
@@ -711,7 +727,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             action: 'log_expenditure',
             resourceType: 'project',
             resourceId: project._id,
-            details: `Logged tamper-proof expenditure: ₹${expAmount.toLocaleString()} for ${material} from ${vendor}. Awaiting engineer verification.`,
+            details: `Project "${project.title}" (${project.projectCode}): Logged tamper-proof expenditure: ₹${expAmount.toLocaleString()} for ${material} from ${vendor}. Awaiting engineer verification.`,
         });
 
         // Notify assigned engineer for cross-verification

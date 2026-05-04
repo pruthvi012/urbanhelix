@@ -162,6 +162,64 @@ class HashChainService {
 
         return { records, total, page, totalPages: Math.ceil(total / limit) };
     }
+
+    /**
+     * Verify the integrity of a project's current state against its linked hash record
+     */
+    static async verifyProjectIntegrity(projectId) {
+        const Project = require('../models/Project');
+        const project = await Project.findById(projectId);
+        if (!project) return { valid: false, error: 'Project not found' };
+
+        if (!project.hashChainRecordId) {
+            return { valid: false, error: 'Project has no linked hash record' };
+        }
+
+        const record = await HashChainRecord.findById(project.hashChainRecordId);
+        if (!record) return { valid: false, error: 'Linked hash record not found' };
+
+        // Recompute data hash of the record to ensure the record itself isn't tampered
+        const recordDataString = JSON.stringify(record.data);
+        const expectedRecordDataHash = this.computeHash(recordDataString);
+        if (expectedRecordDataHash !== record.dataHash) {
+            return { valid: false, error: 'The audit record itself has been tampered with!' };
+        }
+
+        // Compare current project fields with record data
+        const discrepancies = [];
+        
+        // Check budget
+        const ledgerBudget = record.data.allocatedBudget || record.data.budget || record.data.estimatedBudget;
+        const currentBudget = project.allocatedBudget || project.estimatedBudget;
+        
+        if (ledgerBudget && currentBudget && Number(ledgerBudget) !== Number(currentBudget)) {
+            discrepancies.push({
+                field: 'budget',
+                ledger: ledgerBudget,
+                current: currentBudget
+            });
+        }
+
+        // Check status
+        if (record.data.newStatus && record.data.newStatus !== project.status) {
+            discrepancies.push({
+                field: 'status',
+                ledger: record.data.newStatus,
+                current: project.status
+            });
+        }
+
+        return {
+            valid: discrepancies.length === 0,
+            discrepancies,
+            recordId: record._id,
+            sequenceNumber: record.sequenceNumber,
+            project: {
+                title: project.title,
+                projectCode: project.projectCode
+            }
+        };
+    }
 }
 
 module.exports = HashChainService;

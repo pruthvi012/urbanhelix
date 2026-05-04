@@ -41,6 +41,7 @@ const projectSchema = new mongoose.Schema({
         default: 'medium',
     },
     hashChainRecordId: { type: mongoose.Schema.Types.ObjectId, ref: 'HashChainRecord', default: null },
+    proofHash: String,
     blockchainId: { type: Number, unique: true, sparse: true },
     transactionHash: String,
     lastTransactionHash: String,

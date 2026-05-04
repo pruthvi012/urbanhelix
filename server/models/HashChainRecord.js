@@ -4,8 +4,8 @@ const hashChainRecordSchema = new mongoose.Schema({
     sequenceNumber: { type: Number, required: true, unique: true },
     recordType: {
         type: String,
-        enum: ['fund_allocation', 'fund_disbursement', 'project_created', 'project_status_change',
-            'milestone_submitted', 'milestone_approved', 'payment_released', 'grievance_filed'],
+        enum: ['fund_allocation', 'fund_disbursement', 'project_created', 'project_approved', 'project_status_change',
+            'milestone_submitted', 'milestone_approved', 'payment_released', 'grievance_filed', 'expenditure_logged', 'budget_revision'],
         required: true,
     },
     data: { type: mongoose.Schema.Types.Mixed, required: true },

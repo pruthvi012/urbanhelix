@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { FiGrid, FiFolder, FiCheckSquare, FiDollarSign, FiAlertCircle, FiShield, FiBarChart2, FiLogOut, FiUsers, FiSearch, FiMenu, FiX, FiPlusCircle, FiClipboard } from 'react-icons/fi';
 import ChatBot from './ChatBot';
 import NotificationBell from './NotificationBell';
+import RealTimeNotifications from './RealTimeNotifications';
 import { requestForToken } from '../firebase';
 
 const NAV_ITEMS = {
@@ -197,6 +198,7 @@ export default function Layout() {
             )}
 
             <ChatBot />
+            <RealTimeNotifications />
 
             {/* Global Notification Prompt */}
             {showNotificationPrompt && (

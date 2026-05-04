@@ -19,6 +19,16 @@ router.get('/verify-chain', async (req, res) => {
     }
 });
 
+// GET /api/audit/verify-project/:id — verify project data against ledger
+router.get('/verify-project/:id', async (req, res) => {
+    try {
+        const result = await HashChainService.verifyProjectIntegrity(req.params.id);
+        res.json({ success: true, ...result });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // GET /api/audit/verify-record/:id — verify a single record
 router.get('/verify-record/:id', async (req, res) => {
     try {

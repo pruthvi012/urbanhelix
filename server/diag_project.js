@@ -1,42 +1,41 @@
 const mongoose = require('mongoose');
 const Project = require('./models/Project');
+const HashChainRecord = require('./models/HashChainRecord');
+const AuditLog = require('./models/AuditLog');
 require('dotenv').config();
 
 async function diag() {
     try {
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/urbanhelix');
+        await mongoose.connect(process.env.MONGO_URI);
         console.log('Connected to MongoDB');
 
-        const searchCode = 'UHX-58B19B';
-        const suffix = '58B19B';
+        const projectCode = 'UHX-C616B6';
+        const project = await Project.findOne({ projectCode: projectCode });
 
-        const projects = await Project.find({
+        if (!project) {
+            console.log(`Project with code ${projectCode} not found.`);
+            const allProjects = await Project.find({}, 'projectCode title');
+            console.log('Available project codes:', allProjects.map(p => p.projectCode).filter(Boolean));
+            process.exit(0);
+        }
+
+        console.log('Project found:', JSON.stringify(project, null, 2));
+
+        const records = await HashChainRecord.find({
             $or: [
-                { projectCode: /58B19B/i },
-                { title: /58B19B/i },
-                { description: /58B19B/i },
-                { 'location.area': /58B19B/i },
-                { 'location.ward': /58B19B/i }
+                { 'data.projectId': project._id.toString() },
+                { 'data.projectId': project._id },
+                { 'relatedEntity.entityId': project._id }
             ]
         });
-        
-        // Also check if any ID contains it
-        const all = await Project.find();
-        const idMatch = all.filter(p => p._id.toString().toUpperCase().includes('58B19B'));
-        
-        console.log(`Found ${projects.length} field matches and ${idMatch.length} ID matches for 58B19B`);
+        console.log(`Found ${records.length} HashChainRecords for this project.`);
+        records.forEach(r => console.log(` - [${r.sequenceNumber}] ${r.recordType}`));
 
-        console.log(`Found ${projects.length} projects matching ${searchCode}`);
-        projects.forEach(p => {
-            console.log(`ID: ${p._id}, Code: ${p.projectCode}, Title: ${p.title}, Contractor: ${p.contractor}`);
+        const logs = await AuditLog.find({
+            resourceId: project._id
         });
-
-        const AuditLog = require('./models/AuditLog');
-        const allProjects = await Project.find();
-        console.log(`Listing all ${allProjects.length} projects:`);
-        allProjects.forEach(p => {
-            console.log(`ID: ${p._id}, Title: ${p.title}, Code: ${p.projectCode}, Status: ${p.status}`);
-        });
+        console.log(`Found ${logs.length} AuditLogs for this project.`);
+        logs.forEach(l => console.log(` - ${l.action}: ${l.details}`));
 
         process.exit(0);
     } catch (err) {

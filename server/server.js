@@ -1,4 +1,6 @@
-const express = require('express'); // UrbanHeliX Deployment Fix 04-05-2026
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
@@ -18,6 +20,29 @@ const notificationRoutes = require('./routes/notifications');
 const wardRoutes = require('./routes/wards');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+// Make io available globally
+global.io = io;
+
+io.on('connection', (socket) => {
+    console.log('📱 User connected to Real-Time Notifications');
+    
+    socket.on('join_user', (userId) => {
+        socket.join(userId);
+        console.log(`👤 User ${userId} joined their notification channel`);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('👋 User disconnected');
+    });
+});
 
 // Middleware
 app.use(cors());
@@ -74,8 +99,6 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-
-
 // Global error handler
 app.use((err, req, res, next) => {
     console.error('❌ Error:', err.message);
@@ -89,9 +112,7 @@ const autoSeeder = require('./utils/autoSeeder');
 
 connectDB().then(async () => {
     await autoSeeder();
-    // BACKGROUND INTEGRITY CHECKER (Demonstration Feature)
-    // This service checks the blockchain integrity every 10 seconds.
-    // If it finds a tamper (like changing dataHash to 'aa'), it creates a global Fraud Alert.
+    
     const HashChainService = require('./services/hashChainService');
     const Notification = require('./models/Notification');
 
@@ -102,11 +123,10 @@ connectDB().then(async () => {
                 const lastTampered = result.errors[result.errors.length - 1];
                 const message = `CRITICAL: Hash chain tampered in Block #${lastTampered.sequenceNumber}. System security integrity compromised.`;
                 
-                // Check if this alert was recently sent to avoid spamming
                 const existing = await Notification.findOne({ 
                     type: 'fraud_alert', 
                     message: { $regex: `Block #${lastTampered.sequenceNumber}` },
-                    createdAt: { $gt: new Date(Date.now() - 60000) } // within last minute
+                    createdAt: { $gt: new Date(Date.now() - 60000) } 
                 });
 
                 if (!existing) {
@@ -122,12 +142,13 @@ connectDB().then(async () => {
         } catch (err) {
             console.error('Integrity Checker Error:', err);
         }
-    }, 10000); // Check every 10 seconds
+    }, 10000);
 
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
         console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
         console.log('✅ Background Integrity Checker Active (10s intervals)');
+        console.log('🚀 Real-Time Notification Socket Active');
     });
 });
 

@@ -27,13 +27,18 @@ try {
 const sendPushNotification = async (userId, title, body, data = {}) => {
     try {
         // Always create an in-app notification record
-        await Notification.create({
+        const notification = await Notification.create({
             recipient: userId,
             title,
             message: body,
             type: data.type || 'system',
             relatedEntity: data.relatedEntity || null
         });
+
+        // Emit via Socket.io for Real-Time "WhatsApp Style" popup
+        if (global.io) {
+            global.io.to(userId.toString()).emit('new_notification', notification);
+        }
 
         // If firebase is not initialized, skip push
         if (!admin.apps.length) {
@@ -292,13 +297,18 @@ const notifyCitizensOnly = async (title, body, data = {}) => {
 const notifyAllCitizens = async (title, body, data = {}) => {
     try {
         // Create a single global broadcast notification (recipient: null) so it appears in EVERYONE's bell
-        await Notification.create({
+        const notification = await Notification.create({
             recipient: null,
             title,
             message: body,
             type: data.type || 'public_update',
             relatedEntity: data.relatedEntity || null
         });
+
+        // Emit to EVERYONE for real-time public updates
+        if (global.io) {
+            global.io.emit('new_notification', notification);
+        }
 
         // Find all users who should get the push popup (citizens + admins for visibility)
         const targetUsers = await User.find({ role: { $in: ['citizen', 'admin', 'financial_officer'] } });

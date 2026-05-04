@@ -389,7 +389,13 @@ export default function ProjectDetail() {
                                                 {exp.verificationPhotoUrl && <button onClick={() => setLightboxUrl(exp.verificationPhotoUrl)} className="tx-tag" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24', border: 'none', cursor: 'pointer' }}>👷 Verify Photo</button>}
                                             </div>
                                         </td>
-                                        <td><span className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', fontSize: '10px' }}>🔒 SHA-256</span></td>
+                                        <td>
+                                            <div title={exp.entryHash} style={{ cursor: 'help' }}>
+                                                <span className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', fontSize: '10px', fontFamily: 'monospace' }}>
+                                                    🔒 {exp.entryHash?.substring(0, 16)}...
+                                                </span>
+                                            </div>
+                                        </td>
                                         <td>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                                 {exp.engineerVerified ? (
@@ -523,6 +529,13 @@ export default function ProjectDetail() {
                                 timestamp: r.timestamp,
                                 type: 'revision',
                                 transactionHash: r.transactionHash
+                            })),
+                            ...(project.expenditures || []).map(e => ({
+                                status: 'expenditure_logged',
+                                remarks: `Logged expense: ${formatCurrency(e.amount)} for ${e.material} from ${e.vendor}`,
+                                timestamp: e.timestamp || e.date,
+                                type: 'expenditure',
+                                transactionHash: e.entryHash
                             }))
                         ]
                         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
@@ -568,9 +581,26 @@ export default function ProjectDetail() {
                             </p>
                             {project.lastTransactionHash && (
                                 <div style={{ marginTop: '12px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--accent-green)', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '4px' }}>
-                                    LATEST PROOF HASH: {project.lastTransactionHash}
+                                    LATEST PROOF HASH: {project.lastTransactionHash || project.hashChainRecordId}
                                 </div>
                             )}
+                            <button 
+                                className="btn btn-primary" 
+                                style={{ marginTop: '16px', background: 'var(--accent-green)', borderColor: 'var(--accent-green)' }}
+                                onClick={async () => {
+                                    try {
+                                        const res = await axios.get(`/api/audit/verify-project/${project._id}`);
+                                        if (res.data.valid) {
+                                            alert("✅ INTEGRITY VERIFIED: This project matches the official immutable ledger exactly. No tampering detected.");
+                                        } else {
+                                            const disc = res.data.discrepancies.map(d => `${d.field.toUpperCase()}: Ledger says "${d.ledger}", Database says "${d.current}"`).join('\n');
+                                            alert(`🚨 TAMPERING DETECTED!\n\nThe current project data does NOT match the immutable ledger record (#${res.data.sequenceNumber}).\n\nDiscrepancies:\n${disc}`);
+                                        }
+                                    } catch (err) { alert("Verification failed: " + err.message); }
+                                }}
+                            >
+                                <FiShield style={{ marginRight: '8px' }} /> Verify against Ledger
+                            </button>
                         </div>
                     </div>
                 </div>
