@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { projectAPI, deptAPI, authAPI, wardAPI } from '../services/api';
 import { Link } from 'react-router-dom';
 import { FiDownload } from 'react-icons/fi';
+import { fallbackWards } from '../data/wardsFallback';
 
 export default function Projects() {
     const { user } = useAuth();
@@ -59,8 +60,12 @@ export default function Projects() {
             ]);
             setProjects(projRes.data?.projects || projRes.projects || []);
             setDepartments(deptRes.data?.departments || deptRes.departments || []);
-            setWards(wardRes.data?.wards || wardRes.wards || []);
-        } catch (err) { console.error(err); } finally { setLoading(false); }
+            const fetchedWards = wardRes.data?.wards || wardRes.wards || [];
+            setWards(fetchedWards.length > 0 ? fetchedWards : fallbackWards);
+        } catch (err) { 
+            console.error(err);
+            setWards(fallbackWards); 
+        } finally { setLoading(false); }
     };
 
     const handleGpsCameraRequest = () => {
