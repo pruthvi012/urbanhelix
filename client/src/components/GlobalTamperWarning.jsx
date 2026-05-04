@@ -25,9 +25,8 @@ export default function GlobalTamperWarning() {
             } catch (err) {
                 console.error("Integrity check failed", err);
             }
-        };
-
         checkIntegrity();
+        console.log("Integrity check active...");
         const interval = setInterval(checkIntegrity, 5000);
         return () => clearInterval(interval);
     }, [dismissed]);

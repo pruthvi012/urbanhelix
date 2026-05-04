@@ -304,6 +304,21 @@ router.put('/:id/approve-v2', protect, authorize('admin', 'financial_officer'), 
 
         await project.save();
 
+        // Record to HashChain
+        try {
+            await HashChainService.addRecord(
+                'project_approved',
+                {
+                    projectId: project._id,
+                    title: project.title,
+                    allocatedBudget: project.allocatedBudget,
+                    approvedBy: req.user.name
+                },
+                { entityType: 'project', entityId: project._id },
+                req.user._id
+            );
+        } catch (err) { console.error('HashChain record failed:', err); }
+
         if (project.department) {
             const dept = await Department.findById(project.department);
             if (dept) {
