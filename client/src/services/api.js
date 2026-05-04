@@ -55,19 +55,7 @@ export const projectAPI = {
     getById: (id) => api.get(`/projects/${id}`),
     create: (data) => api.post('/projects', data),
     update: (id, data) => api.put(`/projects/${id}`, data),
-    approve: async (id, data) => {
-        try {
-            // EMERGENCY BYPASS - TRY DIRECT ROUTE
-            return await api.put(`/emergency-approve/${id}`, data);
-        } catch (err) {
-            console.warn('Emergency bypass failed, trying standard routes...');
-            try {
-                return await api.put(`/projects/${id}/approve-v2?cb=${Date.now()}`, data);
-            } catch (err2) {
-                return await api.put(`/projects/${id}/approve?cb=${Date.now()}`, data);
-            }
-        }
-    },
+    approve: (id, data) => api.put(`/projects/${id}/approve-v2`, data),
     assign: (id, data) => api.put(`/projects/${id}/assign`, data),
     updateStatus: (id, data) => api.put(`/projects/${id}/status`, data),
     reviseBudget: (id, data) => api.put(`/projects/${id}/revision`, data),

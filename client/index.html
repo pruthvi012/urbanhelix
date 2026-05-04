@@ -14,21 +14,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <div id="debug-version" style="position: fixed; bottom: 0; right: 0; background: red; color: white; font-size: 10px; z-index: 99999; padding: 2px 5px;">v2.3-ULTRA-FORCE</div>
-    <script>
-      // Nuclear force refresh to kill old PWA cache
-      if (!localStorage.getItem('force_refresh_v2.3')) {
-        localStorage.setItem('force_refresh_v2.3', 'true');
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(regs => {
-            for(let reg of regs) reg.unregister();
-            window.location.reload(true);
-          });
-        } else {
-          window.location.reload(true);
-        }
-      }
-    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

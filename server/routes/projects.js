@@ -277,32 +277,13 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_o
     }
 });
 
-// PUT /api/projects/:id/approve — (FALLBACK)
+// PUT /api/projects/:id/approve — (OLD)
 router.put('/:id/approve', protect, async (req, res) => {
-    try {
-        const project = await Project.findById(req.params.id);
-        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
-
-        if (!project.projectCode) {
-            project.projectCode = await generateProjectCode();
-        }
-
-        project.status = 'approved';
-        project.statusHistory.push({
-            status: 'approved',
-            changedBy: req.user._id,
-            remarks: 'Approved via Demo Fallback',
-        });
-
-        await project.save();
-        res.json({ success: true, project });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+    return res.status(403).json({ success: false, message: 'Deprecated. Use v2.' });
 });
 
-// NEW VERSIONED ROUTE
-router.put('/:id/approve-v2', protect, async (req, res) => {
+// PUT /api/projects/:id/approve-v2
+router.put('/:id/approve-v2', protect, authorize('admin', 'financial_officer'), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
@@ -318,7 +299,7 @@ router.put('/:id/approve-v2', protect, async (req, res) => {
         project.statusHistory.push({
             status: 'approved',
             changedBy: req.user._id,
-            remarks: remarks || 'Approved via Demo V2',
+            remarks: remarks || 'Approved',
         });
 
         await project.save();

@@ -44,13 +44,10 @@ const optionalAuth = async (req, res, next) => {
 // Role-based access control
 const authorize = (...roles) => {
     return (req, res, next) => {
-        // DEMO BYPASS: Grant financial_officer access to any admin-restricted resource
-        const allowedRoles = roles.includes('admin') ? [...roles, 'financial_officer'] : roles;
-
-        if (!allowedRoles.includes(req.user.role)) {
+        if (!roles.includes(req.user.role)) {
             return res.status(403).json({
                 success: false,
-                message: `Role '${req.user.role}' is not authorized to access this resource. Required: ${allowedRoles.join(', ')}`,
+                message: `Role '${req.user.role}' is not authorized to access this resource. Required: ${roles.join(', ')}`,
             });
         }
         next();
