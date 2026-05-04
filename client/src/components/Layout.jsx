@@ -79,7 +79,7 @@ export default function Layout() {
                         <div className="sidebar-logo-icon">🏛️</div>
                         <div>
                             <div className="sidebar-logo-text">UrbanHeliX</div>
-                            <div className="sidebar-logo-sub">Municipal Governance</div>
+                            <div className="sidebar-logo-sub">Municipal Governance v2.0-DEBUG</div>
                         </div>
                     </NavLink>
                 </div>
