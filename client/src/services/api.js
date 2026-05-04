@@ -163,6 +163,7 @@ export const auditAPI = {
     getChain: (params) => api.get('/audit/chain', { params }),
     getLogs: (params) => api.get('/audit/logs', { params }),
     getAnalytics: (category, ward, area) => api.get('/audit/analytics', { params: { category, ward, area } }),
+    simulateTamper: () => api.post('/audit/simulate-tamper'),
 };
 
 // Notifications

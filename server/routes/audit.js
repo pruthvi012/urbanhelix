@@ -204,4 +204,23 @@ router.get('/analytics', async (req, res) => {
     }
 });
 
+// POST /api/audit/simulate-tamper — intentionally corrupt a record for demo purposes (admin only)
+router.post('/simulate-tamper', protect, authorize('admin'), async (req, res) => {
+    try {
+        const record = await HashChainRecord.findOne().sort({ sequenceNumber: 1 });
+        if (!record) return res.status(404).json({ success: false, message: 'No records found' });
+
+        // Corrupt the data hash by changing one character
+        const original = record.dataHash;
+        const tampered = original.substring(0, original.length - 1) + (original.endsWith('f') ? 'e' : 'f');
+        
+        record.dataHash = tampered;
+        await record.save();
+
+        res.json({ success: true, message: 'Record tampered successfully. Verification should now fail.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 module.exports = router;

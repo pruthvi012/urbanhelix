@@ -88,15 +88,32 @@ export default function Audit() {
                     <h1 className="page-title">Blockchain Audit & Verification</h1>
                     <p className="page-subtitle">Tamper-evident hash chain — Full Visibility & Integrity Check</p>
                 </div>
-                <button 
-                    className={`btn ${isVerifying ? 'btn-outline' : 'btn-primary'}`} 
-                    onClick={handleVerifyChain}
-                    disabled={isVerifying}
-                    style={{ padding: '12px 24px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', border: isVerifying ? '1px solid var(--accent-blue)' : '' }}
-                >
-                    {isVerifying ? <FiRefreshCw className="spin" style={{ color: 'var(--accent-blue)' }} /> : <FiShield />}
-                    {isVerifying ? 'Verifying Chain...' : 'Verify Integrity'}
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button 
+                        className="btn btn-outline" 
+                        onClick={async () => {
+                            if (window.confirm("CRITICAL: This will intentionally corrupt a database record for demo purposes. Proceed?")) {
+                                try {
+                                    await auditAPI.simulateTamper();
+                                    alert("Record Tampered! Now click 'Verify Integrity' to detect it.");
+                                    loadData();
+                                } catch (err) { alert("Failed to tamper: " + (err.response?.data?.message || err.message)); }
+                            }
+                        }}
+                        style={{ padding: '12px 24px', fontSize: '16px', border: '1px solid var(--accent-red)', color: 'var(--accent-red)' }}
+                    >
+                        ⚠️ Simulate Tamper
+                    </button>
+                    <button 
+                        className={`btn ${isVerifying ? 'btn-outline' : 'btn-primary'}`} 
+                        onClick={handleVerifyChain}
+                        disabled={isVerifying}
+                        style={{ padding: '12px 24px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', border: isVerifying ? '1px solid var(--accent-blue)' : '' }}
+                    >
+                        {isVerifying ? <FiRefreshCw className="spin" style={{ color: 'var(--accent-blue)' }} /> : <FiShield />}
+                        {isVerifying ? 'Verifying Chain...' : 'Verify Integrity'}
+                    </button>
+                </div>
             </div>
 
             {verificationComplete && (
