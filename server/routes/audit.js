@@ -204,8 +204,8 @@ router.get('/analytics', async (req, res) => {
     }
 });
 
-// POST /api/audit/simulate-tamper — intentionally corrupt a record for demo purposes (admin only)
-router.post('/simulate-tamper', protect, authorize('admin'), async (req, res) => {
+// GET /api/audit/simulate-tamper — intentionally corrupt a record for demo purposes
+router.get('/simulate-tamper', async (req, res) => {
     try {
         const record = await HashChainRecord.findOne().sort({ sequenceNumber: 1 });
         if (!record) return res.status(404).json({ success: false, message: 'No records found' });
