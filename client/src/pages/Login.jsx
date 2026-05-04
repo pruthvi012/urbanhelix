@@ -249,6 +249,9 @@ export default function Login() {
                         </button>
                     </div>
                 )}
+                <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '10px', color: 'rgba(0,0,0,0.2)' }}>
+                    Debug Backend: {import.meta.env.VITE_API_URL || 'Local /api'}
+                </div>
             </div>
         </div>
     );
