@@ -1,41 +1,36 @@
 const mongoose = require('mongoose');
 const Project = require('./models/Project');
-const Department = require('./models/Department');
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+const AuditLog = require('./models/AuditLog');
+const HashChainRecord = require('./models/HashChainRecord');
+const Notification = require('./models/Notification');
+require('dotenv').config();
 
-const refreshSection = async () => {
+async function clearAll() {
     try {
-        if (!process.env.MONGO_URI) {
-            console.error('MONGO_URI not found in .env');
-            process.exit(1);
-        }
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log('Connected to MongoDB');
+        console.log('Connecting to MongoDB...');
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/urbanhelix');
+        console.log('✅ Connected.');
 
-        // 1. Clear all projects
-        const projResult = await Project.deleteMany({});
-        console.log(`✅ Cleared ${projResult.deletedCount} projects.`);
+        // 1. Delete all projects
+        const pResult = await Project.deleteMany({});
+        console.log(`🗑️  Deleted ${pResult.deletedCount} projects.`);
 
-        // 2. Reset Department budgets and locks
-        // Note: totalBudget remains, but allocated and spent are reset to 0
-        const deptResult = await Department.updateMany(
-            {},
-            {
-                $set: {
-                    allocatedBudget: 0,
-                    spentBudget: 0,
-                    isLocked: false
-                }
-            }
-        );
-        console.log(`✅ Reset budget and locks for ${deptResult.modifiedCount} wards.`);
+        // 2. Clean up related data (optional but recommended)
+        const aResult = await AuditLog.deleteMany({ resourceType: 'project' });
+        console.log(`🗑️  Deleted ${aResult.deletedCount} project-related audit logs.`);
 
+        const hResult = await HashChainRecord.deleteMany({ 'metadata.entityType': 'project' });
+        console.log(`🗑️  Deleted ${hResult.deletedCount} project-related hashchain records.`);
+
+        const nResult = await Notification.deleteMany({ 'relatedEntity.entityType': 'Project' });
+        console.log(`🗑️  Deleted ${nResult.deletedCount} project-related notifications.`);
+
+        console.log('\n✨ Database is now clean of projects. You can start fresh!');
         process.exit(0);
     } catch (err) {
-        console.error('❌ Refresh failed:', err);
+        console.error('❌ Error during cleanup:', err);
         process.exit(1);
     }
-};
+}
 
-refreshSection();
+clearAll();

@@ -69,6 +69,27 @@ export default function Projects() {
         } finally { setLoading(false); }
     };
 
+    const handleEmergencyClear = async () => {
+        if (!window.confirm("🚨 DANGER: This will permanently DELETE ALL PROJECTS from the database. This cannot be undone. Are you absolutely sure?")) return;
+        if (!window.confirm("Final warning: Are you 100% sure you want to wipe the projects?")) return;
+        
+        try {
+            setLoading(true);
+            const { default: axios } = await import('axios');
+            const token = localStorage.getItem('urbanhelix_token');
+            await axios.post('/api/projects/emergency-clear-all', {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            alert("✨ Database wiped successfully.");
+            loadData();
+        } catch (err) {
+            console.error(err);
+            alert("Error clearing projects: " + (err.response?.data?.message || err.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleGpsCameraRequest = () => {
         if (!navigator.geolocation) {
             alert('Geolocation is not supported by your browser');
@@ -450,6 +471,16 @@ export default function Projects() {
                         <option value="verification">Verification</option>
                         <option value="completed">Completed</option>
                     </select>
+                    {user?.role !== 'contractor' && (
+                        <button 
+                            className="btn btn-outline" 
+                            style={{ borderColor: '#ef4444', color: '#ef4444' }}
+                            onClick={handleEmergencyClear}
+                        >
+                            ☢️ Nuclear Reset (Delete All)
+                        </button>
+                    )}
+                </div>
                     <select className="form-select" style={{ width: 'auto' }} value={filter.category} onChange={(e) => setFilter({ ...filter, category: e.target.value })}>
                         <option value="">All Categories</option>
                         <option value="road">Road</option>
