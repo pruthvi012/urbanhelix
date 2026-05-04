@@ -57,7 +57,19 @@ router.get('/', optionalAuth, async (req, res) => {
         if (area) filter['location.area'] = area;
         if (contractor) filter.contractor = contractor;
         if (projectCode) {
-            filter.projectCode = { $regex: new RegExp(projectCode.trim(), 'i') };
+            const cleanCode = projectCode.trim();
+            const suffix = cleanCode.startsWith('UHX-') ? cleanCode.replace('UHX-', '') : cleanCode;
+            
+            filter.$or = [
+                { projectCode: { $regex: new RegExp(cleanCode, 'i') } },
+                { $expr: { 
+                    $regexMatch: { 
+                        input: { $toString: "$_id" }, 
+                        regex: suffix + "$", 
+                        options: "i" 
+                    } 
+                } }
+            ];
         }
 
         let projects = await Project.find(filter)
@@ -78,7 +90,14 @@ router.get('/', optionalAuth, async (req, res) => {
         const sanitizedProjects = projects.map(p => {
             const pObj = p.toObject();
             // Allow contractor to see the code IF they searched for it explicitly, otherwise hide it
-            if (!canSeeCode && (!projectCode || pObj.projectCode !== projectCode)) {
+            // Allow contractor to see the code IF they searched for it explicitly, or if they are the contractor
+            const isAssignedContractor = req.user && pObj.contractor && (pObj.contractor._id?.toString() === req.user._id.toString() || pObj.contractor.toString() === req.user._id.toString());
+            const searchedThisCode = projectCode && (
+                (pObj.projectCode && pObj.projectCode.toUpperCase() === projectCode.trim().toUpperCase()) ||
+                ('UHX-' + p._id.toString().substring(18).toUpperCase() === projectCode.trim().toUpperCase())
+            );
+
+            if (!canSeeCode && !isAssignedContractor && !searchedThisCode) {
                 delete pObj.projectCode;
             }
             return pObj;
@@ -590,6 +609,11 @@ router.put('/:id/revision', protect, authorize('engineer', 'admin', 'financial_o
 // POST /api/projects/:id/expenditure — log contractor expenditure with invoice and hashing
 router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), upload.fields([{ name: 'invoice', maxCount: 1 }, { name: 'progressPhoto', maxCount: 1 }]), async (req, res) => {
     try {
+        console.log('Incoming expenditure log request:', {
+            projectId: req.params.id,
+            body: req.body,
+            files: req.files ? Object.keys(req.files) : 'No files'
+        });
         const project = await Project.findById(req.params.id).populate('engineer', 'name _id');
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 

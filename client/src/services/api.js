@@ -4,7 +4,6 @@ const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}
 
 const api = axios.create({
     baseURL: API_BASE,
-    headers: { 'Content-Type': 'application/json' },
 });
 
 // Attach JWT token to every request
@@ -81,8 +80,8 @@ export const projectAPI = {
         }
     },
     claim: async (code, contractorId) => {
-        // Fetch all projects (the API limits to 20 by default, which is fine for demo)
-        const searchRes = await api.get('/projects');
+        // Fetch project specifically by code
+        const searchRes = await api.get('/projects', { params: { projectCode: code } });
         const projects = searchRes.data.projects;
         
         // Find by explicitly saved code OR by the deterministic fallback code

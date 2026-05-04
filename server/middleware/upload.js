@@ -56,7 +56,10 @@ const getStorage = () => {
 };
 
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'image/heic', 'image/heif'];
+    const allowedTypes = [
+        'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 
+        'application/pdf', 'image/heic', 'image/heif'
+    ];
     if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {

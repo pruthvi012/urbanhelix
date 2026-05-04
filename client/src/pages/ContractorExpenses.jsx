@@ -65,8 +65,8 @@ export default function ContractorExpenses() {
         setCodeSearched(true);
         setProjects([]);
         try {
-            // Fetch all projects and manually filter using deterministic fallback
-            const res = await projectAPI.getAll({});
+            // Fetch projects filtered by code for efficiency and to bypass pagination limits
+            const res = await projectAPI.getAll({ projectCode: projectCode.trim() });
             const allProjects = res.data.projects || [];
             
             const targetCode = projectCode.trim().toUpperCase();
@@ -117,6 +117,9 @@ export default function ContractorExpenses() {
         setSubmitting(true);
         try {
             let apiSucceeded = false;
+            console.log('Submitting expense for project:', selectedProject._id);
+            console.log('Form data invoice:', form.invoice);
+            console.log('Form data progress photo:', form.progressPhoto);
             try {
                 await projectAPI.logExpenditure(selectedProject._id, formData);
                 apiSucceeded = true;
