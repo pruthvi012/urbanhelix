@@ -14,9 +14,15 @@ export function AuthProvider({ children }) {
         const savedUser = localStorage.getItem('urbanhelix_user');
         if (savedToken && savedUser) {
             setToken(savedToken);
-            setUser(JSON.parse(savedUser));
-            // Request push token if already logged in
-            requestForToken();
+            try {
+                setUser(JSON.parse(savedUser));
+            } catch (e) {
+                // Corrupt user data in localStorage — clear it
+                localStorage.removeItem('urbanhelix_token');
+                localStorage.removeItem('urbanhelix_user');
+            }
+            // Request push token if already logged in (non-blocking, non-critical)
+            requestForToken().catch(() => {});
         }
         setLoading(false);
     }, []);
@@ -28,7 +34,7 @@ export function AuthProvider({ children }) {
             localStorage.setItem('urbanhelix_user', JSON.stringify(data.user));
             setToken(data.token);
             setUser(data.user);
-            requestForToken();
+            requestForToken().catch(() => {});
             return data;
         }
         throw new Error(data.message);
@@ -41,7 +47,7 @@ export function AuthProvider({ children }) {
             localStorage.setItem('urbanhelix_user', JSON.stringify(data.user));
             setToken(data.token);
             setUser(data.user);
-            requestForToken();
+            requestForToken().catch(() => {});
             return data;
         }
         throw new Error(data.message);

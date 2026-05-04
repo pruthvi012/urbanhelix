@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
-import { getAnalytics } from "firebase/analytics";
-import api from './services/api';
+
+let messaging = null;
+let analytics = null;
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -14,19 +14,52 @@ const firebaseConfig = {
   measurementId: "G-6FVE3BTJZ7"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const messaging = getMessaging(app);
+// Initialize Firebase — wrapped in try/catch so the app never crashes
+let app;
+try {
+  app = initializeApp(firebaseConfig);
+} catch (err) {
+  console.warn('Firebase init failed:', err);
+}
+
+// Lazy-init messaging only when needed and supported
+const getMessagingSafe = async () => {
+  if (messaging) return messaging;
+  try {
+    if (typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator) {
+      const { getMessaging } = await import("firebase/messaging");
+      messaging = getMessaging(app);
+      return messaging;
+    }
+  } catch (err) {
+    console.warn('Firebase Messaging not supported in this browser:', err);
+  }
+  return null;
+};
+
+// Lazy-init analytics
+try {
+  if (app && typeof window !== 'undefined') {
+    import("firebase/analytics").then(({ getAnalytics }) => {
+      analytics = getAnalytics(app);
+    }).catch(() => {});
+  }
+} catch (err) {
+  // Analytics not critical
+}
 
 export const requestForToken = async () => {
   try {
+    const msg = await getMessagingSafe();
+    if (!msg) return null;
+
     console.log('Requesting notification permission...');
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
-      const currentToken = await getToken(messaging, {
-        vapidKey: "BFc2NhjfUyThm7CQLByaSFHQW4-dKltyAYa7PKFGcnqUbd6AtgKuVefIW39JeRWyZPA_stzzLzuYxFNoQ5Dyfv0" // Get this from Firebase Console Settings > Cloud Messaging
+      const { getToken } = await import("firebase/messaging");
+      const currentToken = await getToken(msg, {
+        vapidKey: "BFc2NhjfUyThm7CQLByaSFHQW4-dKltyAYa7PKFGcnqUbd6AtgKuVefIW39JeRWyZPA_stzzLzuYxFNoQ5Dyfv0"
       });
       
       if (currentToken) {
@@ -34,23 +67,37 @@ export const requestForToken = async () => {
         // Send token to server
         const token = localStorage.getItem('urbanhelix_token');
         if (token) {
+          const api = (await import('./services/api')).default;
           await api.post('/notifications/subscribe', { token: currentToken });
         }
         return currentToken;
       } else {
-        console.log('No registration token available. Request permission to generate one.');
+        console.log('No registration token available.');
       }
     } else {
       console.log('Notification permission denied or dismissed.');
     }
   } catch (err) {
-    console.log('An error occurred while retrieving token. ', err);
+    console.warn('Push token request failed (non-critical):', err);
   }
+  return null;
 };
 
 export const onMessageListener = (callback) => {
-  return onMessage(messaging, (payload) => {
-    console.log("Message received. ", payload);
-    callback(payload);
+  // Return a no-op unsubscribe if messaging is not available
+  getMessagingSafe().then((msg) => {
+    if (!msg) return;
+    try {
+      import("firebase/messaging").then(({ onMessage }) => {
+        onMessage(msg, (payload) => {
+          console.log("Message received. ", payload);
+          if (callback) callback(payload);
+        });
+      });
+    } catch (err) {
+      console.warn('onMessage setup failed:', err);
+    }
   });
+  // Return cleanup function
+  return () => {};
 };

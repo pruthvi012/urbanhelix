@@ -57,14 +57,22 @@ function AppRoutes() {
 
 export default function App() {
     useEffect(() => {
-        const unsubscribe = onMessageListener((payload) => {
-            console.log('Foreground message received:', payload);
-            // You can use a toast here instead of alert for better UX, but alert works for testing
-            alert(`${payload.notification.title}\n\n${payload.notification.body}`);
-        });
+        let unsubscribe;
+        try {
+            unsubscribe = onMessageListener((payload) => {
+                console.log('Foreground message received:', payload);
+                const title = payload?.notification?.title || payload?.data?.title || 'Notification';
+                const body = payload?.notification?.body || payload?.data?.body || '';
+                if (title && body) {
+                    alert(`${title}\n\n${body}`);
+                }
+            });
+        } catch (err) {
+            console.warn('Firebase message listener setup failed (non-critical):', err);
+        }
 
         return () => {
-            if (unsubscribe) unsubscribe();
+            if (unsubscribe && typeof unsubscribe === 'function') unsubscribe();
         };
     }, []);
 
