@@ -104,7 +104,11 @@ class HashChainService {
             const dataString = JSON.stringify(record.data);
             const expectedDataHash = this.computeHash(dataString);
             if (expectedDataHash !== record.dataHash) {
-                errors.push({ sequenceNumber: record.sequenceNumber, error: 'Data hash mismatch' });
+                errors.push({ 
+                    sequenceNumber: record.sequenceNumber, 
+                    error: 'Data hash mismatch',
+                    details: { expected: expectedDataHash, stored: record.dataHash }
+                });
                 continue;
             }
 
@@ -113,7 +117,11 @@ class HashChainService {
                 `${record.dataHash}${record.previousHash}${record.sequenceNumber}`
             );
             if (expectedRecordHash !== record.recordHash) {
-                errors.push({ sequenceNumber: record.sequenceNumber, error: 'Record hash mismatch' });
+                errors.push({ 
+                    sequenceNumber: record.sequenceNumber, 
+                    error: 'Record hash mismatch',
+                    details: { expected: expectedRecordHash, stored: record.recordHash }
+                });
                 continue;
             }
 
@@ -124,7 +132,11 @@ class HashChainService {
                 }
             } else {
                 if (records[i - 1].recordHash !== record.previousHash) {
-                    errors.push({ sequenceNumber: record.sequenceNumber, error: 'Chain link broken' });
+                    errors.push({ 
+                        sequenceNumber: record.sequenceNumber, 
+                        error: 'Chain link broken',
+                        details: { expected: records[i - 1].recordHash, stored: record.previousHash }
+                    });
                 }
             }
         }
