@@ -65,8 +65,15 @@ export default function ContractorExpenses() {
         setCodeSearched(true);
         setProjects([]);
         try {
-            const res = await projectAPI.getAll({ projectCode: projectCode.trim() });
-            const allFound = res.data.projects || [];
+            // Fetch all projects and manually filter using deterministic fallback
+            const res = await projectAPI.getAll({});
+            const allProjects = res.data.projects || [];
+            
+            const targetCode = projectCode.trim().toUpperCase();
+            const allFound = allProjects.filter(p => 
+                (p.projectCode && p.projectCode.toUpperCase() === targetCode) || 
+                ('UHX-' + p._id.substring(18).toUpperCase() === targetCode)
+            );
             
             const mine = allFound.filter(p => {
                 const contractorId = p.contractor?._id || p.contractor;
@@ -113,8 +120,13 @@ export default function ContractorExpenses() {
             setSuccess(true);
             setForm({ date: new Date().toISOString().split('T')[0], invoiceDate: new Date().toISOString().split('T')[0], amount: '', material: '', vendor: '', remarks: '', invoice: null, progressPhoto: null });
             // Refresh project to update remaining budget
-            const res = await projectAPI.getAll({ projectCode: projectCode.trim() });
-            const found = (res.data.projects || []).filter(p => p.contractor?._id === user?._id || p.contractor === user?._id);
+            const res = await projectAPI.getAll({});
+            const targetCode = projectCode.trim().toUpperCase();
+            const allFound = (res.data.projects || []).filter(p => 
+                (p.projectCode && p.projectCode.toUpperCase() === targetCode) || 
+                ('UHX-' + p._id.substring(18).toUpperCase() === targetCode)
+            );
+            const found = allFound.filter(p => p.contractor?._id === user?._id || p.contractor === user?._id);
             if (found.length === 1) setSelectedProject(found[0]);
             setTimeout(() => setSuccess(false), 4000);
         } catch (err) { alert(err.response?.data?.message || 'Error submitting expense'); }
