@@ -54,7 +54,10 @@ app.use((err, req, res, next) => {
 // Start server
 const PORT = process.env.PORT || 5000;
 
-connectDB().then(() => {
+const autoSeeder = require('./utils/autoSeeder');
+
+connectDB().then(async () => {
+    await autoSeeder();
     app.listen(PORT, () => {
         console.log(`🚀 UrbanHeliX server running on port ${PORT}`);
     });
