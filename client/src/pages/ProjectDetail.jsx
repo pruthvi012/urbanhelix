@@ -60,7 +60,10 @@ export default function ProjectDetail() {
         try {
             await projectAPI.approve(id, { allocatedBudget: Number(project.estimatedBudget), remarks: 'Approved from details' });
             loadData();
-        } catch (err) { alert(err.response?.data?.message || 'Error'); }
+        } catch (err) { 
+            console.error('Approve error:', err);
+            alert(`Approval Error: ${err.response?.data?.message || err.message || 'Unknown error'}`); 
+        }
     };
 
     const openAssign = async () => {
@@ -80,7 +83,10 @@ export default function ProjectDetail() {
             });
             setShowAssignModal(false);
             loadData();
-        } catch (err) { alert(err.response?.data?.message || 'Error'); }
+        } catch (err) { 
+            console.error('Assign error:', err);
+            alert(`Assign Error: ${err.response?.data?.message || err.message || 'Unknown error'}`); 
+        }
     };
 
     const handleUpdateStatus = async () => {
@@ -128,7 +134,10 @@ export default function ProjectDetail() {
             setShowVerifyModal(false);
             setVerifyForm({ verified: true, remarks: '', photo: null });
             loadData();
-        } catch (err) { alert(err.response?.data?.message || 'Error'); }
+        } catch (err) { 
+            console.error('Verify error:', err);
+            alert(`Verify Error: ${err.response?.data?.message || err.message || 'Unknown error'}`); 
+        }
     };
 
     const handleReleasePayment = async (expId) => {
@@ -143,7 +152,10 @@ export default function ProjectDetail() {
             setShowReleaseModal(false);
             setReleaseForm({ accountNumber: '', ifscCode: '', bankName: '' });
             loadData();
-        } catch (err) { alert(err.response?.data?.message || 'Error'); }
+        } catch (err) { 
+            console.error('Release error:', err);
+            alert(`Release Error: ${err.response?.data?.message || err.message || 'Unknown error'}`); 
+        }
     };
 
     const handleLogExpense = async (e) => {

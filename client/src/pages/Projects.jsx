@@ -126,7 +126,10 @@ export default function Projects() {
             setReportFile(null);
             setBudgetProof(null);
             loadData();
-        } catch (err) { alert(err.response?.data?.message || 'Error saving project'); }
+        } catch (err) { 
+            console.error('Save project error:', err);
+            alert(err.response?.data?.message || err.message || 'Error saving project'); 
+        }
     };
 
     const handleRevision = async (e) => {
@@ -136,14 +139,21 @@ export default function Projects() {
             setShowRevisionModal(false);
             setRevisionForm({ newBudget: '', reason: '' });
             loadData();
-        } catch (err) { alert(err.response?.data?.message || 'Error revising budget'); }
+        } catch (err) { 
+            console.error('Revision error:', err);
+            alert(err.response?.data?.message || err.message || 'Error revising budget'); 
+        }
     };
 
     const handleApprove = async (id, estimatedBudget) => {
         try {
             await projectAPI.approve(id, { allocatedBudget: Number(estimatedBudget), remarks: 'Approved' });
             loadData();
-        } catch (err) { alert(err.response?.data?.message || 'Error'); }
+        } catch (err) { 
+            console.error('Approval error:', err);
+            const msg = err.response?.data?.message || err.message || 'Approval failed';
+            alert(`Approval Error: ${msg}`); 
+        }
     };
 
     const handleVerify = async (e) => {
@@ -161,7 +171,10 @@ export default function Projects() {
             setShowVerifyModal(false);
             setVerifyForm({ verified: true, remarks: '', photo: null, expenditureId: '' });
             loadData();
-        } catch (err) { alert(err.response?.data?.message || 'Error'); }
+        } catch (err) { 
+            console.error('Action error:', err);
+            alert(`Error: ${err.response?.data?.message || err.message || 'Unknown error'}`); 
+        }
     };
 
     const handleRelease = async (projectId, expId) => {
@@ -178,7 +191,10 @@ export default function Projects() {
             const p = projects.find(proj => proj._id === projectId);
             const pending = p.expenditures.filter(e => e.readyForPayment && !e.financeReleased).length;
             if (pending <= 1) setShowReleaseModal(false);
-        } catch (err) { alert(err.response?.data?.message || 'Error'); }
+        } catch (err) { 
+            console.error('Action error:', err);
+            alert(`Error: ${err.response?.data?.message || err.message || 'Unknown error'}`); 
+        }
     };
 
     const openAssign = async (project) => {
@@ -199,7 +215,10 @@ export default function Projects() {
             });
             setShowAssignModal(false);
             loadData();
-        } catch (err) { alert(err.response?.data?.message || 'Error'); }
+        } catch (err) { 
+            console.error('Action error:', err);
+            alert(`Error: ${err.response?.data?.message || err.message || 'Unknown error'}`); 
+        }
     };
 
     const handleUpdateStatus = async (id) => {
@@ -209,7 +228,10 @@ export default function Projects() {
         try {
             await projectAPI.updateStatus(id, { status, remarks });
             loadData();
-        } catch (err) { alert(err.response?.data?.message || 'Error updating status'); }
+        } catch (err) { 
+            console.error('Update status error:', err);
+            alert(err.response?.data?.message || err.message || 'Status update failed'); 
+        }
     };
 
     const formatCurrency = (amt) => {
