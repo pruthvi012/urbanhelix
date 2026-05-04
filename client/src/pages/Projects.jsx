@@ -471,15 +471,7 @@ export default function Projects() {
                         <option value="verification">Verification</option>
                         <option value="completed">Completed</option>
                     </select>
-                    {user?.role !== 'contractor' && (
-                        <button 
-                            className="btn btn-outline" 
-                            style={{ borderColor: '#ef4444', color: '#ef4444' }}
-                            onClick={handleEmergencyClear}
-                        >
-                            ☢️ Nuclear Reset (Delete All)
-                        </button>
-                    )}
+
                     <select className="form-select" style={{ width: 'auto' }} value={filter.category} onChange={(e) => setFilter({ ...filter, category: e.target.value })}>
                         <option value="">All Categories</option>
                         <option value="road">Road</option>
