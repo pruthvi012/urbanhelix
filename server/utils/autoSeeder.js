@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const Department = require('../models/Department');
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
 
 const wardNames = [
     // Vijayanagar AC (167)
@@ -65,6 +67,21 @@ const wardNames = [
 
 const seedWardsIfEmpty = async () => {
     try {
+        const userCount = await User.countDocuments();
+        if (userCount === 0) {
+            console.log('👥 Database has no users. Auto-seeding users...');
+            const salt = await bcrypt.genSalt(10);
+            const adminPassword = await bcrypt.hash('password123', salt);
+            await User.insertMany([
+                { name: 'Admin Singh', email: 'admin@urbanhelix.gov', password: adminPassword, role: 'admin', phone: '9876543210' },
+                { name: 'Rajesh Kumar', email: 'rajesh.engineer@urbanhelix.gov', password: adminPassword, role: 'engineer', phone: '9876543211' },
+                { name: 'Vikram Mehta', email: 'vikram@contractor.com', password: adminPassword, role: 'contractor', phone: '9876543212' },
+                { name: 'Sunita Sharma', email: 'sunita.finance@urbanhelix.gov', password: adminPassword, role: 'financial_officer', phone: '9876543213' },
+                { name: 'Ananya Das', email: 'ananya@citizen.com', password: adminPassword, role: 'citizen', phone: '9876543214' }
+            ]);
+            console.log('✅ Users Seeded Successfully');
+        }
+
         const count = await Department.countDocuments();
         if (count === 0) {
             console.log('📦 Database is empty. Auto-seeding South Zone Wards...');
