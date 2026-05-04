@@ -277,74 +277,19 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_o
     }
 });
 
-// PUT /api/projects/:id — update project details (admin or proposer)
-router.put('/:id', protect, async (req, res) => {
-    try {
-        let project = await Project.findById(req.params.id);
-        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
-
-        // Authorization: Admin or Proposer (only if status is proposed)
-        const isAdmin = req.user.role === 'admin';
-        const isProposer = project.proposedBy?.toString() === req.user._id.toString();
-
-        if (!isAdmin && !(isProposer && project.status === 'proposed')) {
-            return res.status(403).json({ success: false, message: 'Not authorized to edit this project' });
-        }
-
-        // Update fields (excluding sensitive once handled by specific routes)
-        // USER REQUIREMENT: Only allow editing estimatedBudget, restrict Spent Budget modification.
-        const allowedUpdates = ['title', 'description', 'category', 'estimatedBudget', 'location', 'priority'];
-        
-        // Strictly protect these fields - they are only handled by the system or Admin testing
-        const restrictedFields = ['spentBudget', 'allocatedBudget', 'status', 'engineer', 'contractor'];
-
-        const oldBudget = project.estimatedBudget;
-        const newBudget = req.body.estimatedBudget;
-        const budgetChanged = newBudget !== undefined && Number(newBudget) !== Number(oldBudget);
-
-        allowedUpdates.forEach(update => {
-            if (req.body[update] !== undefined) project[update] = req.body[update];
-        });
-
-        // Even Admins are discouraged from manual Spent Budget tampering here to preserve Audit integrity
-        // unless specifically needed for "Tamper Testing" which we handle separately.
-        if (isAdmin && req.body.spentBudget !== undefined) {
-             project.spentBudget = req.body.spentBudget;
-        }
-
-        await project.save();
-
-        // Notify all stakeholders about budget edit if changed
-        if (budgetChanged) {
-            await notificationService.notifyProjectStakeholders(
-                project,
-                'Project Budget Updated',
-                `The budget for "${project.title}" has been updated from ₹${oldBudget.toLocaleString()} to ₹${Number(newBudget).toLocaleString()}.`,
-                'budget_change'
-            );
-        }
-
-        res.json({ success: true, project });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// PUT /api/projects/:id/approve — financial officer approves project
-router.put('/:id/approve', protect, authorize('financial_officer'), async (req, res) => {
+// PUT /api/projects/:id/approve — financial officer or admin approves project
+router.put('/:id/approve', protect, authorize('financial_officer', 'admin'), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
         const { allocatedBudget, remarks } = req.body;
         
-        // Generate projectCode upon approval
         if (!project.projectCode) {
             project.projectCode = await generateProjectCode();
         }
 
         project.status = 'approved';
-        // Only set engineer if not already assigned (proposedBy is typically the engineer)
         if (!project.engineer) {
             project.engineer = project.proposedBy;
         }
@@ -352,52 +297,11 @@ router.put('/:id/approve', protect, authorize('financial_officer'), async (req, 
         project.statusHistory.push({
             status: 'approved',
             changedBy: req.user._id,
-            remarks: remarks,
+            remarks: remarks || 'Approved',
         });
-
-        // Blockchain: Approve Project
-        try {
-            if (project.blockchainId !== undefined && project.blockchainId !== null) {
-                const receipt = await BlockchainService.updateProjectStatus(
-                    project.blockchainId,
-                    'approved',
-                    remarks
-                );
-                project.lastTransactionHash = receipt.hash;
-            }
-        } catch (bcError) {
-            console.error('Blockchain approval failed for project:', bcError);
-        }
 
         await project.save();
 
-        // Create Fund Transaction for Allocation
-        if (project.department) {
-            try {
-                await FundTransaction.create({
-                    type: 'allocation',
-                    from: {
-                        entityType: 'department',
-                        entityId: project.department,
-                        name: 'Ward Fund',
-                    },
-                    to: {
-                        entityType: 'project',
-                        entityId: project._id,
-                        name: project.title,
-                    },
-                    amount: Number(allocatedBudget),
-                    description: `Budget allocated for project: ${project.title}`,
-                    project: project._id,
-                    status: 'approved',
-                    initiatedBy: req.user._id,
-                });
-            } catch (ftErr) {
-                console.error('FundTransaction creation failed:', ftErr);
-            }
-        }
-
-        // Update department budget (allocated, not spent!)
         if (project.department) {
             const dept = await Department.findById(project.department);
             if (dept) {
@@ -405,16 +309,6 @@ router.put('/:id/approve', protect, authorize('financial_officer'), async (req, 
                 await dept.save();
             }
         }
-
-        // Hash chain record
-        await HashChainService.addRecord(
-            'project_status_change',
-            { projectId: project._id, status: 'approved', remarks },
-            { entityType: 'project', entityId: project._id },
-            req.user._id,
-            project.blockchainId,
-            project.lastTransactionHash
-        );
 
         await AuditLog.create({
             user: req.user._id,
@@ -424,20 +318,31 @@ router.put('/:id/approve', protect, authorize('financial_officer'), async (req, 
             details: `Project approved with ₹${project.allocatedBudget.toLocaleString()} budget`
         });
 
-        // Notify all stakeholders about approval
-        await notificationService.notifyProjectStakeholders(
-            project,
-            'Project Approved & Engineer Assigned',
-            `Project "${project.title}" has been approved with a budget of ₹${project.allocatedBudget.toLocaleString()}.`,
-            'project_approved'
-        );
+        res.json({ success: true, project });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
-        await notificationService.notifyAllCitizens(
-            'Project Approved',
-            `Project "${project.title}" has been officially approved with a budget of ₹${project.allocatedBudget.toLocaleString()}.`,
-            { type: 'public_update', relatedEntity: { entityType: 'Project', entityId: project._id } }
-        );
+// PUT /api/projects/:id — update project details (admin or proposer)
+router.put('/:id', protect, async (req, res) => {
+    try {
+        let project = await Project.findById(req.params.id);
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
+        const isAdmin = req.user.role === 'admin';
+        const isProposer = project.proposedBy?.toString() === req.user._id.toString();
+
+        if (!isAdmin && !(isProposer && project.status === 'proposed')) {
+            return res.status(403).json({ success: false, message: 'Not authorized to edit this project' });
+        }
+
+        const allowedUpdates = ['title', 'description', 'category', 'estimatedBudget', 'location', 'priority'];
+        allowedUpdates.forEach(update => {
+            if (req.body[update] !== undefined) project[update] = req.body[update];
+        });
+
+        await project.save();
         res.json({ success: true, project });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
