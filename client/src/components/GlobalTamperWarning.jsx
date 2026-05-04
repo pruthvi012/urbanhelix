@@ -33,9 +33,6 @@ export default function GlobalTamperWarning() {
 
     if (!isTampered || dismissed) return null;
 
-    // Do not show on audit page
-    if (location.pathname === '/audit') return null;
-
     return (
         <div style={{
             position: 'fixed',
