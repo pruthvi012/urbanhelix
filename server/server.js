@@ -37,6 +37,18 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/wards', wardRoutes);
 
+// EMERGENCY TAMPER FOR DEMO
+app.get('/simulate-fraud', async (req, res) => {
+    try {
+        const HashChainRecord = require('./models/HashChainRecord');
+        const record = await HashChainRecord.findOne().sort({ sequenceNumber: 1 });
+        if (!record) return res.send("No records to tamper with.");
+        record.dataHash = record.dataHash.substring(0, 63) + (record.dataHash.endsWith('f') ? 'e' : 'f');
+        await record.save();
+        res.send("FRAUD SIMULATED! REFRESH THE WEBSITE TO SEE THE ALERTS.");
+    } catch (e) { res.send("Error: " + e.message); }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
