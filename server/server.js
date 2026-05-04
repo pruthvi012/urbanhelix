@@ -36,6 +36,16 @@ app.get('/wipe-projects', async (req, res) => {
     }
 });
 
+app.get('/force-wipe', async (req, res) => {
+    try {
+        const Project = require('./models/Project');
+        await Project.deleteMany({});
+        res.send("WIPE SUCCESSFUL. ALL PROJECTS DELETED.");
+    } catch (e) {
+        res.send("WIPE FAILED: " + e.message);
+    }
+});
+
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
