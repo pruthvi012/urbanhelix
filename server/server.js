@@ -49,6 +49,25 @@ app.get('/simulate-fraud', async (req, res) => {
     } catch (e) { res.send("Error: " + e.message); }
 });
 
+// RESET DEMO DATA
+app.get('/reset-demo', async (req, res) => {
+    try {
+        const Project = require('./models/Project');
+        const User = require('./models/User');
+        const HashChainRecord = require('./models/HashChainRecord');
+        const Milestone = mongoose.model('Milestone', new mongoose.Schema({}, { strict: false, collection: 'milestones' }));
+        const Fund = mongoose.model('Fund', new mongoose.Schema({}, { strict: false, collection: 'fundtransactions' }));
+
+        await Project.deleteMany({});
+        await HashChainRecord.deleteMany({});
+        try { await Milestone.deleteMany({}); } catch(e) {}
+        try { await Fund.deleteMany({}); } catch(e) {}
+        await User.deleteMany({ role: { $in: ['contractor', 'citizen', 'financial_officer'] } });
+
+        res.send("DEMO RESET COMPLETE! All projects, hash records, and demo accounts cleared. Admin and Engineer accounts kept.");
+    } catch (e) { res.send("Error: " + e.message); }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
