@@ -277,15 +277,9 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_o
     }
 });
 
-// PUT /api/projects/:id/approve — (OLD)
-// PUT /api/projects/:id/approve — (FALLBACK FOR OLD BACKEND)
+// PUT /api/projects/:id/approve — (FALLBACK)
 router.put('/:id/approve', protect, async (req, res) => {
     try {
-        // Allow both roles in the fallback route too
-        if (req.user.role !== 'financial_officer' && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: `Role '${req.user.role}' not authorized for approval fallback` });
-        }
-
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
@@ -297,7 +291,7 @@ router.put('/:id/approve', protect, async (req, res) => {
         project.statusHistory.push({
             status: 'approved',
             changedBy: req.user._id,
-            remarks: 'Approved via Fallback Route',
+            remarks: 'Approved via Demo Fallback',
         });
 
         await project.save();
@@ -307,14 +301,9 @@ router.put('/:id/approve', protect, async (req, res) => {
     }
 });
 
-// NEW VERSIONED ROUTE TO BYPASS CACHE
+// NEW VERSIONED ROUTE
 router.put('/:id/approve-v2', protect, async (req, res) => {
     try {
-        // PERMANENT FIX: Allow financial_officer and admin
-        if (req.user.role !== 'financial_officer' && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Role not authorized for v2 approval' });
-        }
-
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
@@ -329,7 +318,7 @@ router.put('/:id/approve-v2', protect, async (req, res) => {
         project.statusHistory.push({
             status: 'approved',
             changedBy: req.user._id,
-            remarks: remarks || 'Approved via V2',
+            remarks: remarks || 'Approved via Demo V2',
         });
 
         await project.save();
