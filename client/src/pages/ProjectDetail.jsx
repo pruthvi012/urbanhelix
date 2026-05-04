@@ -254,7 +254,7 @@ export default function ProjectDetail() {
             {(['engineer', 'admin', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && project.contractor?._id === user?._id)) && (
                 <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>ACTIONS:</span>
-                    {user?.role === 'financial_officer' && project.status === 'proposed' && (
+                    {(user?.role === 'financial_officer' || user?.role === 'admin') && project.status === 'proposed' && (
                         <button className="btn btn-success btn-sm" onClick={handleApprove}>Approve Project</button>
                     )}
                     {['engineer', 'admin'].includes(user?.role) && ['approved', 'in_progress'].includes(project.status) && !project.contractor && (

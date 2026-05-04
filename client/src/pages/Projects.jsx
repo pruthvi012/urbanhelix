@@ -557,7 +557,7 @@ export default function Projects() {
                                                         {(['engineer', 'admin', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && p.contractor?._id === user?._id)) && (
                                                             <td>
                                                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                                                    {user?.role === 'financial_officer' && p.status === 'proposed' && (
+                                                                    {(user?.role === 'financial_officer' || user?.role === 'admin') && p.status === 'proposed' && (
                                                                         <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget)}>Approve</button>
                                                                     )}
                                                                     {['engineer', 'admin'].includes(user?.role) && p.status === 'approved' && !p.contractor && (
