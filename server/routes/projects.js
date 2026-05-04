@@ -278,8 +278,16 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_o
 });
 
 // PUT /api/projects/:id/approve — financial officer or admin approves project
-router.put('/:id/approve', protect, authorize('financial_officer', 'admin'), async (req, res) => {
+router.put('/:id/approve', protect, async (req, res) => {
     try {
+        // Manual role check for live demo unblocking
+        if (req.user.role !== 'financial_officer' && req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: `Role '${req.user.role}' is not authorized to access this resource`
+            });
+        }
+
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
