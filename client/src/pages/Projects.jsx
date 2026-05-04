@@ -703,9 +703,9 @@ export default function Projects() {
                                                                         justifyContent: 'space-between',
                                                                         alignItems: 'center',
                                                                         transition: 'all 0.2s ease',
-                                                                        background: form.location.wardNo === w.wardNo ? '#eff6ff' : 'transparent',
-                                                                        color: form.location.wardNo === w.wardNo ? '#2563eb' : '#475569',
-                                                                        border: form.location.wardNo === w.wardNo ? '1px solid #dbeafe' : '1px solid transparent'
+                                                                        background: form.location.wardNo === w.wardNo ? '#1e3a8a' : '#f8fafc',
+                                                                        color: form.location.wardNo === w.wardNo ? '#ffffff' : '#0f172a',
+                                                                        border: form.location.wardNo === w.wardNo ? '1px solid #1e3a8a' : '1px solid #e2e8f0'
                                                                     }}
                                                                     onClick={() => {
                                                                         setForm({ ...form, location: { ...form.location, ward: w.name, wardNo: w.wardNo, area: '' } });
@@ -760,10 +760,10 @@ export default function Projects() {
                                                             cursor: 'pointer',
                                                             textAlign: 'center',
                                                             fontWeight: 600,
-                                                            background: form.location.area === a ? '#2563eb' : '#ffffff',
-                                                            color: form.location.area === a ? '#ffffff' : '#64748b',
+                                                            background: form.location.area === a ? '#1e3a8a' : '#f1f5f9',
+                                                            color: form.location.area === a ? '#ffffff' : '#0f172a',
                                                             border: '1px solid',
-                                                            borderColor: form.location.area === a ? '#2563eb' : '#e2e8f0',
+                                                            borderColor: form.location.area === a ? '#1e3a8a' : '#cbd5e1',
                                                             transition: 'all 0.2s ease'
                                                         }}
                                                     >
