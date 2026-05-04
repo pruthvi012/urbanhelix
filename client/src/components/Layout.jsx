@@ -90,7 +90,7 @@ export default function Layout() {
                     <NavLink to="/" className="sidebar-logo">
                         <div className="sidebar-logo-icon">🏛️</div>
                         <div>
-                            <div className="sidebar-logo-text">UrbanHeliX v2.2-FORCE</div>
+                            <div className="sidebar-logo-text">UrbanHeliX v2.4-EMERGENCY</div>
                             <div className="sidebar-logo-sub">Municipal Governance (Synced)</div>
                         </div>
                     </NavLink>

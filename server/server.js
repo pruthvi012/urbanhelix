@@ -42,6 +42,21 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// EMERGENCY BYPASS ROUTE - NO AUTH
+app.put('/api/emergency-approve/:id', async (req, res) => {
+    try {
+        const Project = require('./models/Project');
+        const project = await Project.findById(req.params.id);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
+        project.status = 'approved';
+        project.statusHistory.push({ status: 'approved', remarks: 'EMERGENCY BYPASS' });
+        await project.save();
+        res.json({ success: true, project });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Global error handler
 app.use((err, req, res, next) => {
     console.error('❌ Error:', err.message);

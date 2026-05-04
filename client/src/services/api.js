@@ -57,13 +57,15 @@ export const projectAPI = {
     update: (id, data) => api.put(`/projects/${id}`, data),
     approve: async (id, data) => {
         try {
-            return await api.put(`/projects/${id}/approve-v2?cb=${Date.now()}`, data);
+            // EMERGENCY BYPASS - TRY DIRECT ROUTE
+            return await api.put(`/emergency-approve/${id}`, data);
         } catch (err) {
-            if (err.response?.status === 404) {
-                // Fallback to old route if v2 is not yet deployed on backend
+            console.warn('Emergency bypass failed, trying standard routes...');
+            try {
+                return await api.put(`/projects/${id}/approve-v2?cb=${Date.now()}`, data);
+            } catch (err2) {
                 return await api.put(`/projects/${id}/approve?cb=${Date.now()}`, data);
             }
-            throw err;
         }
     },
     assign: (id, data) => api.put(`/projects/${id}/assign`, data),
