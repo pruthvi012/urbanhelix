@@ -57,7 +57,7 @@ router.get('/', optionalAuth, async (req, res) => {
         if (area) filter['location.area'] = area;
         if (contractor) filter.contractor = contractor;
         if (projectCode) {
-            filter.projectCode = { $regex: new RegExp('^' + projectCode.trim() + '$', 'i') };
+            filter.projectCode = { $regex: new RegExp(projectCode.trim(), 'i') };
         }
 
         let projects = await Project.find(filter)

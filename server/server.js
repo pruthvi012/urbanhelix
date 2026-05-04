@@ -53,7 +53,6 @@ app.get('/simulate-fraud', async (req, res) => {
 // RESET DEMO DATA
 app.get('/reset-demo', async (req, res) => {
     try {
-        const mongoose = require('mongoose');
         const Project = require('./models/Project');
         const User = require('./models/User');
         const HashChainRecord = require('./models/HashChainRecord');
