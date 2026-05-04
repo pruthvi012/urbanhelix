@@ -1,4 +1,5 @@
-// Scripts for firebase and firebase messaging
+// Scripts for firebase and firebase messaging - v2.3-ULTRA-FORCE
+// FORCE_UPDATE_TIMESTAMP: 2026-05-04T12:20:00Z
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
