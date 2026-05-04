@@ -55,7 +55,17 @@ export const projectAPI = {
     getById: (id) => api.get(`/projects/${id}`),
     create: (data) => api.post('/projects', data),
     update: (id, data) => api.put(`/projects/${id}`, data),
-    approve: (id, data) => api.put(`/projects/${id}/approve-v2`, data),
+    approve: async (id, data) => {
+        try {
+            return await api.put(`/projects/${id}/approve-v2`, data);
+        } catch (err) {
+            if (err.response && err.response.status === 404) {
+                // Backward compatibility: If v2 is not yet deployed, fallback to v1
+                return await api.put(`/projects/${id}/approve`, data);
+            }
+            throw err;
+        }
+    },
     assign: (id, data) => api.put(`/projects/${id}/assign`, data),
     updateStatus: (id, data) => api.put(`/projects/${id}/status`, data),
     reviseBudget: (id, data) => api.put(`/projects/${id}/revision`, data),
