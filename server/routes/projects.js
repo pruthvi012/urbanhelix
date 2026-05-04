@@ -278,9 +278,33 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_o
 });
 
 // PUT /api/projects/:id/approve — (OLD)
+// PUT /api/projects/:id/approve — (FALLBACK FOR OLD BACKEND)
 router.put('/:id/approve', protect, async (req, res) => {
-    // Keeping this as a fallback but redirection or warning would be better
-    return res.status(403).json({ success: false, message: 'Deprecated. Use v2.' });
+    try {
+        // Allow both roles in the fallback route too
+        if (req.user.role !== 'financial_officer' && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: `Role '${req.user.role}' not authorized for approval fallback` });
+        }
+
+        const project = await Project.findById(req.params.id);
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+        if (!project.projectCode) {
+            project.projectCode = await generateProjectCode();
+        }
+
+        project.status = 'approved';
+        project.statusHistory.push({
+            status: 'approved',
+            changedBy: req.user._id,
+            remarks: 'Approved via Fallback Route',
+        });
+
+        await project.save();
+        res.json({ success: true, project });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 });
 
 // NEW VERSIONED ROUTE TO BYPASS CACHE
