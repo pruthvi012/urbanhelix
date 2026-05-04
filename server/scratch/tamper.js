@@ -49,9 +49,7 @@ async function tamper() {
         );
 
         // ── STEP 2: Corrupt a HashChain Record ───────────────────────────────
-        const chainRecord = await HashChainRecord.findOne({
-            recordType: { $in: ['expenditure_logged', 'project_status_change', 'fund_allocation'] }
-        }).sort({ sequenceNumber: -1 });
+        const chainRecord = await HashChainRecord.findOne({}).sort({ sequenceNumber: -1 });
 
         if (chainRecord) {
             console.log(`⛓️  Corrupting HashChain Block #${chainRecord.sequenceNumber}...`);
