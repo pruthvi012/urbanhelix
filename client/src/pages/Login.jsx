@@ -22,6 +22,7 @@ export default function Login() {
     // Quick role selector states
     const [selectedRoleIndex, setSelectedRoleIndex] = useState(0);
     const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+    const [showPolicy, setShowPolicy] = useState(false);
     const dropdownRef = useRef(null);
 
     const { login, register } = useAuth();
@@ -85,6 +86,7 @@ export default function Login() {
     const activeRole = ROLES[selectedRoleIndex];
 
     return (
+        <>
         <div className="login-container">
             {/* Embedded styles for pristine visual matching */}
             <style>{`
@@ -702,7 +704,7 @@ export default function Login() {
                     </form>
 
                     <p className="login-policy-text">
-                        By continuing, you agree to the UrbanHeliX <a href="#terms" onClick={(e) => e.preventDefault()}>access policy</a>.
+                        By continuing, you agree to the UrbanHeliX <a href="#terms" onClick={(e) => { e.preventDefault(); setShowPolicy(true); }}>access policy</a>.
                     </p>
 
                     <div className="login-footer-switch">
@@ -715,5 +717,153 @@ export default function Login() {
                 </div>
             </div>
         </div>
+
+        {/* ─── ACCESS POLICY MODAL ─── */}
+        {showPolicy && (
+            <div
+                onClick={() => setShowPolicy(false)}
+                style={{
+                    position: 'fixed', inset: 0, zIndex: 1000,
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '24px'
+                }}
+            >
+                <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                        background: '#ffffff', borderRadius: '20px',
+                        width: '100%', maxWidth: '620px',
+                        maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        overflow: 'hidden'
+                    }}
+                >
+                    {/* Modal Header */}
+                    <div style={{
+                        padding: '28px 32px 20px',
+                        borderBottom: '1px solid #e2e8f0',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '40px', height: '40px', borderRadius: '50%',
+                                background: '#f0fdfa', border: '1px solid #ccfbf1',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: '#0d9488', fontSize: '18px'
+                            }}>
+                                🛡️
+                            </div>
+                            <div>
+                                <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                                    UrbanHeliX Access Policy
+                                </h2>
+                                <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
+                                    Effective: August 2025 · Municipal Civic Platform
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowPolicy(false)}
+                            style={{
+                                background: '#f1f5f9', border: 'none', borderRadius: '8px',
+                                width: '32px', height: '32px', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '18px', color: '#64748b', fontWeight: 700
+                            }}
+                        >
+                            ×
+                        </button>
+                    </div>
+
+                    {/* Modal Scrollable Body */}
+                    <div style={{ padding: '28px 32px', overflowY: 'auto', flex: 1 }}>
+                        {[
+                            {
+                                icon: '🏛️',
+                                title: '1. Purpose of Access',
+                                text: 'UrbanHeliX is an official civic transparency platform operated by the Municipal Corporation. Access is granted strictly for tracking public infrastructure projects, monitoring fund allocation, submitting grievances, and participating in civic governance. Any use beyond these purposes is strictly prohibited.'
+                            },
+                            {
+                                icon: '👥',
+                                title: '2. User Roles & Permissions',
+                                text: 'Citizens may view public project data, grievance statuses, and budget summaries. Contractors and Site Engineers may update milestones and upload progress documentation for their assigned projects. Financial Officers may authorize fund releases and escrow transactions. City Admins have full access to all modules. Access is role-bound and may not be shared or transferred.'
+                            },
+                            {
+                                icon: '📊',
+                                title: '3. Data Collection & Usage',
+                                text: 'We collect your name, email address, role information, and activity logs (page visits, API calls, file uploads). This data is used solely to operate the platform, enforce accountability, and generate audit reports. We do not sell or share your personal data with third parties. All data is stored securely on government-grade infrastructure.'
+                            },
+                            {
+                                icon: '⛔',
+                                title: '4. Prohibited Activities',
+                                text: 'Users must not: falsify project progress, fabricate invoices or verification photos, attempt unauthorized access to other users\' data, scrape or bulk-export platform data, use automated bots or scripts, or tamper with any audit or blockchain records. Violations will result in immediate account suspension.'
+                            },
+                            {
+                                icon: '🔗',
+                                title: '5. Cryptographic Audit Trail',
+                                text: 'All significant actions on UrbanHeliX — fund releases, milestone approvals, project status changes — are cryptographically hashed and stored in an immutable SHA-256 linked chain. By using this platform, you acknowledge that your actions are permanently recorded and cannot be altered, deleted, or disputed.'
+                            },
+                            {
+                                icon: '🔒',
+                                title: '6. Confidentiality of Sensitive Data',
+                                text: 'Budget figures, escrow transaction details, contractor financial records, and project audit documents are confidential to authorized roles only. Citizens may view aggregated summaries. Unauthorized disclosure of role-restricted data to third parties is a violation of this policy and may attract legal consequences.'
+                            },
+                            {
+                                icon: '🔑',
+                                title: '7. Session & Credential Security',
+                                text: 'You are fully responsible for maintaining the confidentiality of your login credentials. Sessions are cleared when you open a new browser tab or window. Do not share your password with anyone. If you suspect unauthorized access to your account, contact the system administrator immediately at admin@urbanhelix.gov.'
+                            },
+                            {
+                                icon: '⚖️',
+                                title: '8. Consequences of Violation',
+                                text: 'Violation of this access policy may result in: immediate suspension of your account, escalation to the relevant municipal authority, and where applicable, legal action under the Information Technology Act, 2000 and related regulations. UrbanHeliX reserves the right to audit all user activity at any time without prior notice.'
+                            }
+                        ].map((section, i) => (
+                            <div key={i} style={{ marginBottom: '24px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                    <span style={{ fontSize: '18px' }}>{section.icon}</span>
+                                    <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                                        {section.title}
+                                    </h3>
+                                </div>
+                                <p style={{
+                                    fontSize: '13px', color: '#475569',
+                                    lineHeight: '1.7', margin: 0,
+                                    paddingLeft: '28px'
+                                }}>
+                                    {section.text}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div style={{
+                        padding: '20px 32px',
+                        borderTop: '1px solid #e2e8f0',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        gap: '12px'
+                    }}>
+                        <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
+                            By signing in, you agree to all terms above.
+                        </p>
+                        <button
+                            onClick={() => setShowPolicy(false)}
+                            style={{
+                                background: '#0d9488', color: '#fff',
+                                border: 'none', borderRadius: '8px',
+                                padding: '10px 24px', fontWeight: 700,
+                                fontSize: '14px', cursor: 'pointer'
+                            }}
+                        >
+                            I Understand
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 }
