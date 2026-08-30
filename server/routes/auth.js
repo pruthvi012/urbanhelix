@@ -95,7 +95,7 @@ router.get('/users', protect, authorize('admin', 'engineer', 'financial_officer'
 // In-memory OTP storage
 const otpStore = new Map();
 
-// Helper to send SMS via Fast2SMS
+// Helper to send SMS via Fast2SMS using official OTP Message route (GET request)
 const sendFast2SMSSMS = (phone, otp) => {
     return new Promise((resolve, reject) => {
         const apiKey = process.env.FAST2SMS_API_KEY;
@@ -103,24 +103,13 @@ const sendFast2SMSSMS = (phone, otp) => {
             return reject(new Error('FAST2SMS_API_KEY is not defined in environment'));
         }
 
-        // Fast2SMS API bulkV2 payload using Quick SMS route to bypass website verification requirements
-        const postData = JSON.stringify({
-            route: 'q',
-            message: `Your UrbanHeliX verification code is: ${otp}`,
-            language: 'english',
-            flash: 0,
-            numbers: phone
-        });
+        // Format query string parameters for the official GET request
+        const path = `/dev/bulkV2?authorization=${encodeURIComponent(apiKey)}&route=otp&variables_values=${encodeURIComponent(otp)}&numbers=${encodeURIComponent(phone)}`;
 
         const options = {
             hostname: 'www.fast2sms.com',
-            path: '/dev/bulkV2',
-            method: 'POST',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(postData)
-            }
+            path: path,
+            method: 'GET'
         };
 
         const req = https.request(options, (res) => {
@@ -141,7 +130,6 @@ const sendFast2SMSSMS = (phone, otp) => {
         });
 
         req.on('error', (err) => reject(err));
-        req.write(postData);
         req.end();
     });
 };
