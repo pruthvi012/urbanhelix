@@ -613,7 +613,7 @@ export default function Login() {
             {/* Right Panel: Login Form & Selector */}
             <div className="login-right-panel">
                 {/* Floating Role Quick Switcher (only shown on Sign In view) */}
-                {!isRegister && (
+                {!isRegister && loginMethod === 'password' && (
                     <div className="login-role-switcher-container" ref={dropdownRef}>
                         <div 
                             className="login-role-pill" 
@@ -728,17 +728,17 @@ export default function Login() {
                         <div className="login-tab-container">
                             <button 
                                 type="button" 
-                                className={`login-tab-btn ${loginMethod === 'password' ? 'active' : ''}`}
-                                onClick={() => { setLoginMethod('password'); setError(''); }}
-                            >
-                                💼 Officer Portal
-                            </button>
-                            <button 
-                                type="button" 
                                 className={`login-tab-btn ${loginMethod === 'otp' ? 'active' : ''}`}
                                 onClick={() => { setLoginMethod('otp'); setError(''); }}
                             >
                                 👥 Citizen Access
+                            </button>
+                            <button 
+                                type="button" 
+                                className={`login-tab-btn ${loginMethod === 'password' ? 'active' : ''}`}
+                                onClick={() => { setLoginMethod('password'); setError(''); }}
+                            >
+                                💼 Officer Portal
                             </button>
                         </div>
                     )}
