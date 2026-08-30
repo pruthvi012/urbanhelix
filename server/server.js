@@ -63,6 +63,10 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/wards', wardRoutes);
 
+// AI Chatbot Route
+const aiRoutes = require('./routes/ai');
+app.use('/api/ai', aiRoutes);
+
 // EMERGENCY TAMPER FOR DEMO
 app.get('/simulate-fraud', async (req, res) => {
     try {

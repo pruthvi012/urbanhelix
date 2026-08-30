@@ -1269,3 +1269,26 @@ body {
         grid-template-columns: 1fr;
     }
 }
+/ *   C H A T B O T   C S S   * /  
+ 
+.chatbot-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; align-items: flex-end; }
+.chatbot-fab { background: var(--primary); color: white; border: none; border-radius: 30px; padding: 12px 20px; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(16,185,129,0.3); font-weight: 600; transition: all 0.2s; }
+.chatbot-fab:hover { transform: translateY(-2px); }
+.chatbot-window { width: 350px; height: 500px; max-height: 80vh; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+.chatbot-header { background: rgba(15,23,42,0.95); padding: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
+.bot-info { display: flex; align-items: center; gap: 12px; }
+.bot-avatar { font-size: 24px; }
+.bot-name { font-weight: 600; color: white; }
+.bot-status { font-size: 11px; color: var(--primary); }
+.chatbot-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.message-wrapper { display: flex; }
+.message-wrapper.bot { justify-content: flex-start; }
+.message-wrapper.user { justify-content: flex-end; }
+.message-bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
+.message-wrapper.bot .message-bubble { background: var(--bg-body); color: var(--text-main); border-bottom-left-radius: 4px; border: 1px solid var(--border-color); }
+.message-wrapper.user .message-bubble { background: var(--primary); color: white; border-bottom-right-radius: 4px; }
+.chatbot-input { padding: 16px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; background: var(--bg-surface); }
+.chatbot-input input { flex: 1; background: var(--bg-body); border: 1px solid var(--border-color); padding: 10px 14px; border-radius: 20px; color: var(--text-main); outline: none; }
+.chatbot-input input:focus { border-color: var(--primary); }
+.chatbot-input button { background: var(--primary); color: white; border: none; width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+.chatbot-input button:disabled { opacity: 0.5; cursor: not-allowed; }

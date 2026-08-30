@@ -89,13 +89,9 @@ export default function Layout() {
                     </NavLink>
                 </div>
 
-                {/* Role Switcher Card */}
+                {/* Current Role Card */}
                 <div className="role-card-container">
-                    <div 
-                        className="role-switcher-card" 
-                        onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-                        title="Click to switch role view"
-                    >
+                    <div className="role-switcher-card" style={{ cursor: 'default' }}>
                         <div className="role-avatar-badge">
                             {initials}
                         </div>
@@ -103,28 +99,7 @@ export default function Layout() {
                             <div className="role-name">{currentRoleObj.label}</div>
                             <div className="role-desc">{currentRoleObj.desc}</div>
                         </div>
-                        <div style={{ color: '#94a3b8', fontSize: '14px' }}>
-                            {showRoleDropdown ? <FiChevronUp /> : <FiChevronDown />}
-                        </div>
                     </div>
-
-                    {/* Role Dropdown List */}
-                    {showRoleDropdown && (
-                        <div className="role-dropdown-list">
-                            {ROLES.map((r) => (
-                                <button
-                                    key={r.key}
-                                    type="button"
-                                    className={`role-option-item ${user?.role === r.key ? 'active' : ''}`}
-                                    onClick={() => handleRoleSwitch(r)}
-                                    disabled={switchingRole}
-                                >
-                                    <span style={{ fontSize: '14px' }}>{r.icon}</span>
-                                    <span>{r.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
                 </div>
 
                 {/* Navigation Links */}

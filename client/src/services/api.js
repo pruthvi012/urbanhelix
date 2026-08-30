@@ -173,4 +173,10 @@ export const notificationAPI = {
     markAsRead: (id) => api.put(`/notifications/${id}/read`),
 };
 
+// AI Chatbot
+export const aiAPI = {
+    ask: (data) => api.post('/ai/ask', data),
+};
+
 export default api;
+
