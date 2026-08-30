@@ -1,48 +1,94 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { S3Client } = require('@aws-sdk/client-s3');
-const multerS3 = require('multer-s3');
+const { BlobServiceClient } = require('@azure/storage-blob');
+const { Readable } = require('stream');
 
-// S3 Configuration
-const s3 = new S3Client({
-    region: process.env.AWS_REGION || 'ap-south-1',
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+// ─── Azure Blob Storage Configuration ───
+let containerClient = null;
+if (process.env.AZURE_STORAGE_CONNECTION_STRING && process.env.AZURE_STORAGE_CONTAINER) {
+    try {
+        const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
+        containerClient = blobServiceClient.getContainerClient(process.env.AZURE_STORAGE_CONTAINER);
+        // Auto-create the container if it doesn't exist
+        containerClient.createIfNotExists({ access: 'blob' })
+            .then(() => console.log('✅ Azure Blob Storage connected: container "' + process.env.AZURE_STORAGE_CONTAINER + '"'))
+            .catch(err => {
+                console.warn('⚠️ Azure container creation failed, falling back to local storage:', err.message);
+                containerClient = null;
+            });
+    } catch (err) {
+        console.warn('⚠️ Azure Blob Storage init failed, falling back to local storage:', err.message);
+        containerClient = null;
     }
-});
+}
 
-// Ensure local upload directories exist (fallback)
+// ─── Ensure local upload directories exist (fallback) ───
 const uploadDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
-// Dynamic Storage Engine
-const getStorage = () => {
-    if (process.env.S3_BUCKET_NAME) {
-        return multerS3({
-            s3: s3,
-            bucket: process.env.S3_BUCKET_NAME,
-            contentType: multerS3.AUTO_CONTENT_TYPE,
-            metadata: (req, file, cb) => {
-                cb(null, { fieldName: file.fieldname });
-            },
-            key: (req, file, cb) => {
-                let folder = 'others';
-                if (req.originalUrl.includes('projects')) folder = 'projects';
-                else if (req.originalUrl.includes('grievances')) folder = 'grievances';
-                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-                cb(null, `${folder}/${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
+// ─── Custom Multer Storage Engine for Azure Blob ───
+class AzureBlobStorage {
+    constructor(opts) {
+        this.containerClient = opts.containerClient;
+    }
+
+    _handleFile(req, file, cb) {
+        let folder = 'others';
+        if (req.originalUrl.includes('projects')) folder = 'projects';
+        else if (req.originalUrl.includes('grievances')) folder = 'grievances';
+
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const blobName = `${folder}/${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`;
+
+        const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
+
+        // Collect the file stream into a buffer, then upload
+        const chunks = [];
+        file.stream.on('data', (chunk) => chunks.push(chunk));
+        file.stream.on('error', (err) => cb(err));
+        file.stream.on('end', async () => {
+            try {
+                const buffer = Buffer.concat(chunks);
+                await blockBlobClient.uploadData(buffer, {
+                    blobHTTPHeaders: { blobContentType: file.mimetype }
+                });
+
+                cb(null, {
+                    location: blockBlobClient.url,
+                    key: blobName,
+                    size: buffer.length,
+                    bucket: process.env.AZURE_STORAGE_CONTAINER
+                });
+            } catch (err) {
+                cb(err);
             }
         });
     }
 
-    // Use memory storage if S3 is not available — safest for Vercel/Serverless
-    // We only use diskStorage if explicitly asked or if we're in a persistent environment
+    _removeFile(req, file, cb) {
+        if (file.key) {
+            const blockBlobClient = this.containerClient.getBlockBlobClient(file.key);
+            blockBlobClient.deleteIfExists().then(() => cb(null)).catch(cb);
+        } else {
+            cb(null);
+        }
+    }
+}
+
+// ─── Dynamic Storage Engine ───
+const getStorage = () => {
+    // Priority 1: Azure Blob Storage
+    if (containerClient) {
+        return new AzureBlobStorage({ containerClient });
+    }
+
+    // Priority 2: Memory storage for serverless (Vercel)
     if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
         return multer.memoryStorage();
     }
 
+    // Priority 3: Local disk storage (fallback — always works)
     return multer.diskStorage({
         destination: (req, file, cb) => {
             let folder = 'others';
@@ -54,7 +100,6 @@ const getStorage = () => {
                 try {
                     fs.mkdirSync(dest, { recursive: true });
                 } catch (err) {
-                    // If disk fails, we can't save here
                     console.error('Failed to create upload directory:', err);
                 }
             }
