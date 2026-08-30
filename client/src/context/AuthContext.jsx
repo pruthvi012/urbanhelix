@@ -67,8 +67,21 @@ export function AuthProvider({ children }) {
         setUser(null);
     };
 
+    const loginWithOTP = async (phone, otp) => {
+        const { data } = await authAPI.verifyOTP(phone, otp);
+        if (data.success) {
+            localStorage.setItem('urbanhelix_token', data.token);
+            localStorage.setItem('urbanhelix_user', JSON.stringify(data.user));
+            setToken(data.token);
+            setUser(data.user);
+            requestForToken().catch(() => {});
+            return data;
+        }
+        throw new Error(data.message);
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, token, loading, login, register, logout, loginWithOTP }}>
             {children}
         </AuthContext.Provider>
     );

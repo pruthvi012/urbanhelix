@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { FiShield, FiActivity, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { authAPI } from '../services/api';
 
 const ROLES = [
     { key: 'admin', label: 'City Admin', desc: 'Monitor governance, risk, and...', email: 'admin@urbanhelix.gov', avatar: 'AS' },
@@ -19,13 +20,21 @@ export default function Login() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showInstall, setShowInstall] = useState(false);
     
+    // OTP states
+    const [loginMethod, setLoginMethod] = useState('password'); // 'password' or 'otp'
+    const [phone, setPhone] = useState('');
+    const [otp, setOtp] = useState('');
+    const [otpSent, setOtpSent] = useState(false);
+    const [demoOtp, setDemoOtp] = useState('');
+    const [otpLoading, setOtpLoading] = useState(false);
+
     // Quick role selector states
     const [selectedRoleIndex, setSelectedRoleIndex] = useState(0);
     const [showRoleDropdown, setShowRoleDropdown] = useState(false);
     const [showPolicy, setShowPolicy] = useState(false);
     const dropdownRef = useRef(null);
 
-    const { login, register } = useAuth();
+    const { login, register, loginWithOTP } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -43,6 +52,15 @@ export default function Login() {
         if (!isRegister) {
             const roleObj = ROLES[selectedRoleIndex];
             setForm(f => ({ ...f, email: roleObj.email, password: 'password123', role: roleObj.key }));
+            if (roleObj.key === 'citizen') {
+                setLoginMethod('otp');
+                setPhone('9876543210');
+                setOtpSent(false);
+                setOtp('');
+                setDemoOtp('');
+            } else {
+                setLoginMethod('password');
+            }
         }
     }, [selectedRoleIndex, isRegister]);
 
@@ -64,7 +82,46 @@ export default function Login() {
         setDeferredPrompt(null);
         setShowInstall(false);
     };
+    const handleSendOTP = async (e) => {
+        if (e) e.preventDefault();
+        if (!phone) {
+            setError('Please enter a valid phone number');
+            return;
+        }
+        setError('');
+        setOtpLoading(true);
+        try {
+            const { data } = await authAPI.sendOTP(phone);
+            if (data.success) {
+                setOtpSent(true);
+                setDemoOtp(data.otp);
+            } else {
+                setError(data.message || 'Failed to send OTP');
+            }
+        } catch (err) {
+            setError(err.response?.data?.message || err.message || 'Failed to send OTP');
+        } finally {
+            setOtpLoading(false);
+        }
+    };
 
+    const handleVerifyOTP = async (e) => {
+        if (e) e.preventDefault();
+        if (!otp) {
+            setError('Please enter the verification code');
+            return;
+        }
+        setError('');
+        setLoading(true);
+        try {
+            await loginWithOTP(phone, otp);
+            navigate('/');
+        } catch (err) {
+            setError(err.response?.data?.message || err.message || 'Invalid verification code');
+        } finally {
+            setLoading(false);
+        }
+    };
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -485,8 +542,49 @@ export default function Login() {
                     text-decoration: none;
                 }
 
-                .login-footer-switch a:hover {
-                    text-decoration: underline;
+                .login-tab-container {
+                    display: flex;
+                    width: 100%;
+                    background-color: #f1f5f9;
+                    border-radius: 12px;
+                    padding: 4px;
+                    margin-bottom: 24px;
+                }
+
+                .login-tab-btn {
+                    flex: 1;
+                    border: none;
+                    background: none;
+                    padding: 10px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: #64748b;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                }
+
+                .login-tab-btn.active {
+                    background-color: #ffffff;
+                    color: #0f172a;
+                    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.06);
+                }
+
+                .login-otp-demo-banner {
+                    background: #f0fdf4;
+                    border: 1px dashed #bbf7d0;
+                    border-radius: 10px;
+                    padding: 12px 16px;
+                    margin-bottom: 24px;
+                    color: #166534;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    text-align: left;
+                    width: 100%;
                 }
             `}</style>
 
@@ -626,81 +724,201 @@ export default function Login() {
                         </div>
                     )}
 
-                    <form className="login-form-container" onSubmit={handleSubmit}>
-                        {isRegister && (
-                            <div className="login-field-group">
-                                <label className="login-field-label">Full Name</label>
-                                <input 
-                                    className="login-field-input" 
-                                    type="text" 
-                                    placeholder="Enter your name" 
-                                    value={form.name}
-                                    onChange={(e) => setForm({ ...form, name: e.target.value })} 
-                                    required 
-                                />
-                            </div>
-                        )}
-
-                        <div className="login-field-group">
-                            <label className="login-field-label">Email address</label>
-                            <input 
-                                className="login-field-input" 
-                                type="email" 
-                                placeholder="you@city.gov" 
-                                value={form.email}
-                                onChange={(e) => setForm({ ...form, email: e.target.value })} 
-                                required 
-                            />
+                    {!isRegister && (
+                        <div className="login-tab-container">
+                            <button 
+                                type="button" 
+                                className={`login-tab-btn ${loginMethod === 'password' ? 'active' : ''}`}
+                                onClick={() => { setLoginMethod('password'); setError(''); }}
+                            >
+                                💼 Officer Portal
+                            </button>
+                            <button 
+                                type="button" 
+                                className={`login-tab-btn ${loginMethod === 'otp' ? 'active' : ''}`}
+                                onClick={() => { setLoginMethod('otp'); setError(''); }}
+                            >
+                                👥 Citizen Access
+                            </button>
                         </div>
+                    )}
 
-                        <div className="login-field-group">
-                            <label className="login-field-label">Password</label>
-                            <input 
-                                className="login-field-input" 
-                                type="password" 
-                                placeholder="Enter your password" 
-                                value={form.password}
-                                onChange={(e) => setForm({ ...form, password: e.target.value })} 
-                                required 
-                            />
-                        </div>
+                    <form 
+                        className="login-form-container" 
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            if (isRegister) {
+                                handleSubmit(e);
+                            } else if (loginMethod === 'otp') {
+                                if (otpSent) {
+                                    handleVerifyOTP(e);
+                                } else {
+                                    handleSendOTP(e);
+                                }
+                            } else {
+                                handleSubmit(e);
+                            }
+                        }}
+                    >
+                        {isRegister ? (
+                            <>
+                                <div className="login-field-group">
+                                    <label className="login-field-label">Full Name</label>
+                                    <input 
+                                        className="login-field-input" 
+                                        type="text" 
+                                        placeholder="Enter your name" 
+                                        value={form.name}
+                                        onChange={(e) => setForm({ ...form, name: e.target.value })} 
+                                        required 
+                                    />
+                                </div>
 
-                        {isRegister && (
-                            <div className="login-field-group">
-                                <label className="login-field-label">Role</label>
-                                <select 
-                                    className="login-field-select" 
-                                    value={form.role}
-                                    onChange={(e) => setForm({ ...form, role: e.target.value })}
-                                >
-                                    <option value="citizen">Citizen</option>
-                                    <option value="engineer">Engineer / Authority</option>
-                                    <option value="contractor">Contractor</option>
-                                    <option value="financial_officer">Financial Officer</option>
-                                </select>
-                            </div>
+                                <div className="login-field-group">
+                                    <label className="login-field-label">Email address</label>
+                                    <input 
+                                        className="login-field-input" 
+                                        type="email" 
+                                        placeholder="you@city.gov" 
+                                        value={form.email}
+                                        onChange={(e) => setForm({ ...form, email: e.target.value })} 
+                                        required 
+                                    />
+                                </div>
+
+                                <div className="login-field-group">
+                                    <label className="login-field-label">Password</label>
+                                    <input 
+                                        className="login-field-input" 
+                                        type="password" 
+                                        placeholder="Enter your password" 
+                                        value={form.password}
+                                        onChange={(e) => setForm({ ...form, password: e.target.value })} 
+                                        required 
+                                    />
+                                </div>
+
+                                <div className="login-field-group">
+                                    <label className="login-field-label">Role</label>
+                                    <select 
+                                        className="login-field-select" 
+                                        value={form.role}
+                                        onChange={(e) => setForm({ ...form, role: e.target.value })}
+                                    >
+                                        <option value="citizen">Citizen</option>
+                                        <option value="engineer">Engineer / Authority</option>
+                                        <option value="contractor">Contractor</option>
+                                        <option value="financial_officer">Financial Officer</option>
+                                    </select>
+                                </div>
+
+                                <button className="login-submit-btn" type="submit" disabled={loading}>
+                                    {loading ? '⏳ Please wait...' : 'Create Account'}
+                                </button>
+                            </>
+                        ) : loginMethod === 'otp' ? (
+                            <>
+                                {otpSent && demoOtp && (
+                                    <div className="login-otp-demo-banner">
+                                        🔒 <strong>Demo Mode Verification Code</strong><br />
+                                        A simulated OTP <strong>{demoOtp}</strong> has been generated for phone <strong>{phone}</strong>.
+                                    </div>
+                                )}
+
+                                {!otpSent ? (
+                                    <div className="login-field-group">
+                                        <label className="login-field-label">Mobile Phone Number</label>
+                                        <input 
+                                            className="login-field-input" 
+                                            type="tel" 
+                                            placeholder="Enter 10-digit phone number" 
+                                            value={phone}
+                                            onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                                            required 
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="login-field-group">
+                                        <label className="login-field-label">6-Digit Verification Code</label>
+                                        <input 
+                                            className="login-field-input" 
+                                            type="text" 
+                                            placeholder="Enter verification code" 
+                                            value={otp}
+                                            onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                                            required 
+                                        />
+                                    </div>
+                                )}
+
+                                {otpSent && (
+                                    <div className="login-form-options">
+                                        <a href="#" className="login-forgot-link" onClick={(e) => { e.preventDefault(); setOtpSent(false); setOtp(''); }}>
+                                            Change phone number
+                                        </a>
+                                    </div>
+                                )}
+
+                                <button className="login-submit-btn" type="submit" disabled={loading || otpLoading}>
+                                    {loading || otpLoading ? '⏳ Please wait...' : !otpSent ? (
+                                        <>
+                                            <span>Send Verification Code</span>
+                                            <span>&rarr;</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>Verify & Login</span>
+                                            <span>&rarr;</span>
+                                        </>
+                                    )}
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <div className="login-field-group">
+                                    <label className="login-field-label">Email address</label>
+                                    <input 
+                                        className="login-field-input" 
+                                        type="email" 
+                                        placeholder="you@city.gov" 
+                                        value={form.email}
+                                        onChange={(e) => setForm({ ...form, email: e.target.value })} 
+                                        required 
+                                    />
+                                </div>
+
+                                <div className="login-field-group">
+                                    <label className="login-field-label">Password</label>
+                                    <input 
+                                        className="login-field-input" 
+                                        type="password" 
+                                        placeholder="Enter your password" 
+                                        value={form.password}
+                                        onChange={(e) => setForm({ ...form, password: e.target.value })} 
+                                        required 
+                                    />
+                                </div>
+
+                                <div className="login-form-options">
+                                    <label className="login-checkbox-label" htmlFor="remember-me">
+                                        <input type="checkbox" id="remember-me" defaultChecked style={{ accentColor: '#0d9488' }} />
+                                        <span>Remember me</span>
+                                    </label>
+                                    <a href="#forgot" className="login-forgot-link" onClick={(e) => { e.preventDefault(); alert('Password reset is managed by municipal administration. Please contact support.'); }}>
+                                        Forgot password?
+                                    </a>
+                                </div>
+
+                                <button className="login-submit-btn" type="submit" disabled={loading}>
+                                    {loading ? '⏳ Please wait...' : (
+                                        <>
+                                            <span>Sign In</span>
+                                            <span>&rarr;</span>
+                                        </>
+                                    )}
+                                </button>
+                            </>
                         )}
-
-                        {!isRegister && (
-                            <div className="login-form-options">
-                                <label className="login-checkbox-label" htmlFor="remember-me">
-                                    <input type="checkbox" id="remember-me" defaultChecked style={{ accentColor: '#0d9488' }} />
-                                    <span>Remember me</span>
-                                </label>
-                                <a href="#forgot" className="login-forgot-link" onClick={(e) => { e.preventDefault(); alert('Password reset is managed by municipal administration. Please contact support.'); }}>
-                                    Forgot password?
-                                </a>
-                            </div>
-                        )}
-
-                        <button className="login-submit-btn" type="submit" disabled={loading}>
-                            {loading ? '⏳ Please wait...' : isRegister ? 'Create Account' : (
-                                <>
-                                    <span>Sign In</span>
-                                    <span>&rarr;</span>
-                                </>
-                            )}
-                        </button>
                     </form>
 
                     <p className="login-policy-text">

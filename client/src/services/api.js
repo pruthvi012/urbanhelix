@@ -34,6 +34,8 @@ export const authAPI = {
     register: (data) => api.post('/auth/register', data),
     getProfile: () => api.get('/auth/me'),
     getUsers: (role) => api.get('/auth/users', { params: { role } }),
+    sendOTP: (phone) => api.post('/auth/otp/send', { phone }),
+    verifyOTP: (phone, otp) => api.post('/auth/otp/verify', { phone, otp }),
 };
 
 // Departments
