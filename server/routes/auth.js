@@ -103,10 +103,12 @@ const sendFast2SMSSMS = (phone, otp) => {
             return reject(new Error('FAST2SMS_API_KEY is not defined in environment'));
         }
 
-        // Fast2SMS API bulkV2 payload
+        // Fast2SMS API bulkV2 payload using Quick SMS route to bypass website verification requirements
         const postData = JSON.stringify({
-            route: 'otp',
-            variables_values: otp,
+            route: 'q',
+            message: `Your UrbanHeliX verification code is: ${otp}`,
+            language: 'english',
+            flash: 0,
             numbers: phone
         });
 
