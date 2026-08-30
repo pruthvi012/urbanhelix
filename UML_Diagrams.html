@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbanHelix - Complete UML & Database Diagrams</title>
+    <!-- Modern Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --bg-accent: #2e3e57;
+            --primary: #8b5cf6;
+            --primary-hover: #a78bfa;
+            --secondary: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --glow: rgba(139, 92, 246, 0.15);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header Style */
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .badge {
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: inline-block;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 15px var(--glow);
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f8fafc 40%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Navigation Tabs */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 40px;
+            background: #131d31;
+            padding: 8px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: var(--text-main);
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+        }
+
+        /* Content Panel Layout */
+        .panel {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out forwards;
+        }
+
+        .panel.active {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 1024px) {
+            .panel.active {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Diagram Container */
+        .diagram-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .diagram-title {
+            align-self: flex-start;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 4px solid var(--primary);
+            padding-left: 12px;
+        }
+
+        .diagram-wrapper {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            min-height: 400px;
+        }
+
+        .diagram-img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            object-fit: contain;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Info Card */
+        .info-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-section h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-hover);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-section p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+        }
+
+        .flow-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .flow-item {
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 3px solid var(--secondary);
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .flow-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(4px);
+        }
+
+        .flow-item strong {
+            color: var(--text-main);
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .flow-item span {
+            color: var(--text-muted);
+        }
+
+        /* Callout */
+        .callout {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .callout-icon {
+            font-size: 1.3rem;
+            color: var(--success);
+        }
+
+        .callout-text {
+            font-size: 0.9rem;
+            color: #d1fae5;
+        }
+
+        /* Back Navigation */
+        .back-nav {
+            margin-bottom: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .back-nav:hover {
+            color: var(--primary-hover);
+            transform: translateX(-4px);
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            color: var(--text-main);
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            border: 1px solid var(--border);
+            transition: var(--transition);
+            width: fit-content;
+        }
+
+        .download-btn:hover {
+            box-shadow: 0 4px 15px var(--glow);
+            transform: translateY(-2px);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <a href="Data_Flow_Diagrams.html" class="back-nav">
+            ← Switch to 2.2 Data Flow Diagrams
+        </a>
+
+        <header>
+            <div class="badge">Object-Oriented Specifications</div>
+            <h1>4.3 COMPLETE ARCHITECTURAL DIAGRAMS</h1>
+            <p class="subtitle">An exhaustive catalog of Unified Modeling Language (UML) specifications and logical schemas representing the functional flows and relational databases of the UrbanHeliX platform.</p>
+        </header>
+
+        <!-- Tabbed Menu -->
+        <nav class="tabs">
+            <button class="tab-btn active" onclick="switchTab(event, 'usecase')">👥 Use Case</button>
+            <button class="tab-btn" onclick="switchTab(event, 'class')">🗂️ Class</button>
+            <button class="tab-btn" onclick="switchTab(event, 'sequence')">⚡ Sequence</button>
+            <button class="tab-btn" onclick="switchTab(event, 'activity')">🔄 Activity</button>
+            <button class="tab-btn" onclick="switchTab(event, 'state')">⚙️ State Machine</button>
+            <button class="tab-btn" onclick="switchTab(event, 'component')">📦 Component</button>
+            <button class="tab-btn" onclick="switchTab(event, 'erd')">📊 ERD</button>
+        </nav>
+
+        <!-- PANEL: USE CASE -->
+        <div id="usecase" class="panel active">
+            <div class="diagram-card">
+                <div class="diagram-title">UML Use Case Diagram (Functional View)</div>
+                <div class="diagram-wrapper">
+                    <img src="UML_Use_Case.png" alt="UML Use Case Diagram" class="diagram-img">
+                </div>
+                <a href="UML_Use_Case.png" download class="download-btn">📥 Download High-Res PNG</a>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-section">
+                    <h3>Use Case Boundaries</h3>
+                    <p>The Use Case Diagram defines the formal system boundaries and lists features triggered by authorized actors.</p>
+                </div>
+                <div class="info-section">
+                    <h3>Role Breakdown</h3>
+                    <ul class="flow-list">
+                        <li class="flow-item"><strong>Citizens</strong><span>Register accounts, submit infrastructure complaints, and monitor ward expenditures.</span></li>
+                        <li class="flow-item"><strong>Contractors</strong><span>Upload project tenders, upload GPS-enforced evidence photos, and claim fund releases.</span></li>
+                        <li class="flow-item"><strong>Engineers</strong><span>Plan projects, inspect physical sites, and verify milestones via Aadhaar signatures.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL: CLASS DIAGRAM -->
+        <div id="class" class="panel">
+            <div class="diagram-card">
+                <div class="diagram-title">UML Class Diagram (Static Structure)</div>
+                <div class="diagram-wrapper">
+                    <img src="UML_Class_Diagram.png" alt="UML Class Diagram" class="diagram-img">
+                </div>
+                <a href="UML_Class_Diagram.png" download class="download-btn">📥 Download High-Res PNG</a>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-section">
+                    <h3>Class Specifications</h3>
+                    <p>The Class Diagram maps the static blueprint of databases, models, and attributes, highlighting operational methods and class-level hooks.</p>
+                </div>
+                <div class="info-section">
+                    <h3>Structural Constraints</h3>
+                    <ul class="flow-list">
+                        <li class="flow-item"><strong>Milestone Payout Validation</strong><span>Ensures each verified milestone has a one-to-one cardinality with a unique payment block, preventing redundant disbursements.</span></li>
+                        <li class="flow-item"><strong>HashChain Integration</strong><span>The database generates block-level HashChainRecords on every schema mutation to flag unauthorized direct file modifications.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL: SEQUENCE -->
+        <div id="sequence" class="panel">
+            <div class="diagram-card">
+                <div class="diagram-title">UML Sequence Diagram (Workflow Execution)</div>
+                <div class="diagram-wrapper">
+                    <img src="UML_Sequence_Diagram.png" alt="UML Sequence Diagram" class="diagram-img">
+                </div>
+                <a href="UML_Sequence_Diagram.png" download class="download-btn">📥 Download High-Res PNG</a>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-section">
+                    <h3>Workflow Sequences</h3>
+                    <p>This diagram models the chronological routing of system messages during the contractor upload, geo-fencing validation, Aadhaar signature, and smart contract payment processes.</p>
+                </div>
+                <div class="info-section">
+                    <h3>Chronological Step Summary</h3>
+                    <ul class="flow-list">
+                        <li class="flow-item"><strong>1. Geofence Extraction</strong><span>Server verifies metadata coordinates fall within the permissible ward radius.</span></li>
+                        <li class="flow-item"><strong>2. Aadhaar Authentication</strong><span>Fires OTP requests to verify inspector identity before executing high-stakes transactions.</span></li>
+                        <li class="flow-item"><strong>3. Smart Contract Commit</strong><span>Ethers.js transmits verification parameters to on-chain methods, updating logs and releasing funds.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL: ACTIVITY -->
+        <div id="activity" class="panel">
+            <div class="diagram-card">
+                <div class="diagram-title">UML Activity Diagram (Functional Workflow)</div>
+                <div class="diagram-wrapper">
+                    <img src="UML_Activity_Diagram.png" alt="UML Activity Diagram" class="diagram-img">
+                </div>
+                <a href="UML_Activity_Diagram.png" download class="download-btn">📥 Download High-Res PNG</a>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-section">
+                    <h3>Subsystem Process Flow</h3>
+                    <p>The Activity Diagram models decision forks, parallel threads, and execution branches governing the milestone geo-fencing and payment pipeline.</p>
+                </div>
+                <div class="info-section">
+                    <h3>Pathways & Decision Nodes</h3>
+                    <ul class="flow-list">
+                        <li class="flow-item"><strong>Geo-fence Check (Decision Diamond)</strong><span>If the camera coordinates deviate beyond the project border, the upload terminates; otherwise, files stream to S3.</span></li>
+                        <li class="flow-item"><strong>Identity Verification (Join Node)</strong><span>Combines Engineer site approval and external Aadhaar KYC authentication before unlocking ledger commits.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL: STATE -->
+        <div id="state" class="panel">
+            <div class="diagram-card">
+                <div class="diagram-title">UML State Machine Diagram (Lifecycle States)</div>
+                <div class="diagram-wrapper">
+                    <img src="UML_State_Machine.png" alt="UML State Machine Diagram" class="diagram-img">
+                </div>
+                <a href="UML_State_Machine.png" download class="download-btn">📥 Download High-Res PNG</a>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-section">
+                    <h3>Object Lifecycle Transitions</h3>
+                    <p>Models the reactive, state-driven attributes of a Project Milestone document as it moves through verification stages.</p>
+                </div>
+                <div class="info-section">
+                    <h3>Lifecycle Stages</h3>
+                    <ul class="flow-list">
+                        <li class="flow-item"><strong>Draft &amp; Submitted</strong><span>Awaiting uploads and structural coordinates checks.</span></li>
+                        <li class="flow-item"><strong>GPS Verified &amp; OTP Signed</strong><span>Awaiting engineer check, and secured via digital signatures.</span></li>
+                        <li class="flow-item"><strong>Blockchain Notarized &amp; Paid</strong><span>Committed permanently, and tokenized payments processed.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL: COMPONENT -->
+        <div id="component" class="panel">
+            <div class="diagram-card">
+                <div class="diagram-title">UML Component Diagram (System Interfaces)</div>
+                <div class="diagram-wrapper">
+                    <img src="UML_Component_Diagram.png" alt="UML Component Diagram" class="diagram-img">
+                </div>
+                <a href="UML_Component_Diagram.png" download class="download-btn">📥 Download High-Res PNG</a>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-section">
+                    <h3>System Architecture Modules</h3>
+                    <p>Shows the modular structural components (React client, Express gateway, AWS S3, MongoDB, Ethers.js) and standard REST/Websocket protocols connecting them.</p>
+                </div>
+                <div class="info-section">
+                    <h3>Decentralized Integration</h3>
+                    <ul class="flow-list">
+                        <li class="flow-item"><strong>Ethers RPC Component</strong><span>Acts as a localized bridge translating REST API calls into decentralized smart contract transaction states on the Blockchain ledger.</span></li>
+                        <li class="flow-item"><strong>Firebase Admin SDK Component</strong><span>Coordinates cross-platform push notifications to keep off-duty inspectors alert.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL: ERD -->
+        <div id="erd" class="panel">
+            <div class="diagram-card">
+                <div class="diagram-title">Entity Relationship Diagram (ERD)</div>
+                <div class="diagram-wrapper">
+                    <img src="ER_Diagram.png" alt="ER Diagram" class="diagram-img">
+                </div>
+                <a href="ER_Diagram.png" download class="download-btn">📥 Download High-Res PNG</a>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-section">
+                    <h3>Database Logical Schemas</h3>
+                    <p>Maps the physical database architecture showing Primary Keys (PK), Foreign Keys (FK), and field data types with Crow's Foot relations.</p>
+                </div>
+                <div class="info-section">
+                    <h3>Relational Multiplicities</h3>
+                    <ul class="flow-list">
+                        <li class="flow-item"><strong>Wards to Projects (1 : Many)</strong><span>Each Ward acts as a parent containing multiple municipal projects. Linked via wardId (FK).</span></li>
+                        <li class="flow-item"><strong>Projects to Milestones (1 : Many)</strong><span>Projects aggregate multiple milestone blocks. Linked via projectId (FK).</span></li>
+                        <li class="flow-item"><strong>Milestones to Payments (1 : 1)</strong><span>Unique key mappings enforce a single transaction receipt per milestone.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function switchTab(evt, tabId) {
+            const panels = document.querySelectorAll('.panel');
+            panels.forEach(panel => {
+                panel.classList.remove('active');
+            });
+
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.getElementById(tabId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+    </script>
+</body>
+</html>

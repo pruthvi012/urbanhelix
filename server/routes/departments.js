@@ -81,8 +81,9 @@ router.put('/:id/allocate', protect, authorize('admin', 'engineer', 'financial_o
         department.allocatedBudget += Number(amount);
 
         // Blockchain: Allocate Fund on-chain
+        let receipt = null;
         try {
-            const receipt = await BlockchainService.allocateFund(
+            receipt = await BlockchainService.allocateFund(
                 department._id.toString(),
                 amount,
                 `Budget allocation for ${department.name}`

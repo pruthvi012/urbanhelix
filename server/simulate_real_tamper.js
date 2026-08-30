@@ -7,11 +7,23 @@ async function tamper() {
         await mongoose.connect(process.env.MONGO_URI);
         console.log('Connected to MongoDB');
 
-        const project = await Project.findOne({projectCode: 'UHX-C616B6'});
+        // Look for specific project if code provided, otherwise grab the most recent one
+        const projectCode = process.argv[2];
+        let project;
+        
+        if (projectCode) {
+            project = await Project.findOne({projectCode: projectCode.toUpperCase()});
+        } else {
+            project = await Project.findOne().sort({ createdAt: -1 });
+            console.log('No project code provided. Selecting the most recent project...');
+        }
+
         if (!project) {
-            console.log('Project UHX-C616B6 not found!');
+            console.log('Project not found!');
             process.exit(1);
         }
+
+        console.log(`Targeting Project: ${project.title} (${project.projectCode})`);
 
         const oldBudget = project.allocatedBudget || project.estimatedBudget;
         const newBudget = oldBudget + 500000;
@@ -22,8 +34,8 @@ async function tamper() {
         project.allocatedBudget = newBudget;
         await project.save();
 
-        console.log('TAMPER COMPLETE.');
-        console.log('Now go to the Project Detail page and click "Verify against Ledger" to see the detection in action.');
+        console.log('✅ TAMPER COMPLETE.');
+        console.log(`Now go to the Project Detail page for ${project.projectCode} and click "Verify against Ledger" to see the detection in action.`);
         process.exit(0);
     } catch (err) {
         console.error(err);

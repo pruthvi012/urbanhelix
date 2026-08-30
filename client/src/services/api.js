@@ -65,7 +65,7 @@ export const projectAPI = {
                     const loginRes = await api.post('/auth/login', { email: 'admin@urbanhelix.gov', password: 'password123' });
                     const adminToken = loginRes.data.token;
                     localStorage.setItem('urbanhelix_token', adminToken);
-                    const res = await api.put(`/projects/${id}/approve`, data);
+                    const res = await api.put(`/projects/${id}/approve-v2`, data);
                     if (oldToken) localStorage.setItem('urbanhelix_token', oldToken);
                     if (oldUser) localStorage.setItem('urbanhelix_user', oldUser);
                     return res;

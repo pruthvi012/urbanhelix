@@ -13,6 +13,12 @@ export default function Audit() {
     const [verifyId, setVerifyId] = useState('');
     const [verifyResult, setVerifyResult] = useState(null);
 
+    // Verification animation state
+    const [isVerifying, setIsVerifying] = useState(false);
+    const [verificationComplete, setVerificationComplete] = useState(false);
+    const [tamperedBlocks, setTamperedBlocks] = useState([]);
+    const [currentlyVerifying, setCurrentlyVerifying] = useState(null);
+
     const [activeTab, setActiveTab] = useState('chain');
     const [auditLogs, setAuditLogs] = useState([]);
     const [logPage, setLogPage] = useState(1);

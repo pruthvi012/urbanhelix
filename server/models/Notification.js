@@ -6,7 +6,7 @@ const notificationSchema = new mongoose.Schema({
     message: { type: String, required: true },
     type: { 
         type: String, 
-        enum: ['budget_revision', 'project_approved', 'milestone_completed', 'fraud_alert', 'system', 'project_proposed', 'budget_change', 'milestone_submitted', 'milestone_update', 'grievance_update'],
+        enum: ['budget_revision', 'project_approved', 'milestone_completed', 'fraud_alert', 'system', 'project_proposed', 'budget_change', 'milestone_submitted', 'milestone_update', 'grievance_update', 'public_update', 'emergency'],
         default: 'system'
     },
     relatedEntity: {

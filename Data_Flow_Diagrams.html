@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbanHelix - 2.2 Data Flow Diagrams</title>
+    <!-- Modern Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Mermaid.js for dynamic vector rendering -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'dark',
+            securityLevel: 'loose',
+            themeVariables: {
+                background: '#1e293b',
+                primaryColor: '#8b5cf6',
+                primaryTextColor: '#f8fafc',
+                primaryBorderColor: '#a78bfa',
+                lineColor: '#94a3b8',
+                secondaryColor: '#3b82f6',
+                tertiaryColor: '#10b981'
+            }
+        });
+    </script>
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --bg-accent: #2e3e57;
+            --primary: #8b5cf6;
+            --primary-hover: #a78bfa;
+            --secondary: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --glow: rgba(139, 92, 246, 0.15);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header Style */
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .badge {
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: inline-block;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 15px var(--glow);
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f8fafc 40%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Navigation Tabs */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 40px;
+            background: #131d31;
+            padding: 8px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: var(--text-main);
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+        }
+
+        /* Content Panel Layout */
+        .panel {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out forwards;
+        }
+
+        .panel.active {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 1024px) {
+            .panel.active {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Diagram Container */
+        .diagram-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            min-height: 450px;
+            position: relative;
+            overflow: auto;
+        }
+
+        .diagram-title {
+            align-self: flex-start;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 4px solid var(--primary);
+            padding-left: 12px;
+        }
+
+        /* Mermaid graphic adjust */
+        .mermaid {
+            width: 100%;
+            background: transparent !important;
+        }
+
+        /* Info Card */
+        .info-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-section h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-hover);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-section p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+        }
+
+        .flow-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .flow-item {
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 3px solid var(--secondary);
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .flow-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(4px);
+        }
+
+        .flow-item strong {
+            color: var(--text-main);
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .flow-item span {
+            color: var(--text-muted);
+        }
+
+        /* Alert / Callouts */
+        .callout {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .callout-icon {
+            font-size: 1.3rem;
+            color: var(--success);
+        }
+
+        .callout-text {
+            font-size: 0.9rem;
+            color: #d1fae5;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Back Navigation */
+        .back-nav {
+            margin-bottom: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .back-nav:hover {
+            color: var(--primary-hover);
+            transform: translateX(-4px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <a href="Architecture_Diagram.html" class="back-nav">
+            ← Back to 4.1 System Architecture
+        </a>
+
+        <header>
+            <div class="badge">Platform Data Flow</div>
+            <h1>2.2 DATA FLOW DIAGRAMS</h1>
+            <p class="subtitle">Detailed visual maps representing the structured inputs, computational processes, data storage operations, and systemic outputs within the UrbanHeliX ecosystem.</p>
+        </header>
+
+        <!-- Tabbed Menu -->
+        <nav class="tabs">
+            <button class="tab-btn active" onclick="switchTab(event, 'level0')">
+                🌐 Level 0 Context Diagram
+            </button>
+            <button class="tab-btn" onclick="switchTab(event, 'level1')">
+                🗺️ Level 1 Functional Overview
+            </button>
+            <button class="tab-btn" onclick="switchTab(event, 'level2-milestone')">
+                👷 Level 2: Milestone Verification
+            </button>
+            <button class="tab-btn" onclick="switchTab(event, 'level2-hash')">
+                🛡️ Level 2: Database Integrity
+            </button>
+        </nav>
+
+        <!-- PANEL: LEVEL 0 -->
+        <div id="level0" class="panel active">
+            <div class="diagram-card">
+                <div class="diagram-title">Level 0: Context Diagram (System Boundary)</div>
+                <div class="mermaid">
+                    graph TD
+                        %% Styling
+                        classDef process fill:#1e1b4b,stroke:#8b5cf6,stroke-width:2px,color:#f8fafc,font-weight:bold
+                        classDef entity fill:#131d31,stroke:#3b82f6,stroke-width:2px,color:#f8fafc,font-weight:bold
+                        
+                        P0["0.0<br/>UrbanHeliX Platform"]:::process
+                        
+                        CIT["Citizen"]:::entity
+                        CON["Contractor"]:::entity
+                        ENG["Engineer"]:::entity
+                        FIN["Financial Authority"]:::entity
+                        AAD["Aadhaar KYC Service"]:::entity
+                        FCM["Firebase Notifications"]:::entity
+                        BC["Blockchain Network"]:::entity
+                        
+                        CIT -->|Grievances & Registration Info| P0
+                        P0 -->|Grievance Status & Project Metrics| CIT
+                        
+                        CON -->|Bids, Milestone Updates, GPS Photos & Bills| P0
+                        P0 -->|Milestone Approval & Payment Status| CON
+                        
+                        ENG -->|Project Proposals, Inspections & Signatures| P0
+                        P0 -->|Task Assignments & Inspection Alerts| ENG
+                        
+                        FIN -->|Budgets, Fund Allocations & Approvals| P0
+                        P0 -->|Expense Reports & Audit Logs| FIN
+                        
+                        P0 <-->|KYC Validation Request / Response| AAD
+                        P0 -->|Push Notification Alerts| FCM
+                        P0 <-->|Decentralized Transactions / Receipts| BC
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-section">
+                    <h3>Context Boundary Analysis</h3>
+                    <p>The Level 0 Context Diagram establishes the formal boundaries of the UrbanHeliX platform. The system operates as a zero-trust black box that interacts with four main human stakeholders and three external programmatic interfaces.</p>
+                </div>
+                
+                <div class="info-section">
+                    <h3>External Entity Flows</h3>
+                    <ul class="flow-list">
+                        <li class="flow-item">
+                            <strong>Citizens</strong>
+                            <span>Submit grievance reports (issue details, photo evidence, coordinates) and retrieve transparent dashboards on project execution and public fund utilization.</span>
+                        </li>
+                        <li class="flow-item">
+                            <strong>Contractors</strong>
+                            <span>Provide project bids, milestone completions with embedded GPS-enforced photo proofs, and invoices. They receive status clearances and processed fund disbursements.</span>
+                        </li>
+                        <li class="flow-item">
+                            <strong>Engineers</strong>
+                            <span>Deploy project plans, review milestone uploads, and execute inspection checklists. They receive action assignments and real-time security anomalies.</span>
+                        </li>
+                        <li class="flow-item">
+                            <strong>Financial Authorities</strong>
+                            <span>Allocate budgets across city areas/wards and sign off payment milestones. They receive verified expense tracking and tamper-chain audit logs.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL: LEVEL 1 -->
+        <div id="level1" class="panel">
+            <div class="diagram-card">
+                <div class="diagram-title">Level 1: Functional Overview (Process Decomposition)</div>
+                <div class="mermaid">
+                    graph TB
+                        classDef process fill:#1e1b4b,stroke:#8b5cf6,stroke-width:2px,color:#f8fafc,font-weight:bold
+                        classDef entity fill:#131d31,stroke:#3b82f6,stroke-width:2px,color:#f8fafc,font-weight:bold
+                        classDef store fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc,stroke-dasharray: 5 5,font-weight:bold
+                        
+                        CIT["Citizen"]:::entity
+                        CON["Contractor"]:::entity
+                        ENG["Engineer"]:::entity
+                        FIN["Financial Authority"]:::entity
+                        AAD["Aadhaar Service"]:::entity
+                        BC["Blockchain Network"]:::entity
+                        
+                        D1[("D1: MongoDB Atlas")]:::store
+                        D2[("D2: AWS S3 Bucket")]:::store
+                        D3[("D3: Blockchain Ledger")]:::store
+                        
+                        P1["1.0<br/>User Identity & Auth"]:::process
+                        P2["2.0<br/>Project Lifecycle & Wards"]:::process
+                        P3["3.0<br/>Milestone & GPS Verification"]:::process
+                        P4["4.0<br/>Fund Allocation & Expense"]:::process
+                        P5["5.0<br/>Grievance Management"]:::process
+                        P6["6.0<br/>HashChain Auditing"]:::process
+
+                        CIT & CON & ENG & FIN -->|1. Sign-Up & Aadhaar No| P1
+                        P1 <-->|2. KYC Validation OTP| AAD
+                        P1 <-->|3. Read/Write Profile & Session| D1
+                        P1 -->|4. Authenticated JWT Session| CIT & CON & ENG & FIN
+                        
+                        ENG -->|5. Project Proposals| P2
+                        CON -->|6. Bids & Tenders| P2
+                        P2 <-->|7. Project Specs & Budgets| D1
+                        P2 -->|8. Project Feeds & Progress| ENG & CON & CIT
+                        
+                        CON -->|9. Milestone Update & EXIF Photo| P3
+                        P3 -->|10. Upload Media File| D2
+                        ENG -->|11. Verify Work & Sign| P3
+                        P3 <-->|12. Save Milestone State| D1
+                        P3 <-->|13. Notarize Milestone Hash| D3
+                        
+                        FIN -->|14. Budget & Payout Approvals| P4
+                        CON -->|15. Fund Disbursement Invoices| P4
+                        P4 <-->|16. Budgets & Tx Records| D1
+                        P4 <-->|17. Immutable Payment Tx| D3
+                        P4 -->|18. Ledger Receipts / Balances| FIN & CON
+                        
+                        CIT -->|19. Issue & GPS Images| P5
+                        P5 -->|20. Upload Grievance Images| D2
+                        P5 <-->|21. Read/Write Grievances| D1
+                        P5 -->|22. Ward-wise Grievance Metrics| CIT
+                        
+                        P6 <-->|23. Sequential DB Hash Check| D1
+                        P6 -->|24. Database Tamper Alert WS| CIT & FIN & ENG & CON
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-section">
+                    <h3>Functional Core Breakdown</h3>
+                    <p>The Level 1 Diagram breaks down the platform into 6 core operational processes and maps their specific interactions with structural database and file stores.</p>
+                </div>
+
+                <div class="info-section">
+                    <h3>Data Stores</h3>
+                    <ul class="flow-list">
+                        <li class="flow-item" style="border-left-color: var(--success);">
+                            <strong>D1: MongoDB Atlas (Relational-JSON)</strong>
+                            <span>Stores active user schemas, ward funding nodes, milestones parameters, audit traces, and cryptographic chain logs.</span>
+                        </li>
+                        <li class="flow-item" style="border-left-color: var(--success);">
+                            <strong>D2: AWS S3 Object Storage</strong>
+                            <span>Retains structural files including bills (PDF format), GPS-locked evidence photos, and citizen grievance image streams.</span>
+                        </li>
+                        <li class="flow-item" style="border-left-color: var(--success);">
+                            <strong>D3: Blockchain Ledger (Ethereum/Hardhat Smart Contracts)</strong>
+                            <span>Decentralized ledger containing immutable milestone hash receipts, financial disbursement approvals, and department budget checkpoints.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="callout">
+                    <div class="callout-icon">🛡️</div>
+                    <div class="callout-text">
+                        <strong>Cryptographic Auditing (Process 6.0)</strong> operates continuously in the background, auditing MongoDB collections using a block-level HashChain structure, generating a real-time defense against backend intrusions.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL: LEVEL 2 MILESTONE -->
+        <div id="level2-milestone" class="panel">
+            <div class="diagram-card">
+                <div class="diagram-title">Level 2: Milestone Verification & GPS Extraction</div>
+                <div class="mermaid">
+                    graph TD
+                        classDef process fill:#1e1b4b,stroke:#8b5cf6,stroke-width:2px,color:#f8fafc,font-weight:bold
+                        classDef store fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc,stroke-dasharray: 5 5,font-weight:bold
+                        classDef entity fill:#131d31,stroke:#3b82f6,stroke-width:2px,color:#f8fafc,font-weight:bold
+
+                        CON["Contractor"]:::entity
+                        ENG["Engineer"]:::entity
+                        
+                        subgraph D3_Sub ["Process 3.0 Details"]
+                            P31["3.1<br/>Extract EXIF GPS Metadata"]:::process
+                            P32["3.2<br/>Geo-fencing Radius Checker"]:::process
+                            P33["3.3<br/>Evidence S3 Uploader"]:::process
+                            P34["3.4<br/>Engineer Inspection Sign-off"]:::process
+                            P35["3.5<br/>Solidity Blockchain Notarizer"]:::process
+                            P36["3.6<br/>Database Sync & WebSocket Alert"]:::process
+                        end
+
+                        D1[("D1: MongoDB")]:::store
+                        D2[("D2: AWS S3")]:::store
+                        D3[("D3: Blockchain Ledger")]:::store
+                        AAD["Aadhaar Service"]:::entity
+                        
+                        CON -->|1. Milestone Photo| P31
+                        P31 -->|2. Raw Image stream| P33
+                        P31 -->|3. EXIF Coordinates| P32
+                        
+                        D1 -->|4. Get Project Coordinates| P32
+                        P32 -->|5. Within Geofence (Radius Match)| P33
+                        P32 -.->|Rejected Flow: Out of Bounds| CON
+                        
+                        P33 -->|6. Push S3 Asset Stream| D2
+                        D2 -->|7. Verified S3 URL| P36
+                        
+                        ENG -->|8. Sign inspection with Aadhaar OTP| P34
+                        P34 <-->|9. Aadhaar Sign-off KYC| AAD
+                        P34 -->|10. Approved milestone packet| P35
+                        
+                        P35 -->|11. deployMilestone / signMilestone Tx| D3
+                        D3 -->|12. Transaction Receipt| P36
+                        
+                        P36 -->|13. Update Milestone Status to Verified| D1
+                        P36 -->|14. Emit Completion WS Event| CON & ENG
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-section">
+                    <h3>Sub-System Process Explosion</h3>
+                    <p>Decomposes <strong>Process 3.0 (Milestone & GPS Verification)</strong> into technical child steps that establish evidence authentication and decentralized recording.</p>
+                </div>
+
+                <div class="info-section">
+                    <h3>Step-by-Step Flow Analysis</h3>
+                    <ul class="flow-list">
+                        <li class="flow-item">
+                            <strong>3.1 EXIF Extraction</strong>
+                            <span>Extracts geolocation metadata from EXIF headers inside images uploaded by contractors.</span>
+                        </li>
+                        <li class="flow-item">
+                            <strong>3.2 Geo-fencing Audit</strong>
+                            <span>Fetches target coordinates from MongoDB. Calculates distance using the Haversine formula, automatically rejecting the upload if coordinates deviate beyond 50m.</span>
+                        </li>
+                        <li class="flow-item">
+                            <strong>3.3 AWS S3 Streams</strong>
+                            <span>Streams verified media to AWS S3, obtaining a secure public URL.</span>
+                        </li>
+                        <li class="flow-item">
+                            <strong>3.4 & 3.5 Aadhaar OTP Sign-off & Blockchain Notarization</strong>
+                            <span>Engineers review photos and verify the milestones. High-value approvals mandate Aadhaar KYC validation. On success, Ethers.js generates a transaction payload, deploying the block permanently to D3.</span>
+                        </li>
+                        <li class="flow-item">
+                            <strong>3.6 WebSocket Synchronization</strong>
+                            <span>Saves transaction block data to MongoDB (D1) and notifies active web clients via Socket.io.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL: LEVEL 2 INTEGRITY -->
+        <div id="level2-hash" class="panel">
+            <div class="diagram-card">
+                <div class="diagram-title">Level 2: Cryptographic Database HashChain Auditing</div>
+                <div class="mermaid">
+                    graph TD
+                        classDef process fill:#1e1b4b,stroke:#8b5cf6,stroke-width:2px,color:#f8fafc,font-weight:bold
+                        classDef store fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc,stroke-dasharray: 5 5,font-weight:bold
+                        classDef entity fill:#131d31,stroke:#3b82f6,stroke-width:2px,color:#f8fafc,font-weight:bold
+
+                        D1[("D1: MongoDB")]:::store
+                        FCM["Firebase Notification Server"]:::entity
+                        WEB["Socket.io WebSocket Clients"]:::entity
+                        
+                        subgraph D6_Sub ["Process 6.0 Details"]
+                            P61["6.1<br/>Write Hook & Hash Generation"]:::process
+                            P62["6.2<br/>Background Integrity Audit"]:::process
+                            P63["6.3<br/>Tamper Locator & Logger"]:::process
+                            P64["6.4<br/>WebSocket Alert Dispatcher"]:::process
+                            P65["6.5<br/>Emergency Push Notifier"]:::process
+                        end
+
+                        D1 -->|1. Collection Mutation Event| P61
+                        P61 -->|2. Write Sequential HashRecord| D1
+                        
+                        P62 -->|3. Query HashChain Nodes (10s)| D1
+                        D1 -->|4. Full Hash List & Docs| P62
+                        
+                        P62 -->|5. Chain Recalculation Mismatch| P63
+                        
+                        P63 -->|6. Log Security Breach Details| D1
+                        P63 -->|7. Dispatch Alert Metadata| P64
+                        P63 -->|8. Send Priority Alert Payload| P65
+                        
+                        P64 -->|9. Broadcast SYSTEM_TAMPERED Event| WEB
+                        P65 -->|10. Push Firebase Security SMS/Alert| FCM
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-section">
+                    <h3>Sub-System Process Explosion</h3>
+                    <p>Decomposes <strong>Process 6.0 (HashChain Auditing)</strong> to demonstrate how UrbanHeliX enforces high-performance, real-time database intrusion detection.</p>
+                </div>
+
+                <div class="info-section">
+                    <h3>Step-by-Step Flow Analysis</h3>
+                    <ul class="flow-list">
+                        <li class="flow-item" style="border-left-color: var(--danger);">
+                            <strong>6.1 Write Hook & Hash Generation</strong>
+                            <span>Backend middleware triggers on mutations. Chains the new entry to the previous record's SHA-256 hash, saving the cryptographic chain block in the MongoDB collection `hashchainrecords`.</span>
+                        </li>
+                        <li class="flow-item" style="border-left-color: var(--danger);">
+                            <strong>6.2 Background Audit Daemon</strong>
+                            <span>A background process polls the MongoDB store every 10 seconds, recalculating hashes from genesis forward to detect unauthorized updates.</span>
+                        </li>
+                        <li class="flow-item" style="border-left-color: var(--danger);">
+                            <strong>6.3 Tamper Locator</strong>
+                            <span>Pinpoints exact indices containing modified parameters. Logs details immediately to `auditlogs`.</span>
+                        </li>
+                        <li class="flow-item" style="border-left-color: var(--danger);">
+                            <strong>6.4 & 6.5 Real-time Alarm Systems</strong>
+                            <span>Instantly broadcasts alert packets to active dashboards (via Socket.io) and pushes high-priority payloads to Firebase Cloud Messaging to alert off-duty officers.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function switchTab(evt, tabId) {
+            // Hide all panels
+            const panels = document.querySelectorAll('.panel');
+            panels.forEach(panel => {
+                panel.classList.remove('active');
+            });
+
+            // Remove active status from buttons
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show active panel & button
+            document.getElementById(tabId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+    </script>
+</body>
+</html>

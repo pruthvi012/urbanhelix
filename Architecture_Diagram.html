@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbanHelix System Architecture</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #f8fafc; padding: 20px; }
+        h1 { color: #1e293b; margin-bottom: 5px; }
+        p { color: #475569; margin-bottom: 30px; font-style: italic; }
+        .diagram-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: inline-block; }
+    </style>
+</head>
+<body>
+    <h1>4.1 SYSTEM ARCHITECTURE - URBANHELIX</h1>
+    <p>A Blockchain-Inspired System for Transparent and Accountable Municipal Fund Utilization</p>
+    
+    <div class="diagram-container">
+        <div class="mermaid">
+            flowchart TD
+                classDef users fill:#eef2ff,stroke:#6366f1,stroke-width:2px,color:#111,font-weight:bold
+                classDef frontend fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#111,font-weight:bold
+                classDef backend fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#111,font-weight:bold
+                classDef db fill:#ecfdf5,stroke:#10b981,stroke-width:2px,color:#111,font-weight:bold
+                classDef cloud fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#111,font-weight:bold
+                classDef integrity fill:#faf5ff,stroke:#a855f7,stroke-width:2px,color:#111,font-weight:bold
+                
+                subgraph USERS [USERS]
+                    direction TB
+                    C["👥 CITIZENS<br/>- Report Issues<br/>- Track Projects"]:::users
+                    E["👷 ENGINEERS<br/>- Create Projects<br/>- Verify Work"]:::users
+                    CO["🏗️ CONTRACTORS<br/>- Upload Bills<br/>- Upload Documents"]:::users
+                    FA["👔 FINANCIAL AUTHORITIES<br/>- Approve Payments<br/>- Monitor Funds"]:::users
+                end
+
+                subgraph FRONTEND [FRONTEND - React.js]
+                    direction TB
+                    UI["⚛️ User Interface<br/>• Role-Based Dashboards<br/>• Issue Reporting<br/>• Project Monitoring<br/>• Document Upload<br/>• Payment Status"]:::frontend
+                end
+
+                subgraph BACKEND [BACKEND - Node.js]
+                    direction TB
+                    API["⚙️ API & BUSINESS LOGIC<br/>• User Authentication<br/>• Issue Management<br/>• Project Management<br/>• Document Management<br/>• Verification & Approval<br/>• Payment Management<br/>• Hash Generation"]:::backend
+                end
+
+                subgraph DATABASE [DATABASE - MongoDB]
+                    direction TB
+                    DB["🗄️ Database Records<br/>• User Data<br/>• Issues & Projects<br/>• Documents Info<br/>• Transactions<br/>• Hash Records<br/>• Audit Logs"]:::db
+                end
+
+                subgraph STORAGE [CLOUD STORAGE - AWS S3]
+                    direction TB
+                    S3["☁️ File Storage<br/>• Store Bills<br/>• Store Images<br/>• Store Documents<br/>• Store Reports"]:::cloud
+                end
+
+                subgraph INTEGRITY [BLOCKCHAIN-INSPIRED INTEGRITY LAYER]
+                    direction LR
+                    TD["📄 Transaction Data"]:::integrity --> H["#️⃣ SHA-256 Hash Generation"]:::integrity
+                    H --> DS["🗄️ Hash Stored in Database"]:::integrity
+                    DS --> V["✅ Hash Verification Before Any Update"]:::integrity
+                    V --> T["⚠️ Tamper Detection If Mismatch"]:::integrity
+                end
+
+                USERS --> FRONTEND
+                FRONTEND <-->|REST API| BACKEND
+                BACKEND --> DATABASE
+                BACKEND --> STORAGE
+                BACKEND -.->|Sends Data to be Hashed| INTEGRITY
+                INTEGRITY -.->|Validates Integrity| DATABASE
+        </div>
+    </div>
+</body>
+</html>

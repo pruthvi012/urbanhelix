@@ -1,66 +1,55 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiGrid, FiFolder, FiCheckSquare, FiDollarSign, FiAlertCircle, FiShield, FiBarChart2, FiLogOut, FiUsers, FiSearch, FiMenu, FiX, FiPlusCircle, FiClipboard } from 'react-icons/fi';
+import { 
+    FiGrid, FiFolder, FiDollarSign, FiMessageSquare, FiShield, 
+    FiSearch, FiBell, FiChevronDown, FiChevronUp, FiMenu, FiX, 
+    FiLogOut, FiActivity, FiGlobe, FiTool, FiBriefcase, FiUserCheck
+} from 'react-icons/fi';
 import ChatBot from './ChatBot';
 import NotificationBell from './NotificationBell';
 import RealTimeNotifications from './RealTimeNotifications';
-import { requestForToken } from '../firebase';
 
-const NAV_ITEMS = {
-    citizen: [
-        { to: '/', icon: <FiGrid />, label: 'Dashboard' },
-        { to: '/analytics', icon: <FiBarChart2 />, label: 'Analytics' },
-        { to: '/projects', icon: <FiFolder />, label: 'Projects' },
-        { to: '/grievances', icon: <FiAlertCircle />, label: 'Report a Problem' },
-        { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
+const ROLES = [
+    { key: 'citizen', label: 'Citizen', desc: 'Municipal command center', email: 'ananya@citizen.com', icon: <FiGlobe /> },
+    { key: 'contractor', label: 'Contractor', desc: 'Civil works execution', email: 'vikram@contractor.com', icon: <FiBriefcase /> },
+    { key: 'engineer', label: 'Site Engineer', desc: 'Technical & field audit', email: 'rajesh.engineer@urbanhelix.gov', icon: <FiTool /> },
+    { key: 'financial_officer', label: 'Financial Officer', desc: 'Treasury & escrow release', email: 'sunita.finance@urbanhelix.gov', icon: <FiDollarSign /> },
+    { key: 'admin', label: 'City Admin', desc: 'Municipal governance', email: 'admin@urbanhelix.gov', icon: <FiUserCheck /> }
+];
 
-    ],
-    engineer: [
-        { to: '/', icon: <FiGrid />, label: 'Dashboard' },
-        { to: '/projects', icon: <FiFolder />, label: 'Projects' },
-        { to: '/milestones', icon: <FiCheckSquare />, label: 'Milestones' },
-        { to: '/funds', icon: <FiDollarSign />, label: 'Fund Transactions' },
-        { to: '/grievances', icon: <FiAlertCircle />, label: 'Citizen Complaints' },
-        { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
-
-    ],
-    contractor: [
-        { to: '/', icon: <FiGrid />, label: 'Dashboard' },
-        { to: '/projects', icon: <FiFolder />, label: 'My Projects' },
-        { to: '/expenses', icon: <FiClipboard />, label: 'Log Expense' },
-    ],
-    financial_officer: [
-        { to: '/', icon: <FiGrid />, label: 'Dashboard' },
-        { to: '/projects', icon: <FiFolder />, label: 'Projects' },
-        { to: '/milestones', icon: <FiCheckSquare />, label: 'Milestones' },
-        { to: '/funds', icon: <FiDollarSign />, label: 'Fund Verification' },
-        { to: '/grievances', icon: <FiAlertCircle />, label: 'Citizen Complaints' },
-        { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
-
-    ],
-    admin: [
-        { to: '/', icon: <FiGrid />, label: 'Dashboard' },
-        { to: '/projects', icon: <FiFolder />, label: 'Projects' },
-        { to: '/milestones', icon: <FiCheckSquare />, label: 'Milestones' },
-        { to: '/funds', icon: <FiDollarSign />, label: 'Fund Transactions' },
-        { to: '/grievances', icon: <FiAlertCircle />, label: 'Citizen Complaints' },
-        { to: '/audit', icon: <FiShield />, label: 'Audit Trail' },
-
-    ],
-};
+const NAV_LINKS = [
+    { to: '/', label: 'Overview', icon: <FiGrid /> },
+    { to: '/projects', label: 'Projects', icon: <FiFolder /> },
+    { to: '/funds', label: 'Finance & Escrow', icon: <FiDollarSign /> },
+    { to: '/grievances', label: 'Grievances', icon: <FiMessageSquare /> },
+    { to: '/audit', label: 'Audit Trail', icon: <FiShield /> }
+];
 
 export default function Layout() {
-    const { user, logout } = useAuth();
+    const { user, login, logout } = useAuth();
     const navigate = useNavigate();
-    const [showMobileMenu, setShowMobileMenu] = useState(false);
-    const [showNotificationPrompt, setShowNotificationPrompt] = useState(
-        user?.role === 'citizen' && window.Notification && (window.Notification.permission === 'default' || window.Notification.permission === 'denied')
-    );
+    const location = useLocation();
 
-    const handleEnableNotifications = async () => {
-        await requestForToken();
-        setShowNotificationPrompt(false);
+    const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [switchingRole, setSwitchingRole] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const handleRoleSwitch = async (roleObj) => {
+        if (user?.role === roleObj.key) {
+            setShowRoleDropdown(false);
+            return;
+        }
+        setSwitchingRole(true);
+        try {
+            await login(roleObj.email, 'password123');
+            setShowRoleDropdown(false);
+        } catch (err) {
+            console.error('Role switch error:', err);
+        } finally {
+            setSwitchingRole(false);
+        }
     };
 
     const handleLogout = () => {
@@ -68,175 +57,183 @@ export default function Layout() {
         navigate('/login');
     };
 
-    const navItems = NAV_ITEMS[user?.role] || NAV_ITEMS.citizen;
-    const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
-    const roleLabel = (user?.role || '').replace('_', ' ');
+    // Get current breadcrumb page name
+    const getPageTitle = () => {
+        const path = location.pathname;
+        if (path === '/') return 'Overview';
+        if (path.startsWith('/projects/')) return 'Project Details';
+        if (path.startsWith('/projects')) return 'Projects';
+        if (path.startsWith('/funds')) return 'Finance & Escrow';
+        if (path.startsWith('/grievances')) return 'Grievances';
+        if (path.startsWith('/audit')) return 'Audit Trail';
+        if (path.startsWith('/milestones')) return 'Milestones';
+        if (path.startsWith('/expenses')) return 'Contractor Expenses';
+        if (path.startsWith('/analytics')) return 'Analytics';
+        return 'City operations';
+    };
+
+    const currentRoleObj = ROLES.find(r => r.key === user?.role) || ROLES[0];
+    const initials = user?.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'AK';
 
     return (
         <div className="app-layout">
-            <aside className="sidebar">
+            {/* ─── DARK GREEN / TEAL SIDEBAR ─── */}
+            <aside className={`sidebar ${showMobileMenu ? 'open' : ''}`}>
+                {/* Logo Branding */}
                 <div className="sidebar-header">
                     <NavLink to="/" className="sidebar-logo">
-                        <div className="sidebar-logo-icon">🏛️</div>
-                        <div>
-                            <div className="sidebar-logo-text">UrbanHeliX</div>
-                            <div className="sidebar-logo-sub">Municipal Governance</div>
+                        <div className="sidebar-logo-icon-box">
+                            <FiActivity />
                         </div>
+                        <span className="sidebar-logo-title">UrbanHelix</span>
                     </NavLink>
                 </div>
 
+                {/* Role Switcher Card */}
+                <div className="role-card-container">
+                    <div 
+                        className="role-switcher-card" 
+                        onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                        title="Click to switch role view"
+                    >
+                        <div className="role-avatar-badge">
+                            {initials}
+                        </div>
+                        <div className="role-info-text">
+                            <div className="role-name">{currentRoleObj.label}</div>
+                            <div className="role-desc">{currentRoleObj.desc}</div>
+                        </div>
+                        <div style={{ color: '#94a3b8', fontSize: '14px' }}>
+                            {showRoleDropdown ? <FiChevronUp /> : <FiChevronDown />}
+                        </div>
+                    </div>
+
+                    {/* Role Dropdown List */}
+                    {showRoleDropdown && (
+                        <div className="role-dropdown-list">
+                            {ROLES.map((r) => (
+                                <button
+                                    key={r.key}
+                                    type="button"
+                                    className={`role-option-item ${user?.role === r.key ? 'active' : ''}`}
+                                    onClick={() => handleRoleSwitch(r)}
+                                    disabled={switchingRole}
+                                >
+                                    <span style={{ fontSize: '14px' }}>{r.icon}</span>
+                                    <span>{r.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Navigation Links */}
                 <nav className="sidebar-nav">
-                    <div className="sidebar-section-title">Navigation</div>
-                    {navItems.map((item) => (
-                        <NavLink key={item.to} to={item.to} end={item.to === '/'} className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-                            <span className="icon">{item.icon}</span>
-                            {item.label}
+                    {NAV_LINKS.map((item) => (
+                        <NavLink
+                            key={item.to}
+                            to={item.to}
+                            end={item.to === '/'}
+                            className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+                            onClick={() => setShowMobileMenu(false)}
+                        >
+                            <div className="sidebar-nav-item-left">
+                                <span className="icon">{item.icon}</span>
+                                <span>{item.label}</span>
+                            </div>
+                            {item.badge && <span className="sidebar-badge">{item.badge}</span>}
                         </NavLink>
                     ))}
                 </nav>
 
-                <div className="sidebar-user">
-                    <div className="sidebar-avatar">{initials}</div>
-                    <div className="sidebar-user-info">
-                        <div className="sidebar-user-name">{user?.name}</div>
-                        <div className="sidebar-user-role">{roleLabel}</div>
-                    </div>
-                    <button className="btn-logout" onClick={handleLogout} title="Logout">
-                        <FiLogOut />
+                {/* Bottom Quick Logout */}
+                <div style={{ padding: '16px 20px', borderTop: '1px solid var(--sidebar-border)' }}>
+                    <button
+                        type="button"
+                        onClick={handleLogout}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#94a3b8',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            cursor: 'pointer',
+                            width: '100%',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            transition: 'var(--transition)'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'transparent'; }}
+                    >
+                        <FiLogOut size={16} />
+                        <span>Sign Out</span>
                     </button>
                 </div>
             </aside>
 
+            {/* ─── MAIN CONTENT AREA (LIGHT THEME) ─── */}
             <main className="main-content">
+                {/* Top Navigation Header */}
                 <header className="main-header">
-                    <button className="mobile-menu-btn" onClick={() => setShowMobileMenu(true)}>
-                        <FiMenu size={24} />
-                    </button>
-                    <div className="header-brand" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <img src="/bbmp-logo.png" alt="BBMP Logo" style={{ height: '40px', objectFit: 'contain' }} />
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontWeight: 800, fontSize: '16px', letterSpacing: '0.5px', color: 'var(--text-primary)' }}>BBMP</span>
-                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>South Zone Dashboard</span>
+                    {/* Left: Breadcrumbs */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <button 
+                            className="mobile-menu-btn" 
+                            style={{ display: 'none', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '20px' }}
+                            onClick={() => setShowMobileMenu(!showMobileMenu)}
+                        >
+                            <FiMenu />
+                        </button>
+                        <div className="header-breadcrumb">
+                            <span className="breadcrumb-category">City operations</span>
+                            <span className="breadcrumb-separator">/</span>
+                            <span className="breadcrumb-page">{getPageTitle()}</span>
                         </div>
                     </div>
-                    <div className="header-actions">
-                        {user?.role === 'citizen' && <NotificationBell />}
-                        <div className="header-user" onClick={handleLogout} style={{ cursor: 'pointer' }} title="Click to Logout">
-                            <div className="header-avatar">{initials}</div>
+
+                    {/* Right: Search, Notifications & Avatar */}
+                    <div className="header-right-actions">
+                        {/* Search Bar with ⌘ K */}
+                        <div className="header-search-box">
+                            <FiSearch className="search-icon" />
+                            <input 
+                                type="text"
+                                className="search-input"
+                                placeholder="Search anything"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            <span className="search-key-badge">⌘ K</span>
+                        </div>
+
+                        {/* Notification Bell */}
+                        <div style={{ position: 'relative' }}>
+                            <NotificationBell />
+                        </div>
+
+                        {/* User Avatar Circle */}
+                        <div 
+                            className="header-avatar-btn" 
+                            onClick={handleLogout}
+                            title={`Logged in as ${user?.name || 'User'} (${user?.role || 'Citizen'}). Click to Logout.`}
+                        >
+                            {initials}
                         </div>
                     </div>
                 </header>
+
+                {/* Page Outlet */}
                 <div className="page-content">
                     <Outlet />
                 </div>
             </main>
 
-            {/* Mobile Menu Overlay */}
-            {showMobileMenu && (
-                <div className="mobile-menu-overlay" onClick={() => setShowMobileMenu(false)}>
-                    <div className="mobile-menu-content" onClick={e => e.stopPropagation()}>
-                        <div className="mobile-menu-header">
-                            <div className="sidebar-logo-text" style={{ fontSize: '18px' }}>UrbanHeliX</div>
-                            <button className="btn-close" onClick={() => setShowMobileMenu(false)}>
-                                <FiX size={24} />
-                            </button>
-                        </div>
-                        <div className="mobile-menu-links">
-                            {user?.role === 'engineer' && (
-                                <NavLink to="/projects" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
-                                    <span className="icon"><FiPlusCircle size={20} /></span>
-                                    <div>
-                                        <div className="menu-item-title">Project Proposal</div>
-                                        <div className="menu-item-desc">Add photos of damaged roads</div>
-                                    </div>
-                                </NavLink>
-                            )}
-                            <NavLink to="/grievances" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
-                                <span className="icon"><FiAlertCircle size={20} /></span>
-                                <div>
-                                    <div className="menu-item-title">Raise a Complaint</div>
-                                    <div className="menu-item-desc">Report civic issues directly</div>
-                                </div>
-                            </NavLink>
-                            <NavLink to="/milestones" onClick={() => setShowMobileMenu(false)} className="mobile-menu-item feature-link">
-                                <span className="icon"><FiCheckSquare size={20} /></span>
-                                <div>
-                                    <div className="menu-item-title">See Milestones</div>
-                                    <div className="menu-item-desc">Track project progress</div>
-                                </div>
-                            </NavLink>
-                            
-                            <hr style={{ margin: '16px 0', borderColor: 'var(--border-glass)' }} />
-                            
-                            {navItems.map((item) => (
-                                <NavLink key={item.to} to={item.to} end={item.to === '/'} onClick={() => setShowMobileMenu(false)} className={({ isActive }) => `mobile-menu-item basic ${isActive ? 'active' : ''}`}>
-                                    <span className="icon">{item.icon}</span>
-                                    <span>{item.label}</span>
-                                </NavLink>
-                            ))}
-
-                            <hr style={{ margin: '16px 0', borderColor: 'var(--border-glass)' }} />
-                            <button 
-                                onClick={handleLogout} 
-                                className="mobile-menu-item" 
-                                style={{ 
-                                    background: 'transparent', 
-                                    border: 'none', 
-                                    color: '#ef4444', 
-                                    width: '100%', 
-                                    textAlign: 'left',
-                                    fontWeight: 600,
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                <span className="icon"><FiLogOut size={20} /></span>
-                                <span>Logout / Switch Account</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             <ChatBot />
             <RealTimeNotifications />
-
-            {/* Global Notification Prompt */}
-            {showNotificationPrompt && (
-                <div className="modal-overlay" style={{ zIndex: 9999 }}>
-                    <div className="glass-card" style={{ maxWidth: '400px', width: '90%', margin: '0 auto', textAlign: 'center', padding: '30px 20px', background: 'var(--bg-glass-heavy)', border: '1px solid var(--accent-blue)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
-                        <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'pulse 2s infinite' }}>🔔</div>
-                        <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px', color: '#fff' }}>Never Miss an Update!</h2>
-                        
-                        {window.Notification?.permission === 'denied' ? (
-                            <>
-                                <p style={{ color: 'var(--accent-red)', fontSize: '14px', marginBottom: '24px', lineHeight: 1.6, fontWeight: 'bold' }}>
-                                    Notifications are currently BLOCKED in your phone's browser settings.
-                                </p>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '24px' }}>
-                                    To receive updates, please tap the lock icon next to the URL in your browser, go to Site Settings, and change Notifications to "Allow".
-                                </p>
-                                <button className="btn btn-outline" style={{ width: '100%', border: 'none', color: 'var(--text-muted)' }} onClick={() => setShowNotificationPrompt(false)}>
-                                    I understand, dismiss
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', lineHeight: 1.6 }}>
-                                    Get instant pop-up alerts on your phone when new projects are assigned or progress photos are uploaded in your city.
-                                </p>
-                                <div style={{ display: 'flex', gap: '12px', flexDirection: 'column' }}>
-                                    <button className="btn btn-primary" style={{ width: '100%', padding: '12px', fontSize: '15px' }} onClick={handleEnableNotifications}>
-                                        Yes, Notify Me Instantly!
-                                    </button>
-                                    <button className="btn btn-outline" style={{ width: '100%', border: 'none', color: 'var(--text-muted)' }} onClick={() => setShowNotificationPrompt(false)}>
-                                        Maybe Later
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

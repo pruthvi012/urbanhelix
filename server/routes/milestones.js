@@ -151,6 +151,7 @@ router.put('/:id/engineer-approve', protect, authorize('engineer', 'admin'), asy
         }
 
         // Notify all stakeholders about engineer review
+        const proj = await Project.findById(milestone.project);
         if (proj) {
             const statusText = approved ? 'reviewed by engineer' : 'rejected by engineer';
             await notificationService.notifyProjectStakeholders(
@@ -199,6 +200,7 @@ router.put('/:id/financial-approve', protect, authorize('financial_officer', 'ad
         }
 
         // Notify all stakeholders about final approval
+        const proj = await Project.findById(milestone.project);
         if (proj) {
             const statusText = approved ? 'approved' : 'rejected';
             await notificationService.notifyProjectStakeholders(

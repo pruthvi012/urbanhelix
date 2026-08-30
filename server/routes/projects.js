@@ -732,23 +732,21 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
 
         // Notify assigned engineer for cross-verification
         if (project.engineer) {
-            await Notification.create({
-                user: project.engineer._id || project.engineer,
-                title: '🔍 Expense Needs Physical Verification',
-                message: `Contractor logged ₹${expAmount.toLocaleString()} for "${material}" on project "${project.title}". Please visit site and verify physically.`,
-                type: 'system',
-                relatedEntity: { entityType: 'Project', entityId: project._id }
-            });
+            await notificationService.sendPushNotification(
+                project.engineer._id || project.engineer,
+                '🔍 Expense Needs Physical Verification',
+                `Contractor logged ₹${expAmount.toLocaleString()} for "${material}" on project "${project.title}". Please visit site and verify physically.`,
+                { type: 'system', relatedEntity: { entityType: 'Project', entityId: project._id } }
+            );
         }
 
         // Notify Contractor for confirmation
-        await Notification.create({
-            user: req.user._id,
-            title: '✅ Expense Logged (Pending Review)',
-            message: `Your expenditure of ₹${expAmount.toLocaleString()} for "${material}" has been submitted. It is now waiting for the Engineer's physical verification.`,
-            type: 'system',
-            relatedEntity: { entityType: 'Project', entityId: project._id }
-        });
+        await notificationService.sendPushNotification(
+            req.user._id,
+            '✅ Expense Logged (Pending Review)',
+            `Your expenditure of ₹${expAmount.toLocaleString()} for "${material}" has been submitted. It is now waiting for the Engineer's physical verification.`,
+            { type: 'system', relatedEntity: { entityType: 'Project', entityId: project._id } }
+        );
 
         res.json({ success: true, project });
     } catch (error) {
@@ -793,15 +791,14 @@ router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'adm
         });
 
         // Notify Contractor of verification result
-        await Notification.create({
-            user: exp.recordedBy,
-            title: exp.engineerVerified ? '✅ Expense Verified' : '❌ Expense Rejected',
-            message: exp.engineerVerified 
+        await notificationService.sendPushNotification(
+            exp.recordedBy,
+            exp.engineerVerified ? '✅ Expense Verified' : '❌ Expense Rejected',
+            exp.engineerVerified 
                 ? `Your expense for "${exp.material}" (₹${exp.amount.toLocaleString()}) has been verified. It is now queued for Finance payment.`
                 : `Your expense for "${exp.material}" has been rejected by the Engineer. Reason: ${remarks}`,
-            type: 'system',
-            relatedEntity: { entityType: 'Project', entityId: project._id }
-        });
+            { type: 'system', relatedEntity: { entityType: 'Project', entityId: project._id } }
+        );
 
         res.json({ success: true, expenditure: exp, message: exp.engineerVerified ? 'Expenditure verified and marked ready for payment' : 'Expenditure rejected' });
     } catch (error) {
@@ -859,13 +856,12 @@ router.put('/:id/expenditure/:expId/release', protect, authorize('financial_offi
 
         // Notify Contractor
         if (project.contractor) {
-            await Notification.create({
-                user: project.contractor._id || project.contractor,
-                title: '💰 Payment Released!',
-                message: `BBMP Finance has released ₹${exp.amount.toLocaleString()} for "${exp.material}" to your bank account.`,
-                type: 'system',
-                relatedEntity: { entityType: 'Project', entityId: project._id }
-            });
+            await notificationService.sendPushNotification(
+                project.contractor._id || project.contractor,
+                '💰 Payment Released!',
+                `BBMP Finance has released ₹${exp.amount.toLocaleString()} for "${exp.material}" to your bank account.`,
+                { type: 'system', relatedEntity: { entityType: 'Project', entityId: project._id } }
+            );
         }
 
         res.json({ success: true, expenditure: exp, message: 'Payment released successfully' });
