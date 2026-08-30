@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const https = require('https');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const { protect, authorize } = require('../middleware/auth');
@@ -94,6 +95,55 @@ router.get('/users', protect, authorize('admin', 'engineer', 'financial_officer'
 // In-memory OTP storage
 const otpStore = new Map();
 
+// Helper to send SMS via Fast2SMS
+const sendFast2SMSSMS = (phone, otp) => {
+    return new Promise((resolve, reject) => {
+        const apiKey = process.env.FAST2SMS_API_KEY;
+        if (!apiKey) {
+            return reject(new Error('FAST2SMS_API_KEY is not defined in environment'));
+        }
+
+        // Fast2SMS API bulkV2 payload
+        const postData = JSON.stringify({
+            route: 'otp',
+            variables_values: otp,
+            numbers: phone
+        });
+
+        const options = {
+            hostname: 'www.fast2sms.com',
+            path: '/dev/bulkV2',
+            method: 'POST',
+            headers: {
+                'Authorization': apiKey,
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(postData)
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let body = '';
+            res.on('data', (chunk) => body += chunk);
+            res.on('end', () => {
+                try {
+                    const parsed = JSON.parse(body);
+                    if (parsed.return === true) {
+                        resolve(parsed);
+                    } else {
+                        reject(new Error(parsed.message || 'Fast2SMS returned failure response'));
+                    }
+                } catch (e) {
+                    reject(new Error(`Failed to parse Fast2SMS response: ${body}`));
+                }
+            });
+        });
+
+        req.on('error', (err) => reject(err));
+        req.write(postData);
+        req.end();
+    });
+};
+
 // POST /api/auth/otp/send
 router.post('/otp/send', async (req, res) => {
     try {
@@ -126,11 +176,24 @@ router.post('/otp/send', async (req, res) => {
 
         console.log(`[OTP] Simulated SMS for ${phone}: ${otp}`);
 
-        // Return OTP in response so that the demo interface can easily read and auto-display it
+        let smsSent = false;
+        let smsError = '';
+        try {
+            await sendFast2SMSSMS(phone, otp);
+            smsSent = true;
+            console.log(`[OTP] Real SMS delivered to ${phone}`);
+        } catch (err) {
+            smsError = err.message;
+            console.warn(`[OTP] Real SMS delivery failed: ${smsError}`);
+        }
+
         res.json({
             success: true,
             otp,
-            message: `OTP sent successfully to ${phone} (Demo code: ${otp})`
+            smsSent,
+            message: smsSent 
+                ? `OTP sent successfully to your phone!` 
+                : `OTP generated. (Demo Code: ${otp}). SMS delivery log: ${smsError}`
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

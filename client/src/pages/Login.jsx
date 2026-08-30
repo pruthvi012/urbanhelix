@@ -27,6 +27,7 @@ export default function Login() {
     const [otpSent, setOtpSent] = useState(false);
     const [demoOtp, setDemoOtp] = useState('');
     const [otpLoading, setOtpLoading] = useState(false);
+    const [infoMessage, setInfoMessage] = useState('');
 
     // Quick role selector states
     const [selectedRoleIndex, setSelectedRoleIndex] = useState(0);
@@ -58,8 +59,10 @@ export default function Login() {
                 setOtpSent(false);
                 setOtp('');
                 setDemoOtp('');
+                setInfoMessage('');
             } else {
                 setLoginMethod('password');
+                setInfoMessage('');
             }
         }
     }, [selectedRoleIndex, isRegister]);
@@ -94,7 +97,8 @@ export default function Login() {
             const { data } = await authAPI.sendOTP(phone);
             if (data.success) {
                 setOtpSent(true);
-                setDemoOtp(data.otp);
+                setDemoOtp(data.smsSent ? '' : data.otp);
+                setInfoMessage(data.message || 'OTP sent successfully!');
             } else {
                 setError(data.message || 'Failed to send OTP');
             }
@@ -724,19 +728,35 @@ export default function Login() {
                         </div>
                     )}
 
+                    {infoMessage && (
+                        <div style={{ 
+                            background: 'rgba(34,197,94,0.08)', 
+                            border: '1px solid #dcfce7', 
+                            borderRadius: '8px', 
+                            padding: '12px 14px', 
+                            marginBottom: '20px', 
+                            fontSize: '13px', 
+                            color: '#16a34a',
+                            width: '100%',
+                            textAlign: 'left'
+                        }}>
+                            ✅ {infoMessage}
+                        </div>
+                    )}
+
                     {!isRegister && (
                         <div className="login-tab-container">
                             <button 
                                 type="button" 
                                 className={`login-tab-btn ${loginMethod === 'otp' ? 'active' : ''}`}
-                                onClick={() => { setLoginMethod('otp'); setError(''); }}
+                                onClick={() => { setLoginMethod('otp'); setError(''); setInfoMessage(''); }}
                             >
                                 👥 Citizen Access
                             </button>
                             <button 
                                 type="button" 
                                 className={`login-tab-btn ${loginMethod === 'password' ? 'active' : ''}`}
-                                onClick={() => { setLoginMethod('password'); setError(''); }}
+                                onClick={() => { setLoginMethod('password'); setError(''); setInfoMessage(''); }}
                             >
                                 💼 Officer Portal
                             </button>
