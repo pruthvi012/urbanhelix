@@ -104,7 +104,7 @@ export default function Layout() {
 
                 {/* Navigation Links */}
                 <nav className="sidebar-nav">
-                    {NAV_LINKS.map((item) => (
+                    {NAV_LINKS.filter((item) => !(user?.role === 'contractor' && item.to === '/audit')).map((item) => (
                         <NavLink
                             key={item.to}
                             to={item.to}

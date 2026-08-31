@@ -327,6 +327,7 @@ body {
 /* ─── MAIN CONTENT AREA ────────────────────────────────────── */
 .main-content {
     flex: 1;
+    min-width: 0;
     margin-left: 270px;
     display: flex;
     flex-direction: column;
@@ -1049,7 +1050,12 @@ body {
     overflow-x: auto;
     background: #ffffff;
     border-radius: var(--radius-lg);
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
 }
+
+/* Wide project registers keep their columns readable and can be swiped on a laptop trackpad or phone. */
+.projects-categorized .table { min-width: 1380px; }
 
 .table, .civic-table {
     width: 100%;

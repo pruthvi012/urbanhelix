@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { fundAPI } from '../services/api';
+import { fundAPI, projectAPI } from '../services/api';
 
 export default function Funds() {
     const { user } = useAuth();
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState({ type: '', status: '' });
+    const [projectCode, setProjectCode] = useState('');
+    const [paymentLookup, setPaymentLookup] = useState(null);
+    const [lookupMessage, setLookupMessage] = useState('');
 
     useEffect(() => { loadData(); }, [filter]);
 
@@ -29,6 +32,26 @@ export default function Funds() {
         } catch (err) { alert(err.response?.data?.message || 'Error verifying'); }
     };
 
+    const checkPaymentStatus = async () => {
+        const code = projectCode.trim().toUpperCase();
+        if (!code) return setLookupMessage('Enter a project code first.');
+        setLookupMessage('Checking payment status…');
+        try {
+            const projectRes = await projectAPI.getAll({ projectCode: code, limit: 10 });
+            const project = (projectRes.data?.projects || []).find((item) => item.projectCode === code || `UHX-${item._id.substring(18).toUpperCase()}` === code);
+            if (!project) {
+                setPaymentLookup(null);
+                return setLookupMessage('No project was found for this code.');
+            }
+            const transactionRes = await fundAPI.getAll({ project: project._id, limit: 100 });
+            setPaymentLookup({ project, transactions: transactionRes.data?.transactions || [] });
+            setLookupMessage('');
+        } catch {
+            setPaymentLookup(null);
+            setLookupMessage('Unable to check this code. Please try again.');
+        }
+    };
+
     const formatCurrency = (amt) => {
         if (!amt) return '—';
         if (amt >= 10000000) return `₹${(amt / 10000000).toFixed(1)} Cr`;
@@ -44,6 +67,20 @@ export default function Funds() {
                 <h1 className="page-title">Fund Transactions</h1>
                 <p className="page-subtitle">Track fund allocations, disbursements, and payments</p>
             </div>
+
+            {user?.role === 'financial_officer' && (
+                <div className="glass-card" style={{ padding: '20px', marginBottom: '20px', borderLeft: '5px solid var(--accent-teal)' }}>
+                    <h3 style={{ marginBottom: '5px' }}>Project payment-status lookup</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '14px' }}>Enter a project code to view payment status for that project only.</p>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <input className="form-input" placeholder="UHX-XXXXXX" value={projectCode} onChange={(event) => setProjectCode(event.target.value.toUpperCase())} onKeyDown={(event) => event.key === 'Enter' && checkPaymentStatus()} style={{ maxWidth: '280px', margin: 0, textTransform: 'uppercase' }} />
+                        <button className="btn btn-primary" onClick={checkPaymentStatus}>Check payment status</button>
+                        {paymentLookup && <button className="btn btn-outline" onClick={() => { setPaymentLookup(null); setProjectCode(''); setLookupMessage(''); }}>Clear</button>}
+                    </div>
+                    {lookupMessage && <div style={{ marginTop: '10px', fontSize: '13px', color: 'var(--accent-amber)', fontWeight: 700 }}>{lookupMessage}</div>}
+                    {paymentLookup && <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', background: 'var(--bg-subtle)' }}><strong>{paymentLookup.project.title}</strong><span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>{paymentLookup.project.projectCode}</span><div style={{ marginTop: '10px', fontSize: '13px' }}>{paymentLookup.transactions.length ? paymentLookup.transactions.map((transaction) => <div key={transaction._id} style={{ padding: '7px 0', borderTop: '1px solid var(--border-subtle)' }}>{transaction.type}: <strong>{formatCurrency(transaction.amount)}</strong> — <span className={`badge badge-${transaction.status === 'approved' || transaction.status === 'completed' ? 'completed' : transaction.status === 'rejected' ? 'rejected' : 'pending'}`}>{transaction.status.replace('_', ' ')}</span></div>) : 'No payment transaction has been raised for this project yet.'}</div></div>}
+                </div>
+            )}
 
             <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
                 <select className="form-select" style={{ width: 'auto' }} value={filter.type} onChange={(e) => setFilter({ ...filter, type: e.target.value })}>
