@@ -69,56 +69,9 @@ export default function Grievances() {
         window.location.href = "intent://#Intent;package=com.vcamera.roudndai;scheme=android-app;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.vcamera.roudndai;end";
     };
 
+    // Just store file — GPS check happens on Submit
     const handleFileChange = (e) => {
-        const selectedFile = e.target.files[0];
-        if (!selectedFile) {
-            setFile(null);
-            return;
-        }
-
-        if (!location) {
-            alert('Please lock your location first by clicking the verify button.');
-            e.target.value = null;
-            return;
-        }
-
-        const inputElement = e.target;
-
-        import('exif-js').then(({ default: EXIF }) => {
-            EXIF.getData(selectedFile, function() {
-                const lat = EXIF.getTag(this, "GPSLatitude");
-                const lon = EXIF.getTag(this, "GPSLongitude");
-                const latRef = EXIF.getTag(this, "GPSLatitudeRef") || "N";
-                const lonRef = EXIF.getTag(this, "GPSLongitudeRef") || "E";
-
-                if (!lat || !lon) {
-                    setInvalidImageMsg("No GPS metadata found in this photo. A live GPS-tagged photo is required to prevent fraudulent reports.");
-                    setShowInvalidImageModal(true);
-                    setFile(null);
-                    inputElement.value = "";
-                    return;
-                }
-
-                const imageLat = convertDMSToDD(lat, latRef);
-                const imageLng = convertDMSToDD(lon, lonRef);
-
-                const latDiff = Math.abs(imageLat - location.lat);
-                const lngDiff = Math.abs(imageLng - location.lng);
-                const isMatch = latDiff < 0.002 && lngDiff < 0.002;
-
-                if (!isMatch) {
-                    setInvalidImageMsg(`Image GPS mismatch!\n\nImage coordinates (${imageLat.toFixed(4)}, ${imageLng.toFixed(4)}) do not match your current locked coordinates (${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}). Please upload a valid real-time photo taken at the site.`);
-                    setShowInvalidImageModal(true);
-                    setFile(null);
-                    inputElement.value = "";
-                } else {
-                    setFile(selectedFile);
-                }
-            });
-        }).catch(err => {
-            console.error("EXIF library import failed:", err);
-            setFile(selectedFile);
-        });
+        setFile(e.target.files[0] || null);
     };
 
     const handleVote = async (id, type) => {
@@ -139,28 +92,83 @@ export default function Grievances() {
 
     const handleCreate = async (e) => {
         e.preventDefault();
-        try {
-            if (!form.ward || !form.area) {
-                return alert('Please select a Ward and Area from the selection tool.');
-            }
 
-            const formData = new FormData();
-            Object.keys(form).forEach(key => formData.append(key, form[key]));
-            if (file) formData.append('image', file);
-            if (location) formData.append('location', JSON.stringify(location));
-
-            await grievanceAPI.create(formData);
-            
-            setShowModal(false);
-            setForm({ project: '', title: '', description: '', category: 'other', ward: '', wardNo: '', area: '' });
-            setFile(null);
-            setLocation(null);
-            setGpsCameraRequested(false);
-            loadData();
-            alert('Problem reported successfully with GPS verification.');
-        } catch (err) { 
-            alert(err.response?.data?.message || 'Error submitting report'); 
+        if (!form.ward || !form.area) {
+            return alert('Please select a Ward and Area from the selection tool.');
         }
+
+        if (!file) {
+            return alert('Please attach a photo as evidence.');
+        }
+
+        // GPS EXIF validation on submit
+        const validateAndSubmit = () => {
+            import('exif-js').then(({ default: EXIF }) => {
+                EXIF.getData(file, async function() {
+                    const lat = EXIF.getTag(this, "GPSLatitude");
+                    const lon = EXIF.getTag(this, "GPSLongitude");
+                    const latRef = EXIF.getTag(this, "GPSLatitudeRef") || "N";
+                    const lonRef = EXIF.getTag(this, "GPSLongitudeRef") || "E";
+
+                    if (!lat || !lon) {
+                        setInvalidImageMsg("Please upload a valid GPS-tagged image to proceed.\n\nThe photo must be taken live at the site using a GPS Camera app. Regular photos without location metadata cannot be accepted to prevent fraudulent reports.");
+                        setShowInvalidImageModal(true);
+                        return;
+                    }
+
+                    const imageLat = convertDMSToDD(lat, latRef);
+                    const imageLng = convertDMSToDD(lon, lonRef);
+                    const latDiff = Math.abs(imageLat - (location?.lat || 0));
+                    const lngDiff = Math.abs(imageLng - (location?.lng || 0));
+                    const isMatch = latDiff < 0.002 && lngDiff < 0.002;
+
+                    if (!isMatch) {
+                        setInvalidImageMsg(`Please upload a valid GPS-tagged image to proceed.\n\nImage location (${imageLat.toFixed(4)}, ${imageLng.toFixed(4)}) does not match your locked GPS position (${location?.lat.toFixed(4)}, ${location?.lng.toFixed(4)}). Only on-site photos are accepted.`);
+                        setShowInvalidImageModal(true);
+                        return;
+                    }
+
+                    // GPS matched — submit the form
+                    try {
+                        const formData = new FormData();
+                        Object.keys(form).forEach(key => formData.append(key, form[key]));
+                        formData.append('image', file);
+                        if (location) formData.append('location', JSON.stringify(location));
+
+                        await grievanceAPI.create(formData);
+                        setShowModal(false);
+                        setForm({ project: '', title: '', description: '', category: 'other', ward: '', wardNo: '', area: '' });
+                        setFile(null);
+                        setLocation(null);
+                        setGpsCameraRequested(false);
+                        loadData();
+                        alert('Problem reported successfully with GPS verification.');
+                    } catch (err) {
+                        alert(err.response?.data?.message || 'Error submitting report');
+                    }
+                });
+            }).catch(async () => {
+                // EXIF library failed — submit without GPS check as fallback
+                try {
+                    const formData = new FormData();
+                    Object.keys(form).forEach(key => formData.append(key, form[key]));
+                    if (file) formData.append('image', file);
+                    if (location) formData.append('location', JSON.stringify(location));
+                    await grievanceAPI.create(formData);
+                    setShowModal(false);
+                    setForm({ project: '', title: '', description: '', category: 'other', ward: '', wardNo: '', area: '' });
+                    setFile(null);
+                    setLocation(null);
+                    setGpsCameraRequested(false);
+                    loadData();
+                    alert('Problem reported successfully.');
+                } catch (err) {
+                    alert(err.response?.data?.message || 'Error submitting report');
+                }
+            });
+        };
+
+        validateAndSubmit();
     };
 
     if (loading) return <div className="loading"><div className="spinner"></div> Loading...</div>;
