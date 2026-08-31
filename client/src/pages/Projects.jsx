@@ -687,7 +687,7 @@ export default function Projects() {
             {/* Create Project Modal */}
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal" style={{ maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', width: 'min(760px, calc(100vw - 24px))' }} onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-card proposal-modal" onClick={(e) => e.stopPropagation()}>
                         <h3 className="modal-title">Submit Project Proposal</h3>
                         <form onSubmit={handleSubmit}>
                             <div className="form-group">
@@ -903,7 +903,7 @@ export default function Projects() {
                                 </p>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                            <div className="proposal-actions">
                                 <button type="submit" className="btn btn-primary" style={{ padding: '12px 32px', fontWeight: 800 }}>Submit Project & Assign</button>
                                 <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
                             </div>

@@ -1125,6 +1125,52 @@ body {
     color: var(--text-main);
 }
 
+/* Project proposals have a long form. Keep the dialog inside the viewport and
+   make the form body—not the page behind it—the reliable scroll container. */
+.proposal-modal {
+    width: min(760px, calc(100vw - 24px));
+    max-width: none;
+    max-height: calc(100dvh - 24px);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.proposal-modal > .modal-title {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 22px 24px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.proposal-modal > form {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 20px 24px 24px;
+}
+
+.proposal-actions {
+    position: sticky;
+    bottom: -24px;
+    display: flex;
+    gap: 12px;
+    margin: 24px -24px -24px;
+    padding: 16px 24px;
+    background: #ffffff;
+    border-top: 1px solid var(--border-subtle);
+    box-shadow: 0 -10px 22px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 640px) {
+    .modal-overlay { padding: 12px; }
+    .proposal-modal { width: 100%; max-height: calc(100dvh - 24px); }
+    .proposal-modal > .modal-title { padding: 18px 16px 12px; }
+    .proposal-modal > form { padding: 16px; }
+    .proposal-actions { margin: 20px -16px -16px; padding: 14px 16px; }
+}
+
 .modal-header {
     display: flex;
     align-items: center;
