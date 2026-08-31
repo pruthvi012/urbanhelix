@@ -25,7 +25,11 @@ if (process.env.AZURE_STORAGE_CONNECTION_STRING && process.env.AZURE_STORAGE_CON
 
 // ─── Ensure local upload directories exist (fallback) ───
 const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+try {
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+} catch (err) {
+    console.warn('⚠️ Local uploads directory creation failed (non-critical on serverless):', err.message);
+}
 
 // ─── Custom Multer Storage Engine for Azure Blob ───
 class AzureBlobStorage {
