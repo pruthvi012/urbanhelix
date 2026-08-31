@@ -29,20 +29,6 @@ app.use((req, res, next) => {
 });
 
 // Lazy-load routes to prevent cold-start crashes
-app.get('/api/debug-grievances', async (req, res) => {
-  try {
-    const connectDB = require('../server/config/db.js');
-    await connectDB();
-    const Grievance = require('../server/models/Grievance');
-    const list = await Grievance.find({})
-      .populate('project', 'title status')
-      .populate('citizen', 'name');
-    res.json({ success: true, count: list.length });
-  } catch (err) {
-    res.status(500).json({ error: err.message, stack: err.stack });
-  }
-});
-
 app.use('/api/auth', (req, res, next) => require('../server/routes/auth.js')(req, res, next));
 app.use('/api/departments', (req, res, next) => require('../server/routes/departments.js')(req, res, next));
 app.use('/api/projects', (req, res, next) => require('../server/routes/projects.js')(req, res, next));
