@@ -105,74 +105,70 @@ export default function Grievances() {
             return alert('Please attach a photo as evidence.');
         }
 
-        // GPS EXIF validation on submit
-        const validateAndSubmit = () => {
-            import('exif-js').then(({ default: EXIF }) => {
-                EXIF.getData(file, async function() {
-                    const lat = EXIF.getTag(this, "GPSLatitude");
-                    const lon = EXIF.getTag(this, "GPSLongitude");
-                    const latRef = EXIF.getTag(this, "GPSLatitudeRef") || "N";
-                    const lonRef = EXIF.getTag(this, "GPSLongitudeRef") || "E";
+        if (!location) {
+            setInvalidImageMsg('Location verification is required.\n\nPlease click "Verify Location First" and allow your browser to access the laptop location before submitting. A regular photo can be accepted only after a GPS location has been locked.');
+            setShowInvalidImageModal(true);
+            return;
+        }
 
-                    if (!lat || !lon) {
-                        setInvalidImageMsg("Please upload a valid GPS-tagged image to proceed.\n\nThe photo must be taken live at the site using a GPS Camera app. Regular photos without location metadata cannot be accepted to prevent fraudulent reports.");
-                        setShowInvalidImageModal(true);
-                        return;
-                    }
+        const submitReport = async (successMessage) => {
+            try {
+                const formData = new FormData();
+                Object.keys(form).forEach(key => formData.append(key, form[key]));
+                formData.append('image', file);
+                formData.append('location', JSON.stringify(location));
 
-                    const imageLat = convertDMSToDD(lat, latRef);
-                    const imageLng = convertDMSToDD(lon, lonRef);
-                    const latDiff = Math.abs(imageLat - (location?.lat || 0));
-                    const lngDiff = Math.abs(imageLng - (location?.lng || 0));
-                    const isMatch = latDiff < 0.002 && lngDiff < 0.002;
-
-                    if (!isMatch) {
-                        setInvalidImageMsg(`Please upload a valid GPS-tagged image to proceed.\n\nImage location (${imageLat.toFixed(4)}, ${imageLng.toFixed(4)}) does not match your locked GPS position (${location?.lat.toFixed(4)}, ${location?.lng.toFixed(4)}). Only on-site photos are accepted.`);
-                        setShowInvalidImageModal(true);
-                        return;
-                    }
-
-                    // GPS matched — submit the form
-                    try {
-                        const formData = new FormData();
-                        Object.keys(form).forEach(key => formData.append(key, form[key]));
-                        formData.append('image', file);
-                        if (location) formData.append('location', JSON.stringify(location));
-
-                        await grievanceAPI.create(formData);
-                        setShowModal(false);
-                        setForm({ project: '', title: '', description: '', category: 'other', ward: '', wardNo: '', area: '' });
-                        setFile(null);
-                        setLocation(null);
-                        setGpsCameraRequested(false);
-                        loadData();
-                        alert('Problem reported successfully with GPS verification.');
-                    } catch (err) {
-                        alert(err.response?.data?.message || 'Error submitting report');
-                    }
-                });
-            }).catch(async () => {
-                // EXIF library failed — submit without GPS check as fallback
-                try {
-                    const formData = new FormData();
-                    Object.keys(form).forEach(key => formData.append(key, form[key]));
-                    if (file) formData.append('image', file);
-                    if (location) formData.append('location', JSON.stringify(location));
-                    await grievanceAPI.create(formData);
-                    setShowModal(false);
-                    setForm({ project: '', title: '', description: '', category: 'other', ward: '', wardNo: '', area: '' });
-                    setFile(null);
-                    setLocation(null);
-                    setGpsCameraRequested(false);
-                    loadData();
-                    alert('Problem reported successfully.');
-                } catch (err) {
-                    alert(err.response?.data?.message || 'Error submitting report');
-                }
-            });
+                await grievanceAPI.create(formData);
+                setShowModal(false);
+                setForm({ project: '', title: '', description: '', category: 'other', ward: '', wardNo: '', area: '' });
+                setFile(null);
+                setLocation(null);
+                setGpsCameraRequested(false);
+                loadData();
+                alert(successMessage);
+            } catch (err) {
+                alert(err.response?.data?.message || 'Error submitting report');
+            }
         };
 
-        validateAndSubmit();
+        try {
+            const { default: EXIF } = await import('exif-js');
+            const photoGps = await new Promise(resolve => {
+                EXIF.getData(file, function() {
+                    resolve({
+                        lat: EXIF.getTag(this, 'GPSLatitude'),
+                        lng: EXIF.getTag(this, 'GPSLongitude'),
+                        latRef: EXIF.getTag(this, 'GPSLatitudeRef') || 'N',
+                        lngRef: EXIF.getTag(this, 'GPSLongitudeRef') || 'E'
+                    });
+                });
+            });
+
+            // Laptop/demo mode: a normal photo has no embedded location, so
+            // accept it only after the browser has locked the current GPS location.
+            if (!photoGps.lat || !photoGps.lng) {
+                await submitReport('Problem reported successfully using the locked browser GPS location.');
+                return;
+            }
+
+            const imageLat = convertDMSToDD(photoGps.lat, photoGps.latRef);
+            const imageLng = convertDMSToDD(photoGps.lng, photoGps.lngRef);
+            const isMatch = Number.isFinite(imageLat) && Number.isFinite(imageLng)
+                && Math.abs(imageLat - location.lat) < 0.002
+                && Math.abs(imageLng - location.lng) < 0.002;
+
+            if (!isMatch) {
+                setInvalidImageMsg(`Invalid photo location.\n\nThe photo location (${imageLat.toFixed(4)}, ${imageLng.toFixed(4)}) does not match your GPS-locked location (${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}). Please upload a valid photo taken at the selected location.`);
+                setShowInvalidImageModal(true);
+                return;
+            }
+
+            await submitReport('Problem reported successfully with matching GPS verification.');
+        } catch (err) {
+            // If photo metadata cannot be read on this device, rely on the
+            // already locked browser location for the laptop demo flow.
+            await submitReport('Problem reported successfully using the locked browser GPS location.');
+        }
     };
 
     if (loading) return <div className="loading"><div className="spinner"></div> Loading...</div>;
@@ -267,7 +263,7 @@ export default function Grievances() {
                         <h3 className="modal-title">Report a Problem</h3>
                         <form onSubmit={handleCreate}>
                             <div className="form-group">
-                                <label className="form-label">Evidence (Photo with GPS Timestamp)</label>
+                                <label className="form-label">Evidence Photo</label>
                                 
                                 {!gpsCameraRequested ? (
                                     <button type="button" className="btn btn-outline" onClick={fetchLocation} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed', height: '100px', flexDirection: 'column' }}>
@@ -277,15 +273,15 @@ export default function Grievances() {
                                 ) : (
                                     <div style={{ padding: '16px', background: 'var(--bg-glass)', border: '1px solid var(--accent-orange)', borderRadius: '8px' }}>
                                         <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.4 }}>
-                                            <strong style={{ color: 'var(--accent-orange)' }}>⚠️ Location Verified.</strong><br/> 
-                                            Tap below to open your GPS Camera App. Regular photos will be rejected during audit.
+                                            <strong style={{ color: 'var(--accent-orange)' }}>⚠️ Location Verified.</strong><br/>
+                                            Phone: use the GPS Camera App. Laptop demo: attach a normal photo and the locked browser GPS location will be used for verification.
                                         </div>
                                         
                                         <button type="button" className="btn btn-primary" onClick={openGPSCameraApp} style={{ width: '100%', marginBottom: '16px', fontSize: '13px' }}>
                                             📸 Open GPS Camera App
                                         </button>
                                         
-                                        <div style={{ fontSize: '12px', marginBottom: '8px', color: 'var(--text-muted)' }}>After taking photo, attach it here:</div>
+                                        <div style={{ fontSize: '12px', marginBottom: '8px', color: 'var(--text-muted)' }}>Attach your photo here:</div>
                                         <input 
                                             type="file" 
                                             accept="image/*" 
