@@ -10,13 +10,6 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Clear saved user and token on first load of a new tab session so they start on the login page
-        if (!sessionStorage.getItem('urbanhelix_session_active')) {
-            localStorage.removeItem('urbanhelix_token');
-            localStorage.removeItem('urbanhelix_user');
-            sessionStorage.setItem('urbanhelix_session_active', 'true');
-        }
-
         const savedToken = localStorage.getItem('urbanhelix_token');
         const savedUser = localStorage.getItem('urbanhelix_user');
         if (savedToken && savedUser) {
@@ -24,11 +17,9 @@ export function AuthProvider({ children }) {
             try {
                 setUser(JSON.parse(savedUser));
             } catch (e) {
-                // Corrupt user data in localStorage — clear it
                 localStorage.removeItem('urbanhelix_token');
                 localStorage.removeItem('urbanhelix_user');
             }
-            // Request push token if already logged in (non-blocking, non-critical)
             requestForToken().catch(() => {});
         }
         setLoading(false);
