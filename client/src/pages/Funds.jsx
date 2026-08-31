@@ -10,6 +10,7 @@ export default function Funds() {
     const [projectCode, setProjectCode] = useState('');
     const [paymentLookup, setPaymentLookup] = useState(null);
     const [lookupMessage, setLookupMessage] = useState('');
+    const [releaseDetails, setReleaseDetails] = useState({ bankName: '', accountNumber: '', ifscCode: '' });
 
     useEffect(() => { loadData(); }, [filter]);
 
@@ -50,8 +51,17 @@ export default function Funds() {
                     return setLookupMessage('This project code is not assigned to your contractor account.');
                 }
             }
-            const transactionRes = await fundAPI.getAll({ project: project._id, limit: 100 });
-            setPaymentLookup({ project, transactions: transactionRes.data?.transactions || [] });
+            const [projectDetailRes, transactionRes] = await Promise.all([
+                projectAPI.getById(project._id),
+                fundAPI.getAll({ project: project._id, limit: 100 })
+            ]);
+            const detailedProject = projectDetailRes.data?.project || project;
+            setPaymentLookup({ project: detailedProject, transactions: transactionRes.data?.transactions || [] });
+            setReleaseDetails({
+                bankName: detailedProject.contractor?.bankDetails?.bankName || '',
+                accountNumber: detailedProject.contractor?.bankDetails?.accountNumber || '',
+                ifscCode: detailedProject.contractor?.bankDetails?.ifscCode || ''
+            });
             setLookupMessage('');
         } catch {
             setPaymentLookup(null);
@@ -64,6 +74,27 @@ export default function Funds() {
         if (amt >= 10000000) return `₹${(amt / 10000000).toFixed(1)} Cr`;
         if (amt >= 100000) return `₹${(amt / 100000).toFixed(1)} L`;
         return `₹${amt.toLocaleString()}`;
+    };
+
+    const downloadFinanceReport = () => {
+        if (!paymentLookup) return;
+        const { project, transactions: projectTransactions } = paymentLookup;
+        const rows = projectTransactions.length ? projectTransactions.map((transaction) => `<tr><td>${transaction.type}</td><td>₹${Number(transaction.amount || 0).toLocaleString('en-IN')}</td><td>${transaction.status.replace('_', ' ')}</td></tr>`).join('') : '<tr><td colspan="3">No payment transaction has been raised.</td></tr>';
+        const report = window.open('', '_blank');
+        report.document.write(`<!doctype html><title>Finance Payment Report</title><style>body{font-family:Arial;padding:38px;color:#0f172a}h1{color:#0f766e}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:12px;border:1px solid #dbe3ea;text-align:left}th{background:#f1f5f9}.note{padding:14px;background:#ecfdf5;border-radius:8px}</style><h1>UrbanHelix Finance Payment Report</h1><p>Project: <b>${project.title}</b><br>Project code: ${project.projectCode || 'N/A'}<br>Contractor: ${project.contractor?.name || 'Not assigned'}</p><div class="note">Payment status recorded on ${new Date().toLocaleString('en-IN')}</div><table><thead><tr><th>Type</th><th>Amount</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table><script>window.onload=()=>window.print()</script>`);
+        report.document.close();
+    };
+
+    const releasePayment = async (expenditure) => {
+        if (!releaseDetails.accountNumber || !releaseDetails.ifscCode || !releaseDetails.bankName) return setLookupMessage('Enter the contractor bank name, account number, and IFSC code before releasing payment.');
+        if (!window.confirm(`Release ${formatCurrency(expenditure.amount)} to account ${releaseDetails.accountNumber}?`)) return;
+        try {
+            await projectAPI.releaseExpenditure(paymentLookup.project._id, expenditure._id, releaseDetails);
+            setLookupMessage('✓ Payment released successfully.');
+            await checkPaymentStatus();
+        } catch (error) {
+            setLookupMessage(error.response?.data?.message || 'Payment release failed. Please try again.');
+        }
     };
 
     if (loading) return <div className="loading"><div className="spinner"></div> Loading...</div>;
@@ -105,6 +136,8 @@ export default function Funds() {
                     </div>
                     {lookupMessage && <div style={{ marginTop: '10px', fontSize: '13px', color: 'var(--accent-amber)', fontWeight: 700 }}>{lookupMessage}</div>}
                     {paymentLookup && <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', background: 'var(--bg-subtle)' }}><strong>{paymentLookup.project.title}</strong><span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>{paymentLookup.project.projectCode}</span><div style={{ marginTop: '10px', fontSize: '13px' }}>{paymentLookup.transactions.length ? paymentLookup.transactions.map((transaction) => <div key={transaction._id} style={{ padding: '7px 0', borderTop: '1px solid var(--border-subtle)' }}>{transaction.type}: <strong>{formatCurrency(transaction.amount)}</strong> — <span className={`badge badge-${transaction.status === 'approved' || transaction.status === 'completed' ? 'completed' : transaction.status === 'rejected' ? 'rejected' : 'pending'}`}>{transaction.status.replace('_', ' ')}</span></div>) : 'No payment transaction has been raised for this project yet.'}</div></div>}
+                    {paymentLookup && <div style={{ marginTop: '12px' }}><button className="btn btn-outline" onClick={downloadFinanceReport}>Download payment report (PDF)</button></div>}
+                    {paymentLookup && paymentLookup.project.contractor && <div style={{ marginTop: '16px', padding: '18px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px' }}><h4 style={{ marginBottom: '6px', color: '#1d4ed8' }}>Release verified contractor payment</h4><p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px' }}>Contractor: <strong>{paymentLookup.project.contractor.name}</strong>. Enter bank details before release.</p><div className="grid-2"><div className="form-group"><label className="form-label">Bank name</label><input className="form-input" value={releaseDetails.bankName} onChange={(event) => setReleaseDetails({ ...releaseDetails, bankName: event.target.value })} /></div><div className="form-group"><label className="form-label">Account number</label><input className="form-input" value={releaseDetails.accountNumber} onChange={(event) => setReleaseDetails({ ...releaseDetails, accountNumber: event.target.value })} /></div></div><div className="form-group"><label className="form-label">IFSC code</label><input className="form-input" value={releaseDetails.ifscCode} onChange={(event) => setReleaseDetails({ ...releaseDetails, ifscCode: event.target.value.toUpperCase() })} /></div>{(paymentLookup.project.expenditures || []).filter((expense) => expense.readyForPayment && !expense.financeReleased).length ? (paymentLookup.project.expenditures || []).filter((expense) => expense.readyForPayment && !expense.financeReleased).map((expense) => <div key={expense._id} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', padding: '10px 0', borderTop: '1px solid #bfdbfe' }}><span><strong>{expense.material}</strong><br /><small>{formatCurrency(expense.amount)} · Engineer verified</small></span><button className="btn btn-primary btn-sm" onClick={() => releasePayment(expense)}>Release payment</button></div>) : <div style={{ fontSize: '13px', color: '#475569' }}>No engineer-verified payment is waiting for release.</div>}</div>}
                 </div>
             )}
 
