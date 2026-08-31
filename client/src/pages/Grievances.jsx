@@ -147,18 +147,17 @@ export default function Grievances() {
                 });
             });
 
-            // Laptop/demo mode: a normal photo has no embedded location, so
-            // accept it only after the browser has locked the current GPS location.
             if (!photoGps.lat || !photoGps.lng) {
-                await submitReport('Problem reported successfully using the locked browser GPS location.');
+                setInvalidImageMsg('Invalid photo.\n\nThis photo does not contain GPS location metadata, so its location cannot be matched with your GPS-locked location. Please upload a valid GPS-tagged photo taken at the reported site.');
+                setShowInvalidImageModal(true);
                 return;
             }
 
             const imageLat = convertDMSToDD(photoGps.lat, photoGps.latRef);
             const imageLng = convertDMSToDD(photoGps.lng, photoGps.lngRef);
             const isMatch = Number.isFinite(imageLat) && Number.isFinite(imageLng)
-                && Math.abs(imageLat - location.lat) < 0.002
-                && Math.abs(imageLng - location.lng) < 0.002;
+                && Math.abs(imageLat - location.lat) < 0.0005
+                && Math.abs(imageLng - location.lng) < 0.0005;
 
             if (!isMatch) {
                 setInvalidImageMsg(`Invalid photo location.\n\nThe photo location (${imageLat.toFixed(4)}, ${imageLng.toFixed(4)}) does not match your GPS-locked location (${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}). Please upload a valid photo taken at the selected location.`);
@@ -168,9 +167,8 @@ export default function Grievances() {
 
             await submitReport('Problem reported successfully with matching GPS verification.');
         } catch (err) {
-            // If photo metadata cannot be read on this device, rely on the
-            // already locked browser location for the laptop demo flow.
-            await submitReport('Problem reported successfully using the locked browser GPS location.');
+            setInvalidImageMsg('Invalid photo.\n\nThe photo GPS location could not be read, so it cannot be matched with your GPS-locked location. Please upload a valid GPS-tagged photo taken at the reported site.');
+            setShowInvalidImageModal(true);
         }
     };
 
@@ -277,7 +275,7 @@ export default function Grievances() {
                                     <div style={{ padding: '16px', background: 'var(--bg-glass)', border: '1px solid var(--accent-orange)', borderRadius: '8px' }}>
                                         <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.4 }}>
                                             <strong style={{ color: 'var(--accent-orange)' }}>⚠️ Location Verified.</strong><br/>
-                                            Phone: use the GPS Camera App. Laptop demo: attach a normal photo and the locked browser GPS location will be used for verification.
+                                            Upload a GPS-tagged photo. Its embedded GPS coordinates must match the browser's locked location before this report can be submitted.
                                         </div>
                                         
                                         <button type="button" className="btn btn-primary" onClick={openGPSCameraApp} style={{ width: '100%', marginBottom: '16px', fontSize: '13px' }}>
