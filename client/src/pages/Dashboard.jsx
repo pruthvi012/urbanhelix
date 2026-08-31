@@ -247,9 +247,11 @@ export default function Dashboard() {
                         <Link to="/projects" className="hero-pill-btn primary">
                             Explore projects
                         </Link>
-                        <Link to="/grievances" className="hero-pill-btn">
-                            Raise a grievance
-                        </Link>
+                        {user?.role === 'citizen' && (
+                            <Link to="/grievances" className="hero-pill-btn">
+                                Raise a grievance
+                            </Link>
+                        )}
                         <button 
                             type="button" 
                             className="hero-pill-btn"
