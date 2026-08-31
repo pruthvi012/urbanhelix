@@ -43,6 +43,13 @@ export default function Funds() {
                 setPaymentLookup(null);
                 return setLookupMessage('No project was found for this code.');
             }
+            if (user?.role === 'contractor') {
+                const assignedContractorId = project.contractor?._id || project.contractor;
+                if (!assignedContractorId || String(assignedContractorId) !== String(user._id)) {
+                    setPaymentLookup(null);
+                    return setLookupMessage('This project code is not assigned to your contractor account.');
+                }
+            }
             const transactionRes = await fundAPI.getAll({ project: project._id, limit: 100 });
             setPaymentLookup({ project, transactions: transactionRes.data?.transactions || [] });
             setLookupMessage('');
@@ -61,12 +68,31 @@ export default function Funds() {
 
     if (loading) return <div className="loading"><div className="spinner"></div> Loading...</div>;
 
+    const isContractor = user?.role === 'contractor';
+    const paidTransactions = paymentLookup?.transactions.filter((transaction) => ['payment', 'disbursement'].includes(transaction.type) && ['approved', 'completed'].includes(transaction.status)) || [];
+    const pendingTransactions = paymentLookup?.transactions.filter((transaction) => ['payment', 'disbursement'].includes(transaction.type) && !['approved', 'completed', 'rejected'].includes(transaction.status)) || [];
+
     return (
         <div>
             <div className="page-header">
-                <h1 className="page-title">Fund Transactions</h1>
-                <p className="page-subtitle">Track fund allocations, disbursements, and payments</p>
+                <h1 className="page-title">{isContractor ? 'My Payment Status' : 'Fund Transactions'}</h1>
+                <p className="page-subtitle">{isContractor ? 'Enter an assigned project code to check whether payment has been released.' : 'Track fund allocations, disbursements, and payments'}</p>
             </div>
+
+            {isContractor && (
+                <div className="glass-card" style={{ padding: '24px', maxWidth: '760px', borderTop: '4px solid var(--accent-teal)' }}>
+                    <h3 style={{ marginBottom: '6px' }}>Check payment using project code</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '16px' }}>Only projects assigned to your contractor account can be checked.</p>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <input className="form-input" placeholder="Enter project code, e.g. UHX-XXXXXX" value={projectCode} onChange={(event) => setProjectCode(event.target.value.toUpperCase())} onKeyDown={(event) => event.key === 'Enter' && checkPaymentStatus()} style={{ flex: '1 1 280px', margin: 0, textTransform: 'uppercase' }} />
+                        <button className="btn btn-primary" onClick={checkPaymentStatus}>Check payment</button>
+                    </div>
+                    {lookupMessage && <div style={{ marginTop: '13px', color: 'var(--accent-amber)', fontWeight: 700, fontSize: '13px' }}>{lookupMessage}</div>}
+                    {paymentLookup && <div style={{ marginTop: '18px', padding: '18px', borderRadius: '12px', background: paidTransactions.length ? 'var(--accent-mint-light)' : 'var(--accent-amber-light)', border: `1px solid ${paidTransactions.length ? '#a7f3d0' : '#fde68a'}` }}>
+                        <div style={{ fontWeight: 800, fontSize: '16px' }}>{paymentLookup.project.title}</div>
+                        {paidTransactions.length > 0 ? <><div style={{ color: '#047857', fontWeight: 800, marginTop: '10px' }}>✓ Payment paid</div><div style={{ fontSize: '13px', marginTop: '4px' }}>Released amount: {formatCurrency(paidTransactions.reduce((sum, transaction) => sum + transaction.amount, 0))}</div></> : pendingTransactions.length > 0 ? <><div style={{ color: '#a16207', fontWeight: 800, marginTop: '10px' }}>Payment is under verification</div><div style={{ fontSize: '13px', marginTop: '4px' }}>No payment has been released yet.</div></> : <><div style={{ color: '#a16207', fontWeight: 800, marginTop: '10px' }}>No payment done yet</div><div style={{ fontSize: '13px', marginTop: '4px' }}>No payment transaction has been raised for this project.</div></>}</div>}
+                </div>
+            )}
 
             {user?.role === 'financial_officer' && (
                 <div className="glass-card" style={{ padding: '20px', marginBottom: '20px', borderLeft: '5px solid var(--accent-teal)' }}>
@@ -82,7 +108,7 @@ export default function Funds() {
                 </div>
             )}
 
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+            {!isContractor && <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
                 <select className="form-select" style={{ width: 'auto' }} value={filter.type} onChange={(e) => setFilter({ ...filter, type: e.target.value })}>
                     <option value="">All Types</option>
                     <option value="allocation">Allocation</option>
@@ -95,9 +121,9 @@ export default function Funds() {
                     <option value="approved">Approved</option>
                     <option value="completed">Completed</option>
                 </select>
-            </div>
+            </div>}
 
-            <div className="table-container">
+            {!isContractor && <div className="table-container">
                 <table className="table">
                     <thead>
                         <tr><th>Type</th><th>From</th><th>To</th><th>Amount</th><th>Project</th><th>Status</th><th>Verifications</th>
@@ -136,7 +162,7 @@ export default function Funds() {
                         {transactions.length === 0 && <tr><td colSpan="8" className="empty-state">No transactions found</td></tr>}
                     </tbody>
                 </table>
-            </div>
+            </div>}
         </div>
     );
 }
