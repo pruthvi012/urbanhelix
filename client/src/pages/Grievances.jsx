@@ -98,7 +98,7 @@ export default function Grievances() {
         if (!Number.isFinite(photoLocation?.lat) || !Number.isFinite(photoLocation?.lng) || !lockedLocation) return false;
         const latitudeMetres = (photoLocation.lat - lockedLocation.lat) * 111_320;
         const longitudeMetres = (photoLocation.lng - lockedLocation.lng) * 111_320 * Math.cos(lockedLocation.lat * Math.PI / 180);
-        return Math.hypot(latitudeMetres, longitudeMetres) <= 250;
+        return Math.hypot(latitudeMetres, longitudeMetres) <= 500;
     };
 
     const handleFileChange = async (e) => {
@@ -112,7 +112,7 @@ export default function Grievances() {
         try {
             const photoLocation = await readPhotoGps(selectedFile);
             if (isPhotoLocationMatch(photoLocation, location)) {
-                setPhotoStatus('✓ Photo GPS matches the locked location. You can submit this report.');
+                setPhotoStatus('✓ Photo is near the locked GPS location (within 500 m). You can submit this report.');
             } else {
                 setPhotoStatus('⚠ Photo GPS does not match the locked location. Choose a different photo.');
             }
