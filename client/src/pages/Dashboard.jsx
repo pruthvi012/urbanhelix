@@ -178,13 +178,14 @@ export default function Dashboard() {
             const tableRows = (projects.length > 0 ? projects : SAMPLE_DELIVERY_PROJECTS).map(p => [
                 p.title || 'Civic Project',
                 p.location?.ward || p.ward || 'Ward 04',
+                p.engineer?.name || 'Not Assigned',
                 p.status || 'In Progress',
                 `₹${((p.allocatedBudget || (p.spent * 10000000) || 1000000) / 10000000).toFixed(2)} Cr`
             ]);
 
             autoTable(doc, {
                 startY: 36,
-                head: [['Project Name', 'Ward / Area', 'Status', 'Allocated Budget']],
+                head: [['Project Name', 'Ward / Area', 'Engineer', 'Status', 'Allocated Budget']],
                 body: tableRows,
                 theme: 'striped',
                 headStyles: { fillColor: [13, 148, 136] }

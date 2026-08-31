@@ -4,6 +4,8 @@ import { projectAPI, deptAPI, authAPI, wardAPI } from '../services/api';
 import { Link } from 'react-router-dom';
 import { FiDownload } from 'react-icons/fi';
 import { fallbackWards, mergeWithFallbackWards } from '../data/wardsFallback';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function Projects() {
     const { user } = useAuth();
@@ -289,6 +291,39 @@ export default function Projects() {
         return `₹${amt.toLocaleString()}`;
     };
 
+    const exportCategoryPDF = (category, categoryProjects) => {
+        try {
+            const doc = new jsPDF();
+            const date = new Date().toLocaleDateString('en-IN');
+            doc.setFontSize(18);
+            doc.text(`UrbanHelix - ${category.replace('_', ' ').toUpperCase()} Projects Report`, 14, 20);
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Generated on: ${date} | Allocated Budget Report`, 14, 28);
+
+            const tableRows = categoryProjects.map(p => [
+                p.title || 'Civic Project',
+                p.location?.ward || 'N/A',
+                p.engineer?.name || 'Not Assigned',
+                p.status || 'In Progress',
+                formatCurrency(p.allocatedBudget),
+                formatCurrency(p.spentBudget)
+            ]);
+
+            autoTable(doc, {
+                startY: 36,
+                head: [['Project Name', 'Ward', 'Engineer', 'Status', 'Allocated Budget', 'Spent']],
+                body: tableRows,
+                theme: 'striped',
+                headStyles: { fillColor: [13, 148, 136] }
+            });
+
+            doc.save(`UrbanHelix_${category}_Allocated_Budget_${date.replace(/\//g, '-')}.pdf`);
+        } catch (e) {
+            console.error('PDF error:', e);
+        }
+    };
+
     const downloadProjectReport = async (projectId) => {
         try {
             const res = await projectAPI.getById(projectId);
@@ -548,7 +583,17 @@ export default function Projects() {
                                     <h3 className="section-title" style={{ color: 'var(--accent-red)', textTransform: 'capitalize', margin: 0 }}>
                                         {cat.replace('_', ' ')} Projects
                                     </h3>
-                                    <span className="badge badge-pending">{catProjects.length} Items</span>
+                                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                        <button 
+                                            className="btn btn-outline btn-sm" 
+                                            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                                            onClick={() => exportCategoryPDF(cat, catProjects)}
+                                        >
+                                            <FiDownload size={14} /> 
+                                            Allocated Budget PDF
+                                        </button>
+                                        <span className="badge badge-pending">{catProjects.length} Items</span>
+                                    </div>
                                 </div>
 
                                 {catProjects.length > 0 ? (
