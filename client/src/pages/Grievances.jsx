@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { grievanceAPI } from '../services/api';
+import { grievanceAPI, wardAPI } from '../services/api';
 import { FiThumbsUp, FiThumbsDown, FiCamera, FiMapPin, FiCheckCircle } from 'react-icons/fi';
 
 const convertDMSToDD = (dms, ref) => {
@@ -33,10 +33,10 @@ export default function Grievances() {
         try {
             const [gRes, wRes] = await Promise.all([
                 grievanceAPI.getAll({}),
-                grievanceAPI.getWards ? grievanceAPI.getWards() : fetch('/api/wards').then(r => r.json())
+                wardAPI.getAll()
             ]);
             setGrievances(gRes.data.grievances || []);
-            setWards(wRes.data?.wards || wRes.wards || []);
+            setWards(wRes.data?.wards || []);
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
