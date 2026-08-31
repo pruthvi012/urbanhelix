@@ -20,6 +20,8 @@ export default function Grievances() {
     const [showModal, setShowModal] = useState(false);
     const [showInvalidImageModal, setShowInvalidImageModal] = useState(false);
     const [invalidImageMsg, setInvalidImageMsg] = useState('');
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
     const [wards, setWards] = useState([]);
     const [wardSearch, setWardSearch] = useState('');
     const [file, setFile] = useState(null);
@@ -125,7 +127,8 @@ export default function Grievances() {
                 setLocation(null);
                 setGpsCameraRequested(false);
                 loadData();
-                alert(successMessage);
+                setSuccessMessage(successMessage);
+                setShowSuccessModal(true);
             } catch (err) {
                 alert(err.response?.data?.message || 'Error submitting report');
             }
@@ -469,6 +472,61 @@ export default function Grievances() {
                             onClick={() => setShowInvalidImageModal(false)}
                         >
                             Okay, Got It
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {showSuccessModal && (
+                <div className="modal-overlay" style={{ zIndex: 1200 }} onClick={() => setShowSuccessModal(false)}>
+                    <div style={{
+                        width: 'min(440px, calc(100vw - 40px))',
+                        borderRadius: '22px',
+                        padding: '34px 30px 30px',
+                        background: 'linear-gradient(145deg, #063d3a 0%, #0b6d62 55%, #11a586 100%)',
+                        border: '1px solid rgba(167, 243, 208, 0.6)',
+                        boxShadow: '0 28px 70px rgba(2, 44, 34, 0.6)',
+                        color: '#ffffff',
+                        textAlign: 'center'
+                    }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{
+                            width: '72px',
+                            height: '72px',
+                            margin: '0 auto 20px',
+                            display: 'grid',
+                            placeItems: 'center',
+                            borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.16)',
+                            border: '2px solid rgba(255,255,255,0.7)',
+                            fontSize: '38px',
+                            fontWeight: 800,
+                            boxShadow: '0 10px 28px rgba(0,0,0,0.18)'
+                        }}>
+                            ✓
+                        </div>
+                        <h3 style={{ margin: '0 0 10px', fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em' }}>
+                            Report Submitted
+                        </h3>
+                        <p style={{ margin: '0 0 24px', color: '#d1fae5', fontSize: '15px', lineHeight: 1.6 }}>
+                            {successMessage}
+                        </p>
+                        <button
+                            type="button"
+                            className="btn"
+                            style={{
+                                width: '100%',
+                                padding: '13px',
+                                border: 'none',
+                                borderRadius: '10px',
+                                background: '#ecfdf5',
+                                color: '#065f46',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                boxShadow: '0 6px 16px rgba(0,0,0,0.16)'
+                            }}
+                            onClick={() => setShowSuccessModal(false)}
+                        >
+                            Done
                         </button>
                     </div>
                 </div>
