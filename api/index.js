@@ -4,8 +4,8 @@ const connectDB = require('../server/config/db.js');
 
 const app = express();
 app.use(cors({ origin: '*' }));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// app.use(express.json());
+// app.use(express.urlencoded());
 
 // Fix Vercel URL prefix stripping
 app.use((req, res, next) => {
@@ -27,11 +27,7 @@ app.use('/api/notifications', (req, res, next) => require('../server/routes/noti
 app.use('/api/wards', (req, res, next) => require('../server/routes/wards.js')(req, res, next));
 app.use('/api/ai', (req, res, next) => require('../server/routes/ai.js')(req, res, next));
 
-module.exports.config = {
-  api: {
-    bodyParser: false,
-  },
-};
+
 
 module.exports = async function handler(req, res) {
   try {
