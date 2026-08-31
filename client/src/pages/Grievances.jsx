@@ -6,11 +6,19 @@ import { fallbackWards, mergeWithFallbackWards } from '../data/wardsFallback';
 
 const convertDMSToDD = (dms, ref) => {
     if (!dms || dms.length < 3) return null;
-    let dd = dms[0] + dms[1] / 60 + dms[2] / 3600;
+    const toNumber = (value) => typeof value === 'object' && value?.denominator
+        ? value.numerator / value.denominator
+        : Number(value);
+    let dd = toNumber(dms[0]) + toNumber(dms[1]) / 60 + toNumber(dms[2]) / 3600;
     if (ref === 'S' || ref === 'W') {
         dd = -dd;
     }
     return dd;
+};
+
+const normaliseGpsCoordinate = (value, ref) => {
+    if (Number.isFinite(value)) return ref === 'S' || ref === 'W' ? -Math.abs(value) : Math.abs(value);
+    return convertDMSToDD(value, ref);
 };
 
 export default function Grievances() {
@@ -91,16 +99,35 @@ export default function Grievances() {
             });
         });
         return {
-            lat: convertDMSToDD(gps.lat, gps.latRef),
-            lng: convertDMSToDD(gps.lng, gps.lngRef)
+            lat: normaliseGpsCoordinate(gps.lat, gps.latRef),
+            lng: normaliseGpsCoordinate(gps.lng, gps.lngRef)
         };
     };
 
-    const isPhotoLocationMatch = (photoLocation, lockedLocation) => {
-        if (!Number.isFinite(photoLocation?.lat) || !Number.isFinite(photoLocation?.lng) || !lockedLocation) return false;
+    const getDistanceMetres = (photoLocation, lockedLocation) => {
+        if (!Number.isFinite(photoLocation?.lat) || !Number.isFinite(photoLocation?.lng) || !lockedLocation) return Infinity;
         const latitudeMetres = (photoLocation.lat - lockedLocation.lat) * 111_320;
         const longitudeMetres = (photoLocation.lng - lockedLocation.lng) * 111_320 * Math.cos(lockedLocation.lat * Math.PI / 180);
-        return Math.hypot(latitudeMetres, longitudeMetres) <= 500;
+        return Math.hypot(latitudeMetres, longitudeMetres);
+    };
+
+    const isPhotoLocationMatch = (photoLocation, lockedLocation) => {
+        return getDistanceMetres(photoLocation, lockedLocation) <= 500;
+    };
+
+    const updateDisplayedPhotoGps = (field, value) => {
+        const next = { ...displayedPhotoGps, [field]: value };
+        setDisplayedPhotoGps(next);
+        if (!location) return;
+        const photoLocation = {
+            lat: next.lat.trim() === '' ? NaN : Number(next.lat),
+            lng: next.lng.trim() === '' ? NaN : Number(next.lng)
+        };
+        if (!Number.isFinite(photoLocation.lat) || !Number.isFinite(photoLocation.lng)) return;
+        const distance = getDistanceMetres(photoLocation, location);
+        setPhotoStatus(distance <= 500
+            ? `✓ Photo is near the locked GPS location (${Math.round(distance)} m away). You can submit this report.`
+            : `⚠ Photo GPS is ${Math.round(distance / 1000 * 10) / 10} km from the locked location. Choose a different photo.`);
     };
 
     const handleFileChange = async (e) => {
@@ -358,8 +385,8 @@ export default function Grievances() {
                                             <div style={{ marginTop: '12px', padding: '12px', borderRadius: '8px', background: '#fffbeb', border: '1px solid #fde68a' }}>
                                                 <div style={{ fontSize: '12px', fontWeight: 800, color: '#92400e', marginBottom: '8px' }}>GPS Camera details printed on the photo</div>
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                                    <input className="form-input" type="number" step="any" placeholder="Latitude, e.g. 12.9433" value={displayedPhotoGps.lat} onChange={(event) => setDisplayedPhotoGps(current => ({ ...current, lat: event.target.value }))} />
-                                                    <input className="form-input" type="number" step="any" placeholder="Longitude, e.g. 77.6114" value={displayedPhotoGps.lng} onChange={(event) => setDisplayedPhotoGps(current => ({ ...current, lng: event.target.value }))} />
+                                                    <input className="form-input" type="number" step="any" placeholder="Latitude, e.g. 12.9433" value={displayedPhotoGps.lat} onChange={(event) => updateDisplayedPhotoGps('lat', event.target.value)} />
+                                                    <input className="form-input" type="number" step="any" placeholder="Longitude, e.g. 77.6114" value={displayedPhotoGps.lng} onChange={(event) => updateDisplayedPhotoGps('lng', event.target.value)} />
                                                 </div>
                                                 <div style={{ fontSize: '11px', color: '#a16207', marginTop: '8px' }}>These values must be near the browser GPS lock. Large differences will be rejected.</div>
                                             </div>
