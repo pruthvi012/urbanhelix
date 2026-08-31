@@ -107,8 +107,10 @@ export default function Grievances() {
         const { recognize } = await import('tesseract.js');
         const result = await recognize(imageFile, 'eng');
         const text = result?.data?.text || '';
-        const latitude = text.match(/latitude\s*[:\-]?\s*([+-]?\d{1,2}(?:\.\d+)?)/i)?.[1];
-        const longitude = text.match(/longitude\s*[:\-]?\s*([+-]?\d{1,3}(?:\.\d+)?)/i)?.[1];
+        const latitude = text.match(/(?:latitude|lat)\s*[:\-]?\s*([+-]?\d{1,2}(?:\.\d+)?)/i)?.[1]
+            || text.match(/([+-]?\d{1,2}\.\d+)\s*(?:°|[NS])/i)?.[1];
+        const longitude = text.match(/(?:longitude|long|lng)\s*[:\-]?\s*([+-]?\d{1,3}(?:\.\d+)?)/i)?.[1]
+            || text.match(/([+-]?\d{1,3}\.\d+)\s*(?:°|[EW])/i)?.[1];
         return { lat: Number(latitude), lng: Number(longitude) };
     };
 
