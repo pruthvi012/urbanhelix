@@ -34,8 +34,7 @@ export default function Grievances() {
     const [wardSearch, setWardSearch] = useState('');
     const [file, setFile] = useState(null);
     const [photoStatus, setPhotoStatus] = useState('');
-    const [photoNeedsManualGps, setPhotoNeedsManualGps] = useState(false);
-    const [displayedPhotoGps, setDisplayedPhotoGps] = useState({ lat: '', lng: '' });
+    const [detectedPhotoGps, setDetectedPhotoGps] = useState(null);
     const [location, setLocation] = useState(null);
     const [locationLoading, setLocationLoading] = useState(false);
     const [gpsCameraRequested, setGpsCameraRequested] = useState(false);
@@ -104,6 +103,15 @@ export default function Grievances() {
         };
     };
 
+    const readPrintedPhotoGps = async (imageFile) => {
+        const { recognize } = await import('tesseract.js');
+        const result = await recognize(imageFile, 'eng');
+        const text = result?.data?.text || '';
+        const latitude = text.match(/latitude\s*[:\-]?\s*([+-]?\d{1,2}(?:\.\d+)?)/i)?.[1];
+        const longitude = text.match(/longitude\s*[:\-]?\s*([+-]?\d{1,3}(?:\.\d+)?)/i)?.[1];
+        return { lat: Number(latitude), lng: Number(longitude) };
+    };
+
     const getDistanceMetres = (photoLocation, lockedLocation) => {
         if (!Number.isFinite(photoLocation?.lat) || !Number.isFinite(photoLocation?.lng) || !lockedLocation) return Infinity;
         const latitudeMetres = (photoLocation.lat - lockedLocation.lat) * 111_320;
@@ -115,46 +123,30 @@ export default function Grievances() {
         return getDistanceMetres(photoLocation, lockedLocation) <= 500;
     };
 
-    const updateDisplayedPhotoGps = (field, value) => {
-        const next = { ...displayedPhotoGps, [field]: value };
-        setDisplayedPhotoGps(next);
-        if (!location) return;
-        const photoLocation = {
-            lat: next.lat.trim() === '' ? NaN : Number(next.lat),
-            lng: next.lng.trim() === '' ? NaN : Number(next.lng)
-        };
-        if (!Number.isFinite(photoLocation.lat) || !Number.isFinite(photoLocation.lng)) return;
-        const distance = getDistanceMetres(photoLocation, location);
-        setPhotoStatus(distance <= 500
-            ? `✓ Photo is near the locked GPS location (${Math.round(distance)} m away). You can submit this report.`
-            : `⚠ Photo GPS is ${Math.round(distance / 1000 * 10) / 10} km from the locked location. Choose a different photo.`);
-    };
-
     const handleFileChange = async (e) => {
         const selectedFile = e.target.files[0] || null;
         setFile(selectedFile);
         setShowInvalidImageModal(false);
         setPhotoStatus('');
-        setPhotoNeedsManualGps(false);
-        setDisplayedPhotoGps({ lat: '', lng: '' });
+        setDetectedPhotoGps(null);
         if (!selectedFile || !location) return;
 
         setPhotoStatus('Checking photo GPS location…');
         try {
-            const photoLocation = await readPhotoGps(selectedFile);
+            let photoLocation = await readPhotoGps(selectedFile);
             if (!Number.isFinite(photoLocation.lat) || !Number.isFinite(photoLocation.lng)) {
-                setPhotoNeedsManualGps(true);
-                setPhotoStatus('Enter the latitude and longitude printed on your GPS Camera photo to verify it.');
-                return;
+                setPhotoStatus('Reading the GPS location printed on this photo…');
+                photoLocation = await readPrintedPhotoGps(selectedFile);
             }
+            setDetectedPhotoGps(Number.isFinite(photoLocation.lat) && Number.isFinite(photoLocation.lng) ? photoLocation : null);
             if (isPhotoLocationMatch(photoLocation, location)) {
-                setPhotoStatus('✓ Photo is near the locked GPS location (within 500 m). You can submit this report.');
+                setPhotoStatus(`✓ Photo matches the locked GPS location (${Math.round(getDistanceMetres(photoLocation, location))} m away). You can submit this report.`);
             } else {
                 setPhotoStatus('⚠ Photo GPS does not match the locked location. Choose a different photo.');
             }
         } catch {
-            setPhotoNeedsManualGps(true);
-            setPhotoStatus('Enter the latitude and longitude printed on your GPS Camera photo to verify it.');
+            setDetectedPhotoGps(null);
+            setPhotoStatus('⚠ GPS location could not be read from this photo. Choose a GPS Camera photo with visible latitude and longitude.');
         }
     };
 
@@ -213,8 +205,7 @@ export default function Grievances() {
                 setForm({ project: '', title: '', description: '', category: 'other', ward: '', wardNo: '', area: '' });
                 setFile(null);
                 setPhotoStatus('');
-                setPhotoNeedsManualGps(false);
-                setDisplayedPhotoGps({ lat: '', lng: '' });
+                setDetectedPhotoGps(null);
                 setLocation(null);
                 setGpsCameraRequested(false);
                 loadData();
@@ -233,13 +224,9 @@ export default function Grievances() {
                 photoLocation = { lat: NaN, lng: NaN };
             }
             if (!Number.isFinite(photoLocation.lat) || !Number.isFinite(photoLocation.lng)) {
-                photoLocation = {
-                    lat: displayedPhotoGps.lat.trim() === '' ? NaN : Number(displayedPhotoGps.lat),
-                    lng: displayedPhotoGps.lng.trim() === '' ? NaN : Number(displayedPhotoGps.lng)
-                };
+                photoLocation = detectedPhotoGps || { lat: NaN, lng: NaN };
                 if (!Number.isFinite(photoLocation.lat) || !Number.isFinite(photoLocation.lng)) {
-                    setPhotoNeedsManualGps(true);
-                    setInvalidImageMsg('Photo GPS details are required.\n\nThis image has no readable embedded GPS metadata. Enter the latitude and longitude printed on the GPS Camera photo, then submit again.');
+                    setInvalidImageMsg('Photo GPS could not be verified.\n\nChoose a GPS Camera photo with a clear latitude and longitude visible on the image.');
                     setShowInvalidImageModal(true);
                     return;
                 }
@@ -253,8 +240,7 @@ export default function Grievances() {
 
             await submitReport('Problem reported successfully with matching GPS verification.');
         } catch (err) {
-            setPhotoNeedsManualGps(true);
-            setInvalidImageMsg('Photo GPS details are required.\n\nEnter the latitude and longitude printed on the GPS Camera photo, then submit again.');
+            setInvalidImageMsg('Photo GPS could not be verified.\n\nChoose a GPS Camera photo with a clear latitude and longitude visible on the image.');
             setShowInvalidImageModal(true);
         }
     };
@@ -381,16 +367,6 @@ export default function Grievances() {
                                             required 
                                         />
                                         {photoStatus && <div style={{ fontSize: '12px', fontWeight: 700, marginTop: '10px', color: photoStatus.startsWith('✓') ? '#047857' : '#b45309' }}>{photoStatus}</div>}
-                                        {photoNeedsManualGps && (
-                                            <div style={{ marginTop: '12px', padding: '12px', borderRadius: '8px', background: '#fffbeb', border: '1px solid #fde68a' }}>
-                                                <div style={{ fontSize: '12px', fontWeight: 800, color: '#92400e', marginBottom: '8px' }}>GPS Camera details printed on the photo</div>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                                    <input className="form-input" type="number" step="any" placeholder="Latitude, e.g. 12.9433" value={displayedPhotoGps.lat} onChange={(event) => updateDisplayedPhotoGps('lat', event.target.value)} />
-                                                    <input className="form-input" type="number" step="any" placeholder="Longitude, e.g. 77.6114" value={displayedPhotoGps.lng} onChange={(event) => updateDisplayedPhotoGps('lng', event.target.value)} />
-                                                </div>
-                                                <div style={{ fontSize: '11px', color: '#a16207', marginTop: '8px' }}>These values must be near the browser GPS lock. Large differences will be rejected.</div>
-                                            </div>
-                                        )}
                                         {location && <div style={{ fontSize: '11px', color: 'var(--accent-green)', marginTop: '8px' }}>📍 GPS Locked: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}</div>}
                                     </div>
                                 )}
