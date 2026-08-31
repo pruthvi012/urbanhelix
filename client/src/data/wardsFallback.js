@@ -48,3 +48,19 @@ export const fallbackWards = [
     { wardNo: 215, name: 'Katriguppe', assemblyConstituency: 'Basavanagudi AC (170)', areas: ['Katriguppe', 'BSK 3rd Stage'] },
     { wardNo: 216, name: 'Vidyapeeta Ward', assemblyConstituency: 'Basavanagudi AC (170)', areas: ['Vidyapeetha', 'Chennammana Kere'] }
 ].map(w => ({ ...w, _id: `fallback-${w.wardNo}` }));
+
+// This is the authoritative BBMP 243-ward South Zone directory used by the
+// application. Do not replace its names or areas with a partial database import.
+export const mergeWithFallbackWards = (wards = []) => {
+    const liveWards = Array.isArray(wards) ? wards : [];
+    const liveIdsByWard = new Map(
+        liveWards
+            .filter(ward => Number.isFinite(Number(ward?.wardNo)))
+            .map(ward => [Number(ward.wardNo), ward._id])
+    );
+
+    return fallbackWards.map(ward => ({
+        ...ward,
+        _id: liveIdsByWard.get(ward.wardNo) || ward._id
+    }));
+};

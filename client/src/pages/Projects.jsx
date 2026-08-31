@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { projectAPI, deptAPI, authAPI, wardAPI } from '../services/api';
 import { Link } from 'react-router-dom';
 import { FiDownload } from 'react-icons/fi';
-import { fallbackWards } from '../data/wardsFallback';
+import { fallbackWards, mergeWithFallbackWards } from '../data/wardsFallback';
 
 export default function Projects() {
     const { user } = useAuth();
@@ -62,7 +62,7 @@ export default function Projects() {
             setProjects(projRes.data?.projects || projRes.projects || []);
             setDepartments(deptRes.data?.departments || deptRes.departments || []);
             const fetchedWards = wardRes.data?.wards || wardRes.wards || [];
-            setWards(fetchedWards.length > 0 ? fetchedWards : fallbackWards);
+            setWards(mergeWithFallbackWards(fetchedWards));
         } catch (err) { 
             console.error(err);
             setWards(fallbackWards); 
@@ -750,7 +750,7 @@ export default function Projects() {
                             }}>
                                 <div className="grid-2" style={{ gap: '24px' }}>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label style={{ display: 'block', marginBottom: '10px', fontWeight: 600, color: '#1e293b' }}>1. Select Ward</label>
+                                        <label style={{ display: 'block', marginBottom: '10px', fontWeight: 600, color: '#1e293b' }}>1. Select official BBMP Ward</label>
                                         <div style={{ 
                                             maxHeight: '200px', 
                                             overflowY: 'auto', 
@@ -763,7 +763,7 @@ export default function Projects() {
                                             {/* Search box inside the list for quick filtering */}
                                             <input 
                                                 className="form-input" 
-                                                placeholder="🔍 Filter wards..." 
+                                                placeholder="🔍 Search ward name or number (e.g. BTM or 192)..."
                                                 value={wardSearch} 
                                                 onChange={(e) => setWardSearch(e.target.value)}
                                                 style={{ marginBottom: '12px', height: '34px', fontSize: '13px', background: '#f8fafc' }}
@@ -771,7 +771,8 @@ export default function Projects() {
                                             {Array.from(new Set(wards.map(w => w.assemblyConstituency || 'Unknown AC'))).map(ac => {
                                                 const acWards = wards.filter(w => 
                                                     (w.assemblyConstituency || 'Unknown AC') === ac && 
-                                                    ((w.name || '').toLowerCase().includes((wardSearch || '').toLowerCase()) || 
+                                                    ((w.name || '').toLowerCase().includes((wardSearch || '').toLowerCase()) ||
+                                                     (w.assemblyConstituency || '').toLowerCase().includes((wardSearch || '').toLowerCase()) ||
                                                      (w.wardNo || '').toString().includes(wardSearch || ''))
                                                 );
                                                 if (acWards.length === 0) return null;
@@ -800,8 +801,8 @@ export default function Projects() {
                                                                         setForm({ ...form, location: { ...form.location, ward: w.name, wardNo: w.wardNo, area: '' } });
                                                                     }}
                                                                 >
-                                                                    <span style={{ fontWeight: form.location.wardNo === w.wardNo ? 600 : 400 }}>{w.name}</span>
-                                                                    <span style={{ fontSize: '11px', opacity: 0.7 }}>#{w.wardNo}</span>
+                                                                    <span style={{ fontWeight: form.location.wardNo === w.wardNo ? 600 : 400 }}>Ward {w.wardNo} — {w.name}</span>
+                                                                    <span style={{ fontSize: '11px', opacity: 0.7 }}>{w.assemblyConstituency}</span>
                                                                 </div>
                                                             ))}
                                                         </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { grievanceAPI, wardAPI } from '../services/api';
 import { FiThumbsUp, FiThumbsDown, FiCamera, FiMapPin, FiCheckCircle } from 'react-icons/fi';
+import { fallbackWards, mergeWithFallbackWards } from '../data/wardsFallback';
 
 const convertDMSToDD = (dms, ref) => {
     if (!dms || dms.length < 3) return null;
@@ -36,8 +37,11 @@ export default function Grievances() {
                 wardAPI.getAll()
             ]);
             setGrievances(gRes.data.grievances || []);
-            setWards(wRes.data?.wards || []);
-        } catch (err) { console.error(err); } finally { setLoading(false); }
+            setWards(mergeWithFallbackWards(wRes.data?.wards || []));
+        } catch (err) {
+            console.error(err);
+            setWards(fallbackWards);
+        } finally { setLoading(false); }
     };
 
     const fetchLocation = () => {
@@ -252,7 +256,14 @@ export default function Grievances() {
 
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-card" style={{
+                        maxWidth: '600px',
+                        width: 'calc(100vw - 24px)',
+                        maxHeight: 'calc(100dvh - 32px)',
+                        overflowY: 'auto',
+                        overflowX: 'hidden',
+                        padding: '22px'
+                    }} onClick={(e) => e.stopPropagation()}>
                         <h3 className="modal-title">Report a Problem</h3>
                         <form onSubmit={handleCreate}>
                             <div className="form-group">
@@ -295,9 +306,9 @@ export default function Grievances() {
                                 border: '1px solid var(--border-glass)',
                                 marginBottom: '20px'
                             }}>
-                                <div className="grid-2" style={{ gap: '20px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label className="form-label" style={{ marginBottom: '8px' }}>1. Select Ward</label>
+                                        <label className="form-label" style={{ marginBottom: '8px' }}>1. Select official BBMP Ward</label>
                                         <div style={{ 
                                             maxHeight: '150px', 
                                             overflowY: 'auto', 
@@ -308,12 +319,12 @@ export default function Grievances() {
                                         }}>
                                             <input 
                                                 className="form-input" 
-                                                placeholder="🔍 Filter wards..." 
+                                                placeholder="🔍 Search ward name or number (e.g. BTM or 192)..."
                                                 value={wardSearch} 
                                                 onChange={(e) => setWardSearch(e.target.value)}
                                                 style={{ marginBottom: '8px', height: '30px', fontSize: '12px' }}
                                             />
-                                            {wards.filter(w => (w.name || '').toLowerCase().includes((wardSearch || '').toLowerCase()) || (w.wardNo || '').toString().includes(wardSearch || '')).map(w => (
+                                            {wards.filter(w => (w.name || '').toLowerCase().includes((wardSearch || '').toLowerCase()) || (w.assemblyConstituency || '').toLowerCase().includes((wardSearch || '').toLowerCase()) || (w.wardNo || '').toString().includes(wardSearch || '')).map(w => (
                                                 <div 
                                                     key={w._id} 
                                                     onClick={() => setForm({ ...form, ward: w.name, wardNo: w.wardNo, area: '' })}
@@ -324,13 +335,15 @@ export default function Grievances() {
                                                         fontSize: '12px',
                                                         display: 'flex',
                                                         justifyContent: 'space-between',
-                                                        background: form.wardNo === w.wardNo ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
-                                                        color: form.wardNo === w.wardNo ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                                                        marginBottom: '2px'
+                                                        background: form.wardNo === w.wardNo ? '#1d4ed8' : 'rgba(255,255,255,0.14)',
+                                                        color: '#ffffff',
+                                                        fontWeight: form.wardNo === w.wardNo ? 800 : 700,
+                                                        border: form.wardNo === w.wardNo ? '1px solid #60a5fa' : '1px solid rgba(255,255,255,0.2)',
+                                                        marginBottom: '4px'
                                                     }}
                                                 >
-                                                    <span>{w.name}</span>
-                                                    <span style={{ opacity: 0.6 }}>#{w.wardNo}</span>
+                                                    <span>Ward {w.wardNo} — {w.name}</span>
+                                                    <span style={{ color: '#bfdbfe', fontSize: '10px', fontWeight: 700 }}>{w.assemblyConstituency}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -368,7 +381,7 @@ export default function Grievances() {
                                 </div>
                                 {form.area && (
                                     <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--accent-green)', fontWeight: 600 }}>
-                                        📍 Selected: Ward {form.wardNo} - {form.area}
+                                        📍 Selected ward: {form.wardNo} — {form.ward} · Selected area: {form.area}
                                     </div>
                                 )}
                             </div>
@@ -394,7 +407,7 @@ export default function Grievances() {
                                 </select>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '20px', position: 'sticky', bottom: '-22px', zIndex: 1, background: '#ffffff', borderTop: '1px solid #e2e8f0', padding: '16px 0' }}>
                                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={locationLoading}>Submit Report</button>
                                 <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
                             </div>
