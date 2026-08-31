@@ -29,6 +29,17 @@ const grievanceSchema = new mongoose.Schema({
         resolvedAt: { type: Date, default: null },
         remarks: { type: String, default: '' },
     },
+    siteVisit: {
+        priority: { type: String, enum: ['moderate', 'high'], default: null },
+        condition: { type: String, default: '' },
+        location: {
+            lat: { type: Number, default: null },
+            lng: { type: Number, default: null },
+        },
+        imageUrl: { type: String, default: '' },
+        visitedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+        visitedAt: { type: Date, default: null },
+    },
     imageUrl: String,
     gpsAddress: String, // Readable address from GPS
 }, { timestamps: true });

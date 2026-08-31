@@ -30,6 +30,11 @@ export default function Grievances() {
     const [invalidImageMsg, setInvalidImageMsg] = useState('');
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+    const [visitGrievance, setVisitGrievance] = useState(null);
+    const [visitLocation, setVisitLocation] = useState(null);
+    const [visitPhoto, setVisitPhoto] = useState(null);
+    const [visitForm, setVisitForm] = useState({ priority: 'moderate', condition: '', remarks: '' });
+    const [visitStatus, setVisitStatus] = useState('');
     const [wards, setWards] = useState([]);
     const [wardSearch, setWardSearch] = useState('');
     const [file, setFile] = useState(null);
@@ -166,6 +171,64 @@ export default function Grievances() {
             await grievanceAPI.resolve(id, { status: 'resolved', remarks });
             loadData();
         } catch (err) { alert(err.response?.data?.message || 'Error'); }
+    };
+
+    const openSiteVisit = (grievance) => {
+        setVisitGrievance(grievance);
+        setVisitLocation(null);
+        setVisitPhoto(null);
+        setVisitStatus('');
+        setVisitForm({ priority: grievance.siteVisit?.priority || 'moderate', condition: grievance.siteVisit?.condition || '', remarks: '' });
+    };
+
+    const lockVisitLocation = () => {
+        if (!navigator.geolocation) return setVisitStatus('Location is not supported by this browser.');
+        setVisitStatus('Locking site GPS location…');
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setVisitLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+                setVisitStatus('✓ Site location locked. Upload the repair-site photo.');
+            },
+            () => setVisitStatus('Please allow location access to continue.'),
+            { enableHighAccuracy: true, maximumAge: 0 }
+        );
+    };
+
+    const handleVisitPhoto = async (event) => {
+        const image = event.target.files?.[0] || null;
+        setVisitPhoto(image);
+        if (!image || !visitLocation) return;
+        setVisitStatus('Checking site photo GPS…');
+        try {
+            let imageLocation = await readPhotoGps(image);
+            if (!Number.isFinite(imageLocation.lat) || !Number.isFinite(imageLocation.lng)) imageLocation = await readPrintedPhotoGps(image);
+            const distance = getDistanceMetres(imageLocation, visitLocation);
+            setVisitStatus(distance <= 500 ? `✓ Site photo GPS verified (${Math.round(distance)} m away).` : '⚠ This photo is from a different location. Upload the site photo.');
+        } catch {
+            setVisitStatus('⚠ GPS could not be read from this photo. Use a GPS Camera photo with clear coordinates.');
+        }
+    };
+
+    const submitSiteVisit = async (event) => {
+        event.preventDefault();
+        if (!visitLocation || !visitPhoto) return setVisitStatus('Lock the site location and upload a GPS Camera photo first.');
+        try {
+            let imageLocation = await readPhotoGps(visitPhoto);
+            if (!Number.isFinite(imageLocation.lat) || !Number.isFinite(imageLocation.lng)) imageLocation = await readPrintedPhotoGps(visitPhoto);
+            if (!isPhotoLocationMatch(imageLocation, visitLocation)) return setVisitStatus('⚠ The uploaded photo does not match the locked site location.');
+            const data = new FormData();
+            data.append('status', 'in_progress');
+            data.append('remarks', visitForm.remarks || `Site visit completed. ${visitForm.priority === 'high' ? 'High' : 'Moderate'} priority repair required.`);
+            data.append('priority', visitForm.priority);
+            data.append('condition', visitForm.condition);
+            data.append('visitLocation', JSON.stringify(visitLocation));
+            data.append('siteVisitImage', visitPhoto);
+            await grievanceAPI.resolve(visitGrievance._id, data);
+            setVisitGrievance(null);
+            loadData();
+        } catch {
+            setVisitStatus('Unable to save this site visit. Please try again.');
+        }
     };
 
     const handleDelete = async (grievance) => {
@@ -308,6 +371,11 @@ export default function Grievances() {
                                         <strong style={{ color: 'var(--accent-green)' }}>Action Taken:</strong> {g.resolution.remarks}
                                     </div>
                                 )}
+                                {g.siteVisit?.priority && (
+                                    <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '8px', background: g.siteVisit.priority === 'high' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)', color: g.siteVisit.priority === 'high' ? '#b91c1c' : '#a16207', fontSize: '13px', fontWeight: 800 }}>
+                                        Site engineer priority: {g.siteVisit.priority === 'high' ? 'High — urgent repair' : 'Moderate — scheduled repair'}
+                                    </div>
+                                )}
                             </div>
                             
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginLeft: '20px' }}>
@@ -318,7 +386,9 @@ export default function Grievances() {
                                     <FiThumbsDown /> {g.downvoteCount || 0}
                                 </button>
                                 {['engineer', 'admin'].includes(user?.role) && g.status !== 'resolved' && (
-                                    <button className="btn btn-success btn-sm" onClick={() => handleResolve(g._id)} style={{ width: '100%', marginTop: '10px' }}>Resolve</button>
+                                    user?.role === 'engineer'
+                                        ? <button className="btn btn-success btn-sm" onClick={() => openSiteVisit(g)} style={{ width: '100%', marginTop: '10px' }}>Visit & Set Priority</button>
+                                        : <button className="btn btn-success btn-sm" onClick={() => handleResolve(g._id)} style={{ width: '100%', marginTop: '10px' }}>Resolve</button>
                                 )}
                                 {user?.role === 'admin' && (
                                     <button className="btn btn-sm" onClick={() => handleDelete(g)} style={{ width: '100%', marginTop: '4px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }}>Remove</button>
@@ -328,6 +398,24 @@ export default function Grievances() {
                     </div>
                 ))}
             </div>
+
+            {visitGrievance && (
+                <div className="modal-overlay" onClick={() => setVisitGrievance(null)}>
+                    <div className="modal-card" style={{ maxWidth: '560px', width: 'calc(100vw - 24px)', maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', padding: '24px' }} onClick={(event) => event.stopPropagation()}>
+                        <h3 className="modal-title">Site Visit — {visitGrievance.title}</h3>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '18px' }}>Lock your field location, upload the GPS Camera evidence, then set the repair urgency.</p>
+                        <form onSubmit={submitSiteVisit}>
+                            <button type="button" className="btn btn-outline" onClick={lockVisitLocation} style={{ width: '100%', marginBottom: '12px' }}>📍 {visitLocation ? `Site GPS locked: ${visitLocation.lat.toFixed(4)}, ${visitLocation.lng.toFixed(4)}` : 'Lock Site GPS Location'}</button>
+                            <div className="form-group"><label className="form-label">GPS-tagged site photo</label><input className="form-input" type="file" accept="image/*" onChange={handleVisitPhoto} required /></div>
+                            <div className="form-group"><label className="form-label">Repair urgency</label><select className="form-select" value={visitForm.priority} onChange={(event) => setVisitForm({ ...visitForm, priority: event.target.value })}><option value="high">High — pothole/issue needs urgent repair</option><option value="moderate">Moderate — schedule repair</option></select></div>
+                            <div className="form-group"><label className="form-label">Is the pothole/issue present?</label><select className="form-select" value={visitForm.condition} onChange={(event) => setVisitForm({ ...visitForm, condition: event.target.value })}><option value="present">Present — repair required</option><option value="not_found">Not found at site</option><option value="partially_fixed">Partially fixed</option></select></div>
+                            <div className="form-group"><label className="form-label">Site engineer notes</label><textarea className="form-textarea" rows={3} value={visitForm.remarks} onChange={(event) => setVisitForm({ ...visitForm, remarks: event.target.value })} /></div>
+                            {visitStatus && <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '14px', color: visitStatus.startsWith('✓') ? '#047857' : '#b45309' }}>{visitStatus}</div>}
+                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}><button type="button" className="btn btn-outline" onClick={() => setVisitGrievance(null)}>Cancel</button><button type="submit" className="btn btn-primary">Save Site Visit</button></div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>

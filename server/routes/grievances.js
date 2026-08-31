@@ -159,18 +159,29 @@ router.put('/:id/vote', protect, async (req, res) => {
 });
 
 // PUT /api/grievances/:id/resolve  
-router.put('/:id/resolve', protect, authorize('engineer', 'admin'), async (req, res) => {
+router.put('/:id/resolve', protect, authorize('engineer', 'admin'), upload.single('siteVisitImage'), async (req, res) => {
     try {
         const grievance = await Grievance.findById(req.params.id);
         if (!grievance) return res.status(404).json({ success: false, message: 'Grievance not found' });
 
-        const { status, remarks } = req.body;
+        const { status, remarks, priority, condition, visitLocation } = req.body;
         grievance.status = status;
         grievance.resolution = {
             resolvedBy: req.user._id,
             resolvedAt: new Date(),
             remarks: remarks || '',
         };
+        if (req.user.role === 'engineer') {
+            const parsedLocation = typeof visitLocation === 'string' ? JSON.parse(visitLocation) : visitLocation;
+            grievance.siteVisit = {
+                priority: priority === 'high' ? 'high' : 'moderate',
+                condition: condition || '',
+                location: parsedLocation || {},
+                imageUrl: req.file ? (req.file.location || `/uploads/grievances/${req.file.filename}`) : grievance.siteVisit?.imageUrl || '',
+                visitedBy: req.user._id,
+                visitedAt: new Date(),
+            };
+        }
         await grievance.save();
 
         // Notify the citizen

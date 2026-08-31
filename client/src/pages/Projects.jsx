@@ -41,6 +41,8 @@ export default function Projects() {
     const loadData = async () => {
         try {
             const params = {};
+            // Engineers need the complete current register, not only the first paginated page.
+            if (user?.role === 'engineer') params.limit = 100;
             if (filter.status) params.status = filter.status;
             if (filter.category) params.category = filter.category;
             if (filter.wardNo) params.wardNo = filter.wardNo;
@@ -685,7 +687,7 @@ export default function Projects() {
             {/* Create Project Modal */}
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal" style={{ maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', width: 'min(760px, calc(100vw - 24px))' }} onClick={(e) => e.stopPropagation()}>
                         <h3 className="modal-title">Submit Project Proposal</h3>
                         <form onSubmit={handleSubmit}>
                             <div className="form-group">
