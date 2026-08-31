@@ -35,10 +35,37 @@ CITIZEN'S QUESTION: "${question}"
         res.json({ success: true, answer: responseText });
     } catch (error) {
         console.error("AI Error:", error);
-        // Friendly fallback so the UI doesn't break during demos
-        const { question } = req.body || {};
-        const fallback = `Based on our city records, I found relevant information about your query "${question || 'your question'}". Our municipal projects are actively being monitored for transparency. For detailed real-time insights, the AI analysis module is being initialized. Please check back shortly or browse the Projects and Analytics sections for live data.`;
-        res.json({ success: true, answer: fallback });
+
+        // Smart fallback — reads real data and replies based on it
+        const { question = '', context = {} } = req.body || {};
+        const projects = context.projects || [];
+        const q = question.toLowerCase();
+
+        // Try to find matching projects by ward/location name from question
+        const matched = projects.filter(p => {
+            const ward = (p.location?.ward || '').toLowerCase();
+            const title = (p.title || '').toLowerCase();
+            // Check if any word in the question appears in ward or title
+            return q.split(/\s+/).some(word => word.length > 3 && (ward.includes(word) || title.includes(word)));
+        });
+
+        let answer;
+        if (matched.length > 0) {
+            const summary = matched.slice(0, 3).map(p => {
+                const status = p.status === 'completed' ? '✅ Completed' :
+                               p.status === 'in_progress' ? '🔄 In Progress' :
+                               p.status === 'delayed' ? '⚠️ Delayed' : `📋 ${p.status}`;
+                const budget = p.budget ? `₹${(p.budget / 100000).toFixed(1)}L` : '';
+                return `• ${p.title} — ${status}${budget ? ` (${budget})` : ''}`;
+            }).join('\n');
+            answer = `Here's what's happening:\n\n${summary}${matched.length > 3 ? `\n\n...and ${matched.length - 3} more project(s).` : ''}`;
+        } else if (projects.length > 0) {
+            answer = `I couldn't find specific projects matching your query. Currently there are ${projects.length} active projects citywide. Try asking about a specific ward like "Koramangala" or "BTM Layout".`;
+        } else {
+            answer = `No project data available right now. Please check the Projects section for live updates.`;
+        }
+
+        res.json({ success: true, answer });
     }
 });
 
