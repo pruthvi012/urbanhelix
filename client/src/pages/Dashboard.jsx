@@ -467,10 +467,12 @@ export default function Dashboard() {
                             <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)' }}>Ward-wise Budget vs. Expenditure</h3>
                             <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Real-time comparative analysis across municipal wards</p>
                         </div>
-                        <button className="btn btn-outline" onClick={exportPDF}>
-                            <FiDownload />
-                            <span>Export Audit PDF</span>
-                        </button>
+                        {user?.role !== 'contractor' && (
+                            <button className="btn btn-outline" onClick={exportPDF}>
+                                <FiDownload />
+                                <span>Export Report PDF</span>
+                            </button>
+                        )}
                     </div>
 
                     {analytics?.departmentSpending && (
