@@ -9,6 +9,7 @@ const FundTransaction = require('./models/FundTransaction');
 const Grievance = require('./models/Grievance');
 const HashChainRecord = require('./models/HashChainRecord');
 const AuditLog = require('./models/AuditLog');
+const Ward = require('./models/Ward');
 const BlockchainService = require('./services/blockchainService');
 
 dotenv.config();
@@ -29,6 +30,7 @@ const seed = async () => {
         await Grievance.deleteMany();
         await HashChainRecord.deleteMany();
         await AuditLog.deleteMany();
+        await Ward.deleteMany();
         console.log('🗑️  Cleared existing data');
 
         const salt = await bcrypt.genSalt(10);
@@ -43,6 +45,66 @@ const seed = async () => {
             { name: 'Ananya Das', email: 'ananya@citizen.com', password: adminPassword, role: 'citizen', phone: '9876543214' }
         ]);
         console.log('👥 Created users');
+
+        // Create Wards
+        const seedWards = [
+            {
+                wardNo: 156,
+                name: 'Kempapura Agrahara',
+                assemblyConstituency: 'Vijayanagar AC (167)',
+                areas: ['RPC Layout', 'Binny Layout', 'Hosahalli Main Road']
+            },
+            {
+                wardNo: 157,
+                name: 'Vijayanagar',
+                assemblyConstituency: 'Vijayanagar AC (167)',
+                areas: ['1st Stage', '2nd Stage', 'MC Layout', 'Maruti Mandir']
+            },
+            {
+                wardNo: 158,
+                name: 'Hosahalli',
+                assemblyConstituency: 'Govindaraja Nagar AC (166)',
+                areas: ['Hosahalli', 'MC Layout Part', 'Pipe Line Road']
+            },
+            {
+                wardNo: 162,
+                name: 'Gali Anjenaya Temple Ward',
+                assemblyConstituency: 'Chamarajpet AC (168)',
+                areas: ['Gali Anjaneya Temple area', 'Mysore Road', 'Back Road']
+            },
+            {
+                wardNo: 163,
+                name: 'Veerabhadranagar',
+                assemblyConstituency: 'Chamarajpet AC (168)',
+                areas: ['Veerabhadranagar', 'Main Road']
+            },
+            {
+                wardNo: 164,
+                name: 'Avalahalli',
+                assemblyConstituency: 'Chamarajpet AC (168)',
+                areas: ['Avalahalli', 'Muneshwara Block']
+            },
+            {
+                wardNo: 171,
+                name: 'Sudham Nagara',
+                assemblyConstituency: 'Chickpet AC (170)',
+                areas: ['Sudham Nagara', 'PWD Area']
+            },
+            {
+                wardNo: 186,
+                name: 'Koramangala',
+                assemblyConstituency: 'BTM Layout AC (172)',
+                areas: ['Koramangala Smart City', 'Koramangala 4th Block', 'Koramangala 8th Block']
+            },
+            {
+                wardNo: 192,
+                name: 'BTM Layout',
+                assemblyConstituency: 'BTM Layout AC (172)',
+                areas: ['BTM Layout Roads', 'BTM 2nd Stage']
+            }
+        ];
+        await Ward.insertMany(seedWards);
+        console.log('🏛️  Created Wards');
 
         // 2. Create Departments & Blockchain Budgets
         const deptsData = [
