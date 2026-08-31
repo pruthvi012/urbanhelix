@@ -212,11 +212,19 @@ export default function Dashboard() {
             {user && (
                 <div className="welcome-greeting" style={{ 
                     marginBottom: '20px', 
-                    fontSize: '22px', 
-                    fontWeight: 700, 
-                    color: 'var(--text-main)' 
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '10px'
                 }}>
-                    Hello, Welcome <span style={{ color: 'var(--accent-teal)' }}>{user.name}</span>!
+                    <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-main)' }}>
+                        Hello, Welcome <span style={{ color: 'var(--accent-teal)' }}>{user.name}</span>!
+                    </div>
+                    <button className="btn btn-primary" onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '20px' }}>
+                        <FiDownload />
+                        <span>Export Allocated Budget PDF</span>
+                    </button>
                 </div>
             )}
             {user?.role === 'engineer' && (
@@ -467,12 +475,6 @@ export default function Dashboard() {
                             <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)' }}>Ward-wise Budget vs. Expenditure</h3>
                             <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Real-time comparative analysis across municipal wards</p>
                         </div>
-                        {user?.role !== 'contractor' && (
-                            <button className="btn btn-outline" onClick={exportPDF}>
-                                <FiDownload />
-                                <span>Export Report PDF</span>
-                            </button>
-                        )}
                     </div>
 
                     {analytics?.departmentSpending && (

@@ -53,7 +53,7 @@ function AppRoutes() {
                     <Route path="milestones" element={<Milestones />} />
                     <Route path="funds" element={<Funds />} />
                     <Route path="grievances" element={<Grievances />} />
-                    <Route path="audit" element={<RoleRoute blockedRoles={['contractor']}><Audit /></RoleRoute>} />
+                    <Route path="audit" element={<RoleRoute blockedRoles={['contractor', 'financial_officer']}><Audit /></RoleRoute>} />
                     <Route path="analytics" element={<Analytics />} />
                     <Route path="expenses" element={<ContractorExpenses />} />
                 </Route>

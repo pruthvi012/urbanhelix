@@ -23,7 +23,7 @@ const NAV_LINKS = [
     { to: '/projects', label: 'Projects', icon: <FiFolder /> },
     { to: '/funds', label: 'Finance & Escrow', icon: <FiDollarSign /> },
     { to: '/grievances', label: 'Grievances', icon: <FiMessageSquare /> },
-    { to: '/audit', label: 'Audit Trail', icon: <FiShield />, hideForRoles: ['contractor'] }
+    { to: '/audit', label: 'Audit Trail', icon: <FiShield />, hideForRoles: ['contractor', 'financial_officer'] }
 ];
 
 export default function Layout() {
