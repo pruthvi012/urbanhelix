@@ -2,6 +2,19 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('../server/config/db.js');
 
+// Register all Mongoose models to prevent missing schema errors during populates
+require('../server/models/User');
+require('../server/models/Department');
+require('../server/models/Project');
+require('../server/models/Milestone');
+require('../server/models/FundTransaction');
+require('../server/models/Grievance');
+require('../server/models/HashChainRecord');
+require('../server/models/AuditLog');
+require('../server/models/Ward');
+require('../server/models/ProjectAsset');
+require('../server/models/Notification');
+
 const app = express();
 app.use(cors({ origin: '*' }));
 // app.use(express.json());
