@@ -14,7 +14,7 @@ router.post('/ask', async (req, res) => {
         }
 
         // We use gemini-1.5-flash for fast responses
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `
 You are UrbanBot, a helpful AI assistant for the UrbanHeliX municipal governance portal.
