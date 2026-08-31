@@ -3,11 +3,22 @@ import { useAuth } from '../context/AuthContext';
 import { grievanceAPI } from '../services/api';
 import { FiThumbsUp, FiThumbsDown, FiCamera, FiMapPin, FiCheckCircle } from 'react-icons/fi';
 
+const convertDMSToDD = (dms, ref) => {
+    if (!dms || dms.length < 3) return null;
+    let dd = dms[0] + dms[1] / 60 + dms[2] / 3600;
+    if (ref === 'S' || ref === 'W') {
+        dd = -dd;
+    }
+    return dd;
+};
+
 export default function Grievances() {
     const { user } = useAuth();
     const [grievances, setGrievances] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [showInvalidImageModal, setShowInvalidImageModal] = useState(false);
+    const [invalidImageMsg, setInvalidImageMsg] = useState('');
     const [wards, setWards] = useState([]);
     const [wardSearch, setWardSearch] = useState('');
     const [file, setFile] = useState(null);
@@ -56,6 +67,58 @@ export default function Grievances() {
 
     const openGPSCameraApp = () => {
         window.location.href = "intent://#Intent;package=com.vcamera.roudndai;scheme=android-app;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.vcamera.roudndai;end";
+    };
+
+    const handleFileChange = (e) => {
+        const selectedFile = e.target.files[0];
+        if (!selectedFile) {
+            setFile(null);
+            return;
+        }
+
+        if (!location) {
+            alert('Please lock your location first by clicking the verify button.');
+            e.target.value = null;
+            return;
+        }
+
+        const inputElement = e.target;
+
+        import('exif-js').then(({ default: EXIF }) => {
+            EXIF.getData(selectedFile, function() {
+                const lat = EXIF.getTag(this, "GPSLatitude");
+                const lon = EXIF.getTag(this, "GPSLongitude");
+                const latRef = EXIF.getTag(this, "GPSLatitudeRef") || "N";
+                const lonRef = EXIF.getTag(this, "GPSLongitudeRef") || "E";
+
+                if (!lat || !lon) {
+                    setInvalidImageMsg("No GPS metadata found in this photo. A live GPS-tagged photo is required to prevent fraudulent reports.");
+                    setShowInvalidImageModal(true);
+                    setFile(null);
+                    inputElement.value = "";
+                    return;
+                }
+
+                const imageLat = convertDMSToDD(lat, latRef);
+                const imageLng = convertDMSToDD(lon, lonRef);
+
+                const latDiff = Math.abs(imageLat - location.lat);
+                const lngDiff = Math.abs(imageLng - location.lng);
+                const isMatch = latDiff < 0.002 && lngDiff < 0.002;
+
+                if (!isMatch) {
+                    setInvalidImageMsg(`Image GPS mismatch!\n\nImage coordinates (${imageLat.toFixed(4)}, ${imageLng.toFixed(4)}) do not match your current locked coordinates (${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}). Please upload a valid real-time photo taken at the site.`);
+                    setShowInvalidImageModal(true);
+                    setFile(null);
+                    inputElement.value = "";
+                } else {
+                    setFile(selectedFile);
+                }
+            });
+        }).catch(err => {
+            console.error("EXIF library import failed:", err);
+            setFile(selectedFile);
+        });
     };
 
     const handleVote = async (id, type) => {
@@ -208,7 +271,7 @@ export default function Grievances() {
                                             type="file" 
                                             accept="image/*" 
                                             className="form-input" 
-                                            onChange={(e) => setFile(e.target.files[0])}
+                                            onChange={handleFileChange}
                                             required 
                                         />
                                         {location && <div style={{ fontSize: '11px', color: 'var(--accent-green)', marginTop: '8px' }}>📍 GPS Locked: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}</div>}
@@ -328,6 +391,68 @@ export default function Grievances() {
                                 <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {showInvalidImageModal && (
+                <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={() => setShowInvalidImageModal(false)}>
+                    <div className="modal" style={{ 
+                        maxWidth: '450px', 
+                        border: '2px solid var(--accent-mint, #10b981)', 
+                        background: '#0d231e', 
+                        color: '#ffffff',
+                        textAlign: 'center',
+                        padding: '30px'
+                    }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ 
+                            width: '60px', 
+                            height: '60px', 
+                            borderRadius: '50%', 
+                            background: 'rgba(16, 185, 129, 0.1)', 
+                            color: 'var(--accent-mint, #10b981)', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            margin: '0 auto 20px auto',
+                            fontSize: '24px'
+                        }}>
+                            ⚠️
+                        </div>
+                        <h3 style={{ 
+                            fontSize: '20px', 
+                            fontWeight: 700, 
+                            color: 'var(--accent-mint, #10b981)', 
+                            marginBottom: '12px' 
+                        }}>
+                            Invalid Image
+                        </h3>
+                        <p style={{ 
+                            fontSize: '14px', 
+                            lineHeight: 1.6, 
+                            color: '#94a3b8', 
+                            marginBottom: '24px',
+                            whiteSpace: 'pre-line'
+                        }}>
+                            {invalidImageMsg}
+                        </p>
+                        <button 
+                            type="button"
+                            className="btn" 
+                            style={{ 
+                                background: 'var(--accent-mint, #10b981)', 
+                                color: '#0d231e',
+                                fontWeight: 700,
+                                width: '100%',
+                                padding: '12px',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer'
+                            }} 
+                            onClick={() => setShowInvalidImageModal(false)}
+                        >
+                            Okay, Got It
+                        </button>
                     </div>
                 </div>
             )}
