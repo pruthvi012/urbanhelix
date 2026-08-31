@@ -299,6 +299,8 @@ export default function Projects() {
             const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' }) : 'N/A';
             const utilRate = p.allocatedBudget > 0 ? ((p.spentBudget || 0) / p.allocatedBudget * 100).toFixed(1) : '0';
             const remaining = (p.allocatedBudget || 0) - (p.spentBudget || 0);
+            const isAllocationPending = !p.allocatedBudget && p.status === 'proposed';
+            const allocationLabel = isAllocationPending ? 'Pending financial approval' : fmt(p.allocatedBudget);
 
             const getAbsoluteUrl = (url) => {
                 if (!url) return '';
@@ -392,7 +394,8 @@ export default function Projects() {
     <div class="section-title">III. Financial Audit Trail</div>
     <table>
         <tr><th style="width: 50%;">Metric</th><th>Value</th></tr>
-        <tr><td class="label-col">Allocated Budget</td><td><strong>${fmt(p.allocatedBudget)}</strong></td></tr>
+        <tr><td class="label-col">Submitted Budget Proposal</td><td><strong>${fmt(p.estimatedBudget)}</strong></td></tr>
+        <tr><td class="label-col">Allocated Budget</td><td><strong>${allocationLabel}</strong>${isAllocationPending ? '<div style="font-size:10px;color:#b45309;margin-top:3px;">Allocation is created after Financial Officer / Admin approval.</div>' : ''}</td></tr>
         <tr><td class="label-col">Total Expenditure Verified</td><td><strong>${fmt(p.spentBudget)}</strong></td></tr>
         <tr><td class="label-col">Budget Utilization</td><td><span class="${utilRate > 90 ? 'warning' : 'highlight'}">${utilRate}%</span></td></tr>
         <tr><td class="label-col">Blockchain Status</td><td><span class="highlight">⛓️ SECURED & VERIFIED</span></td></tr>
