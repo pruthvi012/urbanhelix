@@ -23,7 +23,7 @@ const NAV_LINKS = [
     { to: '/projects', label: 'Projects', icon: <FiFolder /> },
     { to: '/funds', label: 'Finance & Escrow', icon: <FiDollarSign /> },
     { to: '/grievances', label: 'Grievances', icon: <FiMessageSquare /> },
-    { to: '/audit', label: 'Audit Trail', icon: <FiShield /> }
+    { to: '/audit', label: 'Audit Trail', icon: <FiShield />, hideForRoles: ['contractor'] }
 ];
 
 export default function Layout() {
@@ -74,6 +74,7 @@ export default function Layout() {
 
     const currentRoleObj = ROLES.find(r => r.key === user?.role) || ROLES[0];
     const initials = user?.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'AK';
+    const visibleNavLinks = NAV_LINKS.filter((item) => !(item.hideForRoles || []).includes(user?.role));
 
     return (
         <div className="app-layout">
@@ -104,7 +105,7 @@ export default function Layout() {
 
                 {/* Navigation Links */}
                 <nav className="sidebar-nav">
-                    {NAV_LINKS.filter((item) => !(user?.role === 'contractor' && item.to === '/audit')).map((item) => (
+                    {visibleNavLinks.map((item) => (
                         <NavLink
                             key={item.to}
                             to={item.to}

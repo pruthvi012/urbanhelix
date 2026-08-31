@@ -24,6 +24,14 @@ function ProtectedRoute({ children }) {
     return children;
 }
 
+function RoleRoute({ children, blockedRoles = [], redirectTo = '/' }) {
+    const { user, loading } = useAuth();
+    if (loading) return <div className="loading"><div className="spinner"></div> Loading...</div>;
+    if (!user) return <Navigate to="/login" replace />;
+    if (blockedRoles.includes(user.role)) return <Navigate to={redirectTo} replace />;
+    return children;
+}
+
 function PublicRoute({ children }) {
     const { user, loading } = useAuth();
     if (loading) return <div className="loading"><div className="spinner"></div> Loading...</div>;
@@ -45,7 +53,7 @@ function AppRoutes() {
                     <Route path="milestones" element={<Milestones />} />
                     <Route path="funds" element={<Funds />} />
                     <Route path="grievances" element={<Grievances />} />
-                    <Route path="audit" element={<Audit />} />
+                    <Route path="audit" element={<RoleRoute blockedRoles={['contractor']}><Audit /></RoleRoute>} />
                     <Route path="analytics" element={<Analytics />} />
                     <Route path="expenses" element={<ContractorExpenses />} />
                 </Route>

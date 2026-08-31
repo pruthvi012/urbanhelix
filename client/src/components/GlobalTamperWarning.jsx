@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiAlertTriangle, FiShieldOff, FiX } from 'react-icons/fi';
 import { auditAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function GlobalTamperWarning() {
+    const { user } = useAuth();
     const [isTampered, setIsTampered] = useState(false);
     const [tamperDetails, setTamperDetails] = useState(null);
     const [dismissed, setDismissed] = useState(false);
@@ -21,7 +23,7 @@ export default function GlobalTamperWarning() {
 
     useEffect(() => {
         const checkIntegrity = async () => {
-            if (dismissed) return;
+            if (dismissed || user?.role === 'contractor') return;
             try {
                 const res = await auditAPI.verifyChain();
                 if (res.data && res.data.valid === false) {
@@ -41,9 +43,9 @@ export default function GlobalTamperWarning() {
         checkIntegrity();
         const interval = setInterval(checkIntegrity, 5000);
         return () => clearInterval(interval);
-    }, [dismissed]);
+    }, [dismissed, user?.role]);
 
-    if (!isTampered || dismissed) return null;
+    if (user?.role === 'contractor' || !isTampered || dismissed) return null;
 
     return (
         <div style={{

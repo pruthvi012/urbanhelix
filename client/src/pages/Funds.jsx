@@ -2,17 +2,49 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { fundAPI, projectAPI } from '../services/api';
 
+function extractProjectCode(text = '') {
+    const match = String(text).toUpperCase().match(/UHX-[A-Z0-9]+/);
+    if (match) return match[0];
+    return String(text).trim().toUpperCase();
+}
+
+function getContractorPaymentStatus(project, transactions) {
+    const expenditures = project?.expenditures || [];
+    const paidFromExpenses = expenditures.filter((expense) => expense.financeReleased);
+    const pendingFromExpenses = expenditures.filter((expense) => expense.readyForPayment && !expense.financeReleased);
+    const paidFromFunds = (transactions || []).filter((transaction) => ['payment', 'disbursement'].includes(transaction.type) && ['approved', 'completed'].includes(transaction.status));
+    const pendingFromFunds = (transactions || []).filter((transaction) => ['payment', 'disbursement'].includes(transaction.type) && !['approved', 'completed', 'rejected'].includes(transaction.status));
+
+    if (paidFromExpenses.length || paidFromFunds.length) {
+        const amount = paidFromExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0)
+            || paidFromFunds.reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+        return { key: 'paid', label: 'Paid', amount };
+    }
+    if (pendingFromExpenses.length || pendingFromFunds.length) {
+        return { key: 'pending', label: 'Pending' };
+    }
+    return { key: 'not_yet_paid', label: 'Not yet paid' };
+}
+
 export default function Funds() {
     const { user } = useAuth();
+    const isContractor = user?.role === 'contractor';
     const [transactions, setTransactions] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!isContractor);
     const [filter, setFilter] = useState({ type: '', status: '' });
     const [projectCode, setProjectCode] = useState('');
+    const [uploadedFileName, setUploadedFileName] = useState('');
     const [paymentLookup, setPaymentLookup] = useState(null);
     const [lookupMessage, setLookupMessage] = useState('');
     const [releaseDetails, setReleaseDetails] = useState({ bankName: '', accountNumber: '', ifscCode: '' });
 
-    useEffect(() => { loadData(); }, [filter]);
+    useEffect(() => {
+        if (isContractor) {
+            setLoading(false);
+            return;
+        }
+        loadData();
+    }, [filter, isContractor]);
 
     const loadData = async () => {
         try {
@@ -33,9 +65,40 @@ export default function Funds() {
         } catch (err) { alert(err.response?.data?.message || 'Error verifying'); }
     };
 
-    const checkPaymentStatus = async () => {
-        const code = projectCode.trim().toUpperCase();
-        if (!code) return setLookupMessage('Enter a project code first.');
+    const applyCodeAndCheck = (rawCode) => {
+        const code = extractProjectCode(rawCode);
+        if (!code) return setLookupMessage('Enter or upload a valid project code first.');
+        setProjectCode(code);
+        checkPaymentStatus(code);
+    };
+
+    const handleCodeFile = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+        setUploadedFileName(file.name);
+        try {
+            const text = await file.text();
+            const fromContents = extractProjectCode(text);
+            const fromName = extractProjectCode(file.name.replace(/\.[^.]+$/, ''));
+            const code = (fromContents && fromContents.startsWith('UHX-') ? fromContents : null)
+                || (fromName && fromName.startsWith('UHX-') ? fromName : null)
+                || fromContents
+                || fromName;
+            if (!code) {
+                setPaymentLookup(null);
+                return setLookupMessage('No project code was found in that file. Upload a code file or type the UHX- code.');
+            }
+            applyCodeAndCheck(code);
+        } catch {
+            setPaymentLookup(null);
+            setLookupMessage('Could not read that file. Type the project code instead.');
+        }
+    };
+
+    const checkPaymentStatus = async (overrideCode) => {
+        const code = extractProjectCode(overrideCode || projectCode);
+        if (!code) return setLookupMessage('Enter or upload a valid project code first.');
         setLookupMessage('Checking payment status…');
         try {
             const projectRes = await projectAPI.getAll({ projectCode: code, limit: 10 });
@@ -99,9 +162,7 @@ export default function Funds() {
 
     if (loading) return <div className="loading"><div className="spinner"></div> Loading...</div>;
 
-    const isContractor = user?.role === 'contractor';
-    const paidTransactions = paymentLookup?.transactions.filter((transaction) => ['payment', 'disbursement'].includes(transaction.type) && ['approved', 'completed'].includes(transaction.status)) || [];
-    const pendingTransactions = paymentLookup?.transactions.filter((transaction) => ['payment', 'disbursement'].includes(transaction.type) && !['approved', 'completed', 'rejected'].includes(transaction.status)) || [];
+    const contractorPayment = paymentLookup ? getContractorPaymentStatus(paymentLookup.project, paymentLookup.transactions) : null;
 
     return (
         <div>
@@ -113,15 +174,37 @@ export default function Funds() {
             {isContractor && (
                 <div className="glass-card" style={{ padding: '24px', maxWidth: '760px', borderTop: '4px solid var(--accent-teal)' }}>
                     <h3 style={{ marginBottom: '6px' }}>Check payment using project code</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '16px' }}>Only projects assigned to your contractor account can be checked.</p>
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        <input className="form-input" placeholder="Enter project code, e.g. UHX-XXXXXX" value={projectCode} onChange={(event) => setProjectCode(event.target.value.toUpperCase())} onKeyDown={(event) => event.key === 'Enter' && checkPaymentStatus()} style={{ flex: '1 1 280px', margin: 0, textTransform: 'uppercase' }} />
-                        <button className="btn btn-primary" onClick={checkPaymentStatus}>Check payment</button>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '16px' }}>Enter or upload the project code given to you. Payment status is shown only for projects assigned to your contractor account.</p>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <input className="form-input" placeholder="Enter project code, e.g. UHX-XXXXXX" value={projectCode} onChange={(event) => setProjectCode(event.target.value.toUpperCase())} onKeyDown={(event) => event.key === 'Enter' && applyCodeAndCheck(event.target.value)} style={{ flex: '1 1 280px', margin: 0, textTransform: 'uppercase' }} />
+                        <button className="btn btn-primary" onClick={() => applyCodeAndCheck(projectCode)}>Check payment</button>
+                        <label className="btn btn-outline" style={{ margin: 0, cursor: 'pointer' }}>
+                            Upload code
+                            <input type="file" accept=".txt,.csv,.json,.pdf,text/plain" onChange={handleCodeFile} hidden />
+                        </label>
                     </div>
+                    {uploadedFileName && <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>Uploaded: {uploadedFileName}</div>}
                     {lookupMessage && <div style={{ marginTop: '13px', color: 'var(--accent-amber)', fontWeight: 700, fontSize: '13px' }}>{lookupMessage}</div>}
-                    {paymentLookup && <div style={{ marginTop: '18px', padding: '18px', borderRadius: '12px', background: paidTransactions.length ? 'var(--accent-mint-light)' : 'var(--accent-amber-light)', border: `1px solid ${paidTransactions.length ? '#a7f3d0' : '#fde68a'}` }}>
+                    {paymentLookup && contractorPayment && <div style={{ marginTop: '18px', padding: '18px', borderRadius: '12px', background: contractorPayment.key === 'paid' ? 'var(--accent-mint-light)' : 'var(--accent-amber-light)', border: `1px solid ${contractorPayment.key === 'paid' ? '#a7f3d0' : '#fde68a'}` }}>
                         <div style={{ fontWeight: 800, fontSize: '16px' }}>{paymentLookup.project.title}</div>
-                        {paidTransactions.length > 0 ? <><div style={{ color: '#047857', fontWeight: 800, marginTop: '10px' }}>✓ Payment paid</div><div style={{ fontSize: '13px', marginTop: '4px' }}>Released amount: {formatCurrency(paidTransactions.reduce((sum, transaction) => sum + transaction.amount, 0))}</div></> : pendingTransactions.length > 0 ? <><div style={{ color: '#a16207', fontWeight: 800, marginTop: '10px' }}>Payment is under verification</div><div style={{ fontSize: '13px', marginTop: '4px' }}>No payment has been released yet.</div></> : <><div style={{ color: '#a16207', fontWeight: 800, marginTop: '10px' }}>No payment done yet</div><div style={{ fontSize: '13px', marginTop: '4px' }}>No payment transaction has been raised for this project.</div></>}</div>}
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>{paymentLookup.project.projectCode}</div>
+                        {contractorPayment.key === 'paid' ? (
+                            <>
+                                <div style={{ color: '#047857', fontWeight: 800, marginTop: '10px', fontSize: '18px' }}>Paid</div>
+                                <div style={{ fontSize: '13px', marginTop: '4px' }}>Released amount: {formatCurrency(contractorPayment.amount)}</div>
+                            </>
+                        ) : contractorPayment.key === 'pending' ? (
+                            <>
+                                <div style={{ color: '#a16207', fontWeight: 800, marginTop: '10px', fontSize: '18px' }}>Pending</div>
+                                <div style={{ fontSize: '13px', marginTop: '4px' }}>Payment has been submitted and is waiting for release.</div>
+                            </>
+                        ) : (
+                            <>
+                                <div style={{ color: '#92400e', fontWeight: 800, marginTop: '10px', fontSize: '18px' }}>Not yet paid</div>
+                                <div style={{ fontSize: '13px', marginTop: '4px' }}>No payment has been released for this project yet.</div>
+                            </>
+                        )}
+                    </div>}
                 </div>
             )}
 
