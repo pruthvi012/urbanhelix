@@ -219,6 +219,19 @@ export default function Dashboard() {
                     Hello, Welcome <span style={{ color: 'var(--accent-teal)' }}>{user.name}</span>!
                 </div>
             )}
+            {user?.role === 'engineer' && (
+                <section style={{ marginBottom: '24px', padding: '26px', borderRadius: '18px', background: 'linear-gradient(135deg, #062f2b, #0f766e)', color: 'white', boxShadow: '0 16px 34px rgba(15,118,110,.22)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div><div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.12em', opacity: .76 }}>SITE ENGINEER FIELD DESK</div><h2 style={{ margin: '7px 0', fontSize: '28px' }}>Today’s inspection workspace</h2><p style={{ margin: 0, opacity: .86 }}>Review citizen complaints, verify the site GPS photo, set repair urgency, and manage current projects.</p></div>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}><Link to="/grievances" className="btn" style={{ background: '#fff', color: '#0f766e' }}>Inspect complaints</Link><Link to="/projects" className="btn" style={{ background: '#fbbf24', color: '#422006' }}>Current projects</Link></div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginTop: '22px' }}>
+                        <div style={{ padding: '14px', borderRadius: '12px', background: 'rgba(255,255,255,.13)' }}><strong style={{ fontSize: '24px' }}>{stats?.totalGrievances ?? 0}</strong><div style={{ fontSize: '12px', opacity: .85 }}>Complaints to inspect</div></div>
+                        <div style={{ padding: '14px', borderRadius: '12px', background: 'rgba(255,255,255,.13)' }}><strong style={{ fontSize: '24px' }}>{stats?.totalProjects ?? 0}</strong><div style={{ fontSize: '12px', opacity: .85 }}>Current projects</div></div>
+                        <div style={{ padding: '14px', borderRadius: '12px', background: 'rgba(255,255,255,.13)' }}><strong style={{ fontSize: '24px' }}>GPS</strong><div style={{ fontSize: '12px', opacity: .85 }}>Field evidence required</div></div>
+                    </div>
+                </section>
+            )}
             {/* ─── 1. PUBLIC TRANSPARENCY PORTAL HERO BANNER ─── */}
             <div className="transparency-hero-card">
                 <div className="hero-left-content">

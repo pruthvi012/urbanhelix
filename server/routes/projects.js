@@ -109,6 +109,17 @@ router.get('/', optionalAuth, async (req, res) => {
     }
 });
 
+// DELETE /api/projects/:id — admin cleanup of explicitly selected stale projects
+router.delete('/:id', protect, authorize('admin'), async (req, res) => {
+    try {
+        const project = await Project.findByIdAndDelete(req.params.id);
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+        res.json({ success: true, message: 'Project removed', projectId: req.params.id });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // GET /api/projects/:id
 router.get('/:id', optionalAuth, async (req, res) => {
     try {
