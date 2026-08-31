@@ -27,6 +27,12 @@ app.use('/api/notifications', (req, res, next) => require('../server/routes/noti
 app.use('/api/wards', (req, res, next) => require('../server/routes/wards.js')(req, res, next));
 app.use('/api/ai', (req, res, next) => require('../server/routes/ai.js')(req, res, next));
 
+module.exports.config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 module.exports = async function handler(req, res) {
   try {
     await connectDB();
