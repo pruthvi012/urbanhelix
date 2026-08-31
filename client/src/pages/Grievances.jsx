@@ -96,6 +96,16 @@ export default function Grievances() {
         } catch (err) { alert(err.response?.data?.message || 'Error'); }
     };
 
+    const handleDelete = async (grievance) => {
+        if (!window.confirm(`Remove "${grievance.title}" and permanently delete its evidence photo?`)) return;
+        try {
+            await grievanceAPI.remove(grievance._id);
+            setGrievances(current => current.filter(item => item._id !== grievance._id));
+        } catch (err) {
+            alert(err.response?.data?.message || 'Unable to remove this grievance');
+        }
+    };
+
     const handleCreate = async (e) => {
         e.preventDefault();
 
@@ -244,6 +254,9 @@ export default function Grievances() {
                                 </button>
                                 {['engineer', 'admin'].includes(user?.role) && g.status !== 'resolved' && (
                                     <button className="btn btn-success btn-sm" onClick={() => handleResolve(g._id)} style={{ width: '100%', marginTop: '10px' }}>Resolve</button>
+                                )}
+                                {user?.role === 'admin' && (
+                                    <button className="btn btn-sm" onClick={() => handleDelete(g)} style={{ width: '100%', marginTop: '4px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }}>Remove</button>
                                 )}
                             </div>
                         </div>

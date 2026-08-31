@@ -5,6 +5,9 @@ const HashChainService = require('../services/hashChainService');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const notificationService = require('../services/notificationService');
+const fs = require('fs/promises');
+const path = require('path');
+const { BlobServiceClient } = require('@azure/storage-blob');
 
 const router = express.Router();
 
@@ -80,6 +83,47 @@ router.post('/', protect, authorize('citizen', 'admin'), upload.single('image'),
         });
 
         res.status(201).json({ success: true, grievance });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// DELETE /api/grievances/:id — remove an invalid grievance and its evidence file
+router.delete('/:id', protect, authorize('admin'), async (req, res) => {
+    try {
+        const grievance = await Grievance.findById(req.params.id);
+        if (!grievance) return res.status(404).json({ success: false, message: 'Grievance not found' });
+
+        if (grievance.imageUrl) {
+            if (grievance.imageUrl.includes('.blob.core.windows.net/')) {
+                if (!process.env.AZURE_STORAGE_CONNECTION_STRING || !process.env.AZURE_STORAGE_CONTAINER) {
+                    return res.status(500).json({ success: false, message: 'Azure storage is not configured; the evidence file was not removed.' });
+                }
+
+                const blobService = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
+                const container = blobService.getContainerClient(process.env.AZURE_STORAGE_CONTAINER);
+                const urlPath = decodeURIComponent(new URL(grievance.imageUrl).pathname).replace(/^\//, '');
+                const containerPrefix = `${process.env.AZURE_STORAGE_CONTAINER}/`;
+                const blobName = urlPath.startsWith(containerPrefix) ? urlPath.slice(containerPrefix.length) : urlPath;
+                await container.getBlockBlobClient(blobName).deleteIfExists();
+            } else if (grievance.imageUrl.startsWith('/uploads/')) {
+                const uploadPath = path.join(__dirname, '..', grievance.imageUrl);
+                await fs.unlink(uploadPath).catch(error => {
+                    if (error.code !== 'ENOENT') throw error;
+                });
+            }
+        }
+
+        await grievance.deleteOne();
+        await AuditLog.create({
+            user: req.user._id,
+            action: 'delete',
+            resourceType: 'grievance',
+            resourceId: grievance._id,
+            details: `Grievance "${grievance.title}" and its evidence file were removed`,
+        });
+
+        res.json({ success: true, message: 'Grievance and evidence file removed' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

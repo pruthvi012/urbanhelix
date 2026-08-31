@@ -153,6 +153,7 @@ export const fundAPI = {
 export const grievanceAPI = {
     getAll: (params) => api.get('/grievances', { params }),
     create: (data) => api.post('/grievances', data),
+    remove: (id) => api.delete(`/grievances/${id}`),
     vote: (id, type) => api.put(`/grievances/${id}/vote`, { type }),
     resolve: (id, data) => api.put(`/grievances/${id}/resolve`, data),
 };
