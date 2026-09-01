@@ -284,6 +284,20 @@ export default function Projects() {
         }
     };
 
+    const handleFinalBillDecision = async (project, approved) => {
+        const activeBill = project.finalBills?.find((bill) => bill.active);
+        if (!activeBill) return alert('No contractor final bill is available for this project.');
+        const remarks = approved ? '' : prompt('Reason for rejecting the final bill:');
+        if (!approved && !remarks) return;
+        try {
+            await projectAPI.decideFinalBill(project._id, { approved, remarks });
+            alert(approved ? 'Final bill approved. Finance can now release the funds.' : 'Final bill rejected.');
+            loadData();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Unable to update the final-bill decision.');
+        }
+    };
+
     const handleClaim = async () => {
         if (!claimCode.trim()) { alert('Please enter a project code'); return; }
         try {
@@ -861,11 +875,14 @@ export default function Projects() {
                                                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                                                     {user?.role === 'admin' && (
                                                                         <>
-                                                                            {p.budgetEstimateProofUrl && <button className="btn btn-outline btn-sm" style={{ borderColor: 'var(--accent-blue)', color: 'var(--accent-blue)' }} onClick={() => window.open(p.budgetEstimateProofUrl.startsWith('http') ? p.budgetEstimateProofUrl : `${window.location.origin}${p.budgetEstimateProofUrl}`, '_blank', 'noopener,noreferrer')}>🖼 View Budget PDF</button>}
                                                                             {['proposed', 'approved', 'in_progress', 'verification'].includes(p.status) && <>
                                                                                 <input className="form-input" type="number" min="1" max={p.estimatedBudget} value={allocationDrafts[p._id] ?? ''} placeholder="Budget allocation (₹)" onChange={(event) => setAllocationDrafts({ ...allocationDrafts, [p._id]: event.target.value })} style={{ width: '150px', padding: '7px 9px' }} aria-label="Budget allocation amount" />
                                                                                 <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Proceed</button>
                                                                                 <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
+                                                                            </>}
+                                                                            {p.status === 'completed' && p.finalBills?.some((bill) => bill.active && (bill.status === 'engineer_verified' || bill.status === 'submitted')) && <>
+                                                                                <button className="btn btn-success btn-sm" onClick={() => handleFinalBillDecision(p, true)}>Proceed to Finance</button>
+                                                                                <button className="btn btn-danger btn-sm" onClick={() => handleFinalBillDecision(p, false)}>Reject Final Bill</button>
                                                                             </>}
                                                                         </>
                                                                     )}
