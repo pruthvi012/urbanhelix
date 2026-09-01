@@ -46,6 +46,9 @@ const projectSchema = new mongoose.Schema({
     transactionHash: String,
     lastTransactionHash: String,
     imageUrl: String,
+    // Kept separate from the citizen-submitted image so Before/After evidence
+    // cannot accidentally render the same source photo.
+    contractorCompletionPhotoUrl: String,
     progressPhotos: [{
         url: String,
         description: String,

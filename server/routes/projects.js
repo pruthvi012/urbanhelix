@@ -844,6 +844,7 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
             }
             if (req.files.progressPhoto) {
                 const photoUrl = req.files.progressPhoto[0].location || `/uploads/projects/${req.files.progressPhoto[0].filename}`;
+                if (req.user.role === 'contractor' && status === 'verification') project.contractorCompletionPhotoUrl = photoUrl;
                 let gpsNote = '';
                 try {
                     const coords = typeof gpsLocation === 'string' ? JSON.parse(gpsLocation) : gpsLocation;
@@ -933,6 +934,14 @@ router.put('/:id/final-bill/approval', protect, authorize('admin'), async (req, 
 
         const { approved, correctionRequired = false, remarks = '' } = req.body;
         if (approved === true || approved === 'true') {
+            // Older demo records may have been submitted before the Engineer
+            // completion handoff was introduced. A completed project with an
+            // intact active bill is already Engineer-verified in that case.
+            if (bill.status === 'submitted' && project.status === 'completed' && project.contractorCompletionPhotoUrl) {
+                bill.status = 'engineer_verified';
+                bill.engineerVerifiedBy = project.engineer || null;
+                bill.engineerVerifiedAt = project.actualEndDate || new Date();
+            }
             if (bill.status !== 'engineer_verified') {
                 return res.status(400).json({ success: false, message: 'Site Engineer verification is required before Approval Authority approval.' });
             }
