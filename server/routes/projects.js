@@ -1295,8 +1295,8 @@ router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'adm
     }
 });
 
-// PUT /api/projects/:id/final-bill/release — Finance releases an approved final bill
-router.put('/:id/final-bill/release', protect, authorize('financial_officer', 'admin'), async (req, res) => {
+// PUT /api/projects/:id/final-bill/release — Approval Authority releases an approved final bill
+router.put('/:id/final-bill/release', protect, authorize('admin'), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
@@ -1306,7 +1306,7 @@ router.put('/:id/final-bill/release', protect, authorize('financial_officer', 'a
         if (bill.financeReleased) return res.status(409).json({ success: false, message: 'Final bill payment has already been released.' });
         normalizeApprovedBillMeta(bill);
         if (bill.status !== 'approved' || !bill.engineerVerifiedAt || !bill.approvalAuthorityAt) {
-            return res.status(400).json({ success: false, message: 'Site Engineer verification and Approval Authority approval are required before Finance can release payment.' });
+            return res.status(400).json({ success: false, message: 'Site Engineer verification and Approval Authority approval are required before funds can be released.' });
         }
         const integrity = await verifyFinalBillIntegrity(project, bill);
         if (!integrity.valid) return res.status(409).json({ success: false, message: integrity.message });
@@ -1321,7 +1321,7 @@ router.put('/:id/final-bill/release', protect, authorize('financial_officer', 'a
         project.markModified('finalBills');
         await project.save();
 
-        await AuditLog.create({ user: req.user._id, action: 'disburse', resourceType: 'project', resourceId: project._id, details: `Finance released final-bill payment of ₹${bill.claimedAmount.toLocaleString()} for ${project.title}.` });
+        await AuditLog.create({ user: req.user._id, action: 'disburse', resourceType: 'project', resourceId: project._id, details: `Approval Authority released final-bill payment of ₹${bill.claimedAmount.toLocaleString()} for ${project.title}.` });
         res.json({ success: true, bill, message: 'Final bill payment released successfully.' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

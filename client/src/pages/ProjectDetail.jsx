@@ -464,7 +464,7 @@ export default function ProjectDetail() {
                         <strong>{formatCurrency(bill.claimedAmount)}</strong>
                         <span style={{ color: 'var(--text-secondary)' }}>{bill.supplier}</span>
                         {bill.billUrl && <a href={bill.billUrl} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">View final bill</a>}
-                        {user?.role === 'financial_officer' && bill.active && bill.status === 'approved' && !bill.financeReleased && <button className="btn btn-success btn-sm" onClick={handleReleaseFinalBill}>Release payment</button>}
+                        {user?.role === 'admin' && bill.active && bill.status === 'approved' && !bill.financeReleased && <button className="btn btn-success btn-sm" onClick={handleReleaseFinalBill}>Proceed with fund release</button>}
                         {bill.financeReleased && <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>Payment released</span>}
                         {bill.tamperReason && <span style={{ color: 'var(--accent-red)', fontWeight: 700 }}>{bill.tamperReason}</span>}
                     </div>)}

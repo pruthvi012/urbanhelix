@@ -912,9 +912,9 @@ export default function Projects() {
                                                                         </button>
                                                                     )}
 
-                                                                    {user?.role === 'financial_officer' && p.finalBills?.some((bill) => bill.active && bill.status === 'approved' && !bill.financeReleased) && (
+                                                                    {user?.role === 'admin' && p.finalBills?.some((bill) => bill.active && bill.status === 'approved' && !bill.financeReleased) && (
                                                                         <Link to={`/projects/${p._id}`} className="btn btn-accent btn-sm" style={{ textDecoration: 'none', background: 'var(--accent-green)', color: 'white' }}>
-                                                                            💸 Release Final Bill
+                                                                            💸 Enter bank details & release
                                                                         </Link>
                                                                     )}
 
