@@ -551,12 +551,12 @@ router.put('/:id/assign', protect, authorize('engineer', 'admin'), async (req, r
 });
 
 // PUT /api/projects/:id/status — update project status
-router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'), upload.fields([{ name: 'report', maxCount: 1 }, { name: 'progressPhoto', maxCount: 1 }]), async (req, res) => {
+router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'), upload.fields([{ name: 'report', maxCount: 1 }, { name: 'progressPhoto', maxCount: 1 }, { name: 'completionInvoice', maxCount: 1 }]), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        const { status, remarks, gpsLocation } = req.body;
+        const { status, remarks, gpsLocation, completionSupplier } = req.body;
 
         if (req.user.role === 'contractor') {
             if (!project.contractor || project.contractor.toString() !== req.user._id.toString()) {
@@ -564,6 +564,12 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
             }
             if (status !== 'verification') return res.status(403).json({ success: false, message: 'Contractors can only submit finished work for Site Engineer verification.' });
             if (!req.files?.progressPhoto?.length) return res.status(400).json({ success: false, message: 'A GPS-tagged finished-work photo is required.' });
+            if (!req.files?.completionInvoice?.length || !completionSupplier) return res.status(400).json({ success: false, message: 'Select an approved supplier and upload the matching completion bill.' });
+            const approvedSuppliers = ['UrbanHelix Pvt Ltd', 'Bengaluru Civic Materials Pvt Ltd'];
+            if (!approvedSuppliers.includes(completionSupplier)) return res.status(400).json({ success: false, message: 'The selected supplier is not approved.' });
+            const normalizedSupplier = completionSupplier.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const normalizedFilename = req.files.completionInvoice[0].originalname.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (!normalizedFilename.includes(normalizedSupplier)) return res.status(400).json({ success: false, message: 'The bill filename must contain the selected supplier name.' });
             if (!gpsLocation) return res.status(400).json({ success: false, message: 'Lock browser GPS before uploading finished-work evidence.' });
         }
         if (req.user.role === 'engineer' && status === 'completed') {
@@ -578,6 +584,10 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
         // Handle uploaded files
         if (req.files) {
             if (req.files.report) project.reportUrl = req.files.report[0].location || `/uploads/projects/${req.files.report[0].filename}`;
+            if (req.files.completionInvoice) {
+                project.completionInvoiceUrl = req.files.completionInvoice[0].location || `/uploads/projects/${req.files.completionInvoice[0].filename}`;
+                project.completionSupplier = completionSupplier;
+            }
             if (req.files.progressPhoto) {
                 let gpsNote = '';
                 try {

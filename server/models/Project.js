@@ -52,6 +52,8 @@ const projectSchema = new mongoose.Schema({
         timestamp: { type: Date, default: Date.now }
     }],
     reportUrl: String,
+    completionInvoiceUrl: String,
+    completionSupplier: String,
     verifications: [
         {
             stage: Number,
