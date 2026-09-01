@@ -319,12 +319,19 @@ export default function ContractorExpenses() {
                                 </div>
                             )}
 
-                            {/* Material */}
+                            {/* Material (AI whitelist) */}
                             <div className="form-group">
                                 <label className="form-label">
-                                    📦 Material / Expense Type
+                                    🧠 Material / Expense Type
+                                    <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--accent-blue)', fontWeight: 600, background: 'rgba(59,130,246,0.1)', padding: '2px 8px', borderRadius: '99px' }}>
+                                        AI-Approved list for: {selectedProject.category?.replace('_', ' ')}
+                                    </span>
                                 </label>
-                                <input className="form-input" type="text" placeholder="e.g. Cement, Machinery Rental, Labour" value={form.material} onChange={e => setForm({ ...form, material: e.target.value })} required />
+                                <select className="form-select" value={form.material} onChange={e => setForm({ ...form, material: e.target.value })} required>
+                                    <option value="">-- Select Material --</option>
+                                    {materials.map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                                <small style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Only approved materials for this project category are listed. Custom entries are blocked to prevent fraud.</small>
                             </div>
 
                             {/* Vendor */}
