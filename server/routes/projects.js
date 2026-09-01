@@ -49,6 +49,13 @@ router.get('/', optionalAuth, async (req, res) => {
     try {
         const { status, department, category, page = 1, limit = 20, ward, wardNo, area, projectCode, contractor } = req.query;
         const filter = {};
+        
+        // Hide proposed projects from contractor and financer
+        const userRole = req.user?.role;
+        if (userRole === 'contractor' || userRole === 'financial_officer') {
+            filter.status = { $in: ['approved', 'in_progress', 'verification', 'completed'] };
+        }
+
         if (status) filter.status = status;
         if (department) filter.department = department;
         if (category) filter.category = category;
@@ -134,6 +141,11 @@ router.get('/:id', optionalAuth, async (req, res) => {
         
         let pObj = project.toObject();
         const userRole = req.user?.role;
+        
+        if ((userRole === 'contractor' || userRole === 'financial_officer') && pObj.status === 'proposed') {
+            return res.status(403).json({ success: false, message: 'Not authorized to view proposed projects' });
+        }
+
         if (userRole !== 'admin' && userRole !== 'engineer' && userRole !== 'financial_officer' && (!req.user || req.user._id.toString() !== pObj.contractor?._id?.toString())) {
             delete pObj.projectCode;
         }
@@ -314,7 +326,7 @@ router.put('/:id/approve', protect, async (req, res) => {
 });
 
 // PUT /api/projects/:id/approve-v2
-router.put('/:id/approve-v2', protect, authorize('admin', 'financial_officer'), async (req, res) => {
+router.put('/:id/approve-v2', protect, authorize('admin'), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
@@ -362,6 +374,36 @@ router.put('/:id/approve-v2', protect, authorize('admin', 'financial_officer'), 
             }
         }
 
+        res.json({ success: true, project });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// PUT /api/projects/:id/reject — reject project proposal
+router.put('/:id/reject', protect, authorize('admin'), async (req, res) => {
+    try {
+        const project = await Project.findById(req.params.id);
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+        
+        const { remarks } = req.body;
+        project.status = 'rejected';
+        project.statusHistory.push({
+            status: 'rejected',
+            changedBy: req.user._id,
+            remarks: remarks || 'Proposal rejected',
+        });
+        await project.save();
+        
+        // Notify proposer
+        const notificationService = require('../services/notificationService');
+        await notificationService.sendPushNotification(
+            project.proposedBy,
+            'Project Proposal Rejected',
+            `Your proposal for "${project.title}" was rejected. Reason: ${remarks}`,
+            { type: 'project_rejected', relatedEntity: { entityType: 'Project', entityId: project._id } }
+        );
+        
         res.json({ success: true, project });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

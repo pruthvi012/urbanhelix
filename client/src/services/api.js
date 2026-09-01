@@ -81,6 +81,7 @@ export const projectAPI = {
             throw err;
         }
     },
+    reject: (id, data) => api.put('/projects/$id/reject', data),
     claim: async (code, contractorId) => {
         // Fetch project specifically by code
         const searchRes = await api.get('/projects', { params: { projectCode: code } });

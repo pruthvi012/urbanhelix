@@ -66,6 +66,18 @@ export default function ProjectDetail() {
         }
     };
 
+    const handleReject = async () => {
+        const reason = prompt('Enter reason for rejection:');
+        if (reason === null) return;
+        try {
+            await projectAPI.reject(id, { remarks: reason });
+            loadData();
+        } catch (err) {
+            console.error('Reject error:', err);
+            alert(`Rejection Error: ${err.response?.data?.message || err.message || 'Unknown error'}`);
+        }
+    };
+
     const openAssign = async () => {
         try {
             const res = await authAPI.getUsers('contractor');
@@ -254,8 +266,11 @@ export default function ProjectDetail() {
             {(['engineer', 'admin', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && project.contractor?._id === user?._id)) && (
                 <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>ACTIONS:</span>
-                    {(user?.role === 'financial_officer' || user?.role === 'admin') && project.status === 'proposed' && (
-                        <button className="btn btn-success btn-sm" onClick={handleApprove}>Approve Project</button>
+                    {user?.role === 'admin' && project.status === 'proposed' && (
+                        <>
+                            <button className="btn btn-success btn-sm" onClick={handleApprove}>Approve Project</button>
+                            <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject Project</button>
+                        </>
                     )}
                     {['engineer', 'admin'].includes(user?.role) && ['approved', 'in_progress'].includes(project.status) && !project.contractor && (
                         <button className="btn btn-primary" onClick={openAssign} style={{ fontWeight: 700, fontSize: '14px', padding: '8px 20px' }}>👷 Assign Contractor</button>

@@ -194,6 +194,19 @@ export default function Projects() {
         }
     };
 
+    const handleReject = async (id) => {
+        const reason = prompt('Enter reason for rejection:');
+        if (reason === null) return; // cancelled
+        try {
+            await projectAPI.reject(id, { remarks: reason });
+            loadData();
+            alert(`Project proposal rejected.`);
+        } catch (err) {
+            console.error('Rejection error:', err);
+            alert(`Rejection Error: ${err.response?.data?.message || err.message}`);
+        }
+    };
+
     const handleClaim = async () => {
         if (!claimCode.trim()) { alert('Please enter a project code'); return; }
         try {
@@ -674,8 +687,11 @@ export default function Projects() {
                                                         {(['engineer', 'admin', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && p.contractor?._id === user?._id)) && (
                                                             <td>
                                                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                                                    {(user?.role === 'financial_officer' || user?.role === 'admin') && p.status === 'proposed' && (
-                                                                        <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget)}>Approve</button>
+                                                                    {user?.role === 'admin' && p.status === 'proposed' && (
+                                                                        <>
+                                                                            <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget)}>Approve</button>
+                                                                            <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
+                                                                        </>
                                                                     )}
                                                                     {['engineer', 'admin'].includes(user?.role) && p.status === 'approved' && !p.contractor && (
                                                                         <button className="btn btn-primary btn-sm" onClick={() => openAssign(p)}>Assign</button>
