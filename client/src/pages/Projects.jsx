@@ -22,6 +22,7 @@ const gpsDecimal = (value, ref) => {
 
 export default function Projects() {
     const { user } = useAuth();
+    const isApprovalAuthority = ['admin', 'approval_authority', 'authorized_approving_officer'].includes(user?.role);
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -884,10 +885,10 @@ export default function Projects() {
                                                                 <FiDownload /> PDF
                                                             </button>
                                                         </td>
-                                                        {(['engineer', 'admin', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && p.contractor?._id === user?._id)) && (
+                                                        {(isApprovalAuthority || ['engineer', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && p.contractor?._id === user?._id)) && (
                                                             <td>
                                                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                                                    {user?.role === 'admin' && (
+                                                                    {isApprovalAuthority && (
                                                                         <>
                                                                             {['proposed', 'approved', 'in_progress', 'verification'].includes(p.status) && <>
                                                                                 <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Approve Project</button>
@@ -915,7 +916,7 @@ export default function Projects() {
                                                                         </button>
                                                                     )}
 
-                                                                    {user?.role === 'admin' && p.status !== 'proposed' && (
+                                                                    {isApprovalAuthority && p.status !== 'proposed' && (
                                                                         <Link to={`/projects/${p._id}`} className="btn btn-outline btn-sm" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                                             👁️ View Evidence
                                                                         </Link>
