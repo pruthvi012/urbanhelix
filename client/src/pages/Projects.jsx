@@ -286,7 +286,6 @@ export default function Projects() {
 
     const handleVerify = async (e) => {
         e.preventDefault();
-        if (!verifyForm.expenditureId) { alert('Select an expenditure to verify!'); return; }
         if (verifyForm.verified && !verifyForm.photo) { alert('Physical verification photo is mandatory!'); return; }
         if (verifyForm.verified && (!inspectionGps || !Number.isFinite(inspectionPhotoGps?.lat) || photoDistanceMetres(inspectionPhotoGps, inspectionGps) > 500)) {
             return alert('The inspection photo does not match the GPS-locked site location. Upload a valid GPS Camera photo.');
@@ -296,10 +295,18 @@ export default function Projects() {
         formData.append('verified', verifyForm.verified);
         formData.append('remarks', verifyForm.remarks);
         if (inspectionGps) formData.append('gpsLocation', JSON.stringify(inspectionGps));
-        if (verifyForm.photo) formData.append('verificationPhoto', verifyForm.photo);
+        if (verifyForm.photo) formData.append(verifyForm.expenditureId === 'final_bill' ? 'progressPhoto' : 'verificationPhoto', verifyForm.photo);
 
         try {
-            await projectAPI.verifyExpenditure(selectedProject._id, verifyForm.expenditureId, formData);
+            // A contractor's finished-work submission is verified at project level.
+            // Material expenses, when present, retain their existing verification API.
+            if (verifyForm.expenditureId === 'final_bill') {
+                formData.append('status', 'completed');
+                await projectAPI.updateStatus(selectedProject._id, formData);
+            } else {
+                if (!verifyForm.expenditureId) { alert('There is no pending site submission to verify.'); return; }
+                await projectAPI.verifyExpenditure(selectedProject._id, verifyForm.expenditureId, formData);
+            }
             setShowVerifyModal(false);
             setVerifyForm({ verified: true, remarks: '', photo: null, expenditureId: '' });
             setInspectionGps(null); setInspectionPhotoGps(null); setInspectionStatus('');
@@ -856,7 +863,7 @@ export default function Projects() {
                                                                             onClick={() => {
                                                                                 setSelectedProject(p);
                                                                                 const pending = p.expenditures?.find((expense) => !expense.engineerVerified);
-                                                                                setVerifyForm({ verified: true, remarks: '', photo: null, expenditureId: pending?._id || '' });
+                                                                                setVerifyForm({ verified: true, remarks: '', photo: null, expenditureId: p.status === 'verification' ? 'final_bill' : (pending?._id || '') });
                                                                                 setShowVerifyModal(true);
                                                                             }}
                                                                             style={{ background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '4px' }}
