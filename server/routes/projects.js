@@ -565,7 +565,7 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
             if (status !== 'verification') return res.status(403).json({ success: false, message: 'Contractors can only submit finished work for Site Engineer verification.' });
             if (!req.files?.progressPhoto?.length) return res.status(400).json({ success: false, message: 'A GPS-tagged finished-work photo is required.' });
             if (!req.files?.completionInvoice?.length || !completionSupplier) return res.status(400).json({ success: false, message: 'Select an approved supplier and upload the matching completion bill.' });
-            const approvedSuppliers = ['UrbanHelix Pvt Ltd', 'Bengaluru Civic Materials Pvt Ltd'];
+            const approvedSuppliers = ['UrbanHelix', 'Bengaluru Civic Materials Pvt Ltd'];
             if (!approvedSuppliers.includes(completionSupplier)) return res.status(400).json({ success: false, message: 'The selected supplier is not approved.' });
             const normalizedSupplier = completionSupplier.toLowerCase().replace(/[^a-z0-9]/g, '');
             const normalizedFilename = req.files.completionInvoice[0].originalname.toLowerCase().replace(/[^a-z0-9]/g, '');

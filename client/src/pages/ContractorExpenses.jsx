@@ -23,7 +23,7 @@ const formatCurrency = (amt) => {
     return `₹${amt.toLocaleString()}`;
 };
 
-const APPROVED_SUPPLIERS = ['UrbanHelix Pvt Ltd', 'Bengaluru Civic Materials Pvt Ltd'];
+const APPROVED_SUPPLIERS = ['UrbanHelix', 'Bengaluru Civic Materials Pvt Ltd'];
 const supplierMatchesBillName = (supplier, file) => {
     if (!supplier || !file) return false;
     const normalizedSupplier = supplier.toLowerCase().replace(/[^a-z0-9]/g, '');
