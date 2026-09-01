@@ -162,6 +162,9 @@ export default function ProjectDetail() {
         } catch (err) { alert(err.response?.data?.message || 'Error updating status'); }
     };
 
+    const beforePhotoUrl = project?.imageUrl || project?.progressPhotos?.[0]?.url || null;
+    const afterPhotoUrl = project?.progressPhotos?.length ? project.progressPhotos[project.progressPhotos.length - 1].url : project?.imageUrl || null;
+
     const formatCurrency = (amt) => {
         if (!amt) return '₹0';
         if (amt >= 10000000) return `₹${(amt / 10000000).toFixed(1)} Cr`;
@@ -524,8 +527,8 @@ export default function ProjectDetail() {
                     {/* Before Image (Original) */}
                     <div className="glass-card" style={{ padding: '12px' }}>
                         <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', textAlign: 'center' }}>Original Condition (Before)</div>
-                        {project.imageUrl ? (
-                            <img src={`${project.imageUrl}`} alt="Before" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} />
+                        {beforePhotoUrl ? (
+                            <img src={beforePhotoUrl} alt="Before" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} />
                         ) : (
                             <div style={{ height: '200px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>No before photo</div>
                         )}
@@ -545,8 +548,8 @@ export default function ProjectDetail() {
                     {project.status === 'completed' && (
                         <div className="glass-card" style={{ padding: '12px', border: '1px solid var(--accent-green)' }}>
                             <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', textAlign: 'center', color: 'var(--accent-green)' }}>Completed (After)</div>
-                            {project.progressPhotos?.length > 0 ? (
-                                <img src={`${project.progressPhotos[project.progressPhotos.length - 1].url}`} alt="After" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} />
+                            {afterPhotoUrl ? (
+                                <img src={afterPhotoUrl} alt="After" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} />
                             ) : (
                                 <div style={{ height: '200px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>No final photo</div>
                             )}

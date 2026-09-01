@@ -901,6 +901,12 @@ export default function Projects() {
                                                                         </button>
                                                                     )}
 
+                                                                    {user?.role === 'financial_officer' && p.finalBills?.some((bill) => bill.active && bill.status === 'approved' && !bill.financeReleased) && (
+                                                                        <Link to={`/projects/${p._id}`} className="btn btn-accent btn-sm" style={{ textDecoration: 'none', background: 'var(--accent-green)', color: 'white' }}>
+                                                                            💸 Release Final Bill
+                                                                        </Link>
+                                                                    )}
+
                                                                     {user?.role === 'contractor' && p.contractor?._id === user?._id && ['approved', 'in_progress', 'verification', 'completed'].includes(p.status) && (
                                                                         <div style={{ display: 'flex', gap: '6px' }}>
                                                                             <button className="btn btn-outline btn-sm" onClick={() => handleUpdateStatus(p._id)}>Status</button>

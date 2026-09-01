@@ -143,6 +143,14 @@ const sameJson = (first, second) => JSON.stringify(first) === JSON.stringify(sec
 
 const activeFinalBill = (project) => (project.finalBills || []).find((bill) => bill.active);
 
+const normalizeApprovedBillMeta = (bill) => {
+    if (!bill) return;
+    if (bill.status === 'approved') {
+        if (!bill.engineerVerifiedAt && bill.engineerVerifiedBy) bill.engineerVerifiedAt = new Date();
+        if (!bill.approvalAuthorityAt && bill.approvalAuthorityBy) bill.approvalAuthorityAt = new Date();
+    }
+};
+
 const markFinalBillSuspicious = async (project, bill, reason) => {
     bill.suspicious = true;
     bill.status = 'suspicious';
@@ -816,16 +824,20 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
                 project.markModified('finalBills');
             }
             if (req.files.progressPhoto) {
+                const photoUrl = req.files.progressPhoto[0].location || `/uploads/projects/${req.files.progressPhoto[0].filename}`;
                 let gpsNote = '';
                 try {
                     const coords = typeof gpsLocation === 'string' ? JSON.parse(gpsLocation) : gpsLocation;
                     if (Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)) gpsNote = ` · GPS locked: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
                 } catch (_) {}
                 project.progressPhotos.push({
-                    url: req.files.progressPhoto[0].location || `/uploads/projects/${req.files.progressPhoto[0].filename}`,
+                    url: photoUrl,
                     description: `${remarks || `Progress update for ${status}`}${gpsNote}`,
                     timestamp: new Date()
                 });
+                if (!project.imageUrl && project.progressPhotos.length === 1) {
+                    project.imageUrl = photoUrl;
+                }
             }
         }
         
@@ -919,7 +931,9 @@ router.put('/:id/final-bill/approval', protect, authorize('admin'), async (req, 
             await recordFinalBillWorkflow(project, bill, 'final_bill_rejected', req.user._id, { correctionRequired: Boolean(correctionRequired), remarks: bill.rejectionReason });
         }
         project.markModified('finalBills');
-        await project.save();
+        // Use a targeted update here: approval may follow the Engineer upload
+        // immediately, so avoid a stale Mongoose array-version collision.
+        await Project.updateOne({ _id: project._id }, { $set: { finalBills: project.finalBills, status: project.status } });
         res.json({ success: true, bill, message: bill.status === 'approved' ? 'Final bill approved by Approval Authority.' : correctionRequired ? 'Final bill rejected. Controlled correction and resubmission is now allowed.' : 'Final bill rejected.' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -1262,6 +1276,7 @@ router.put('/:id/final-bill/release', protect, authorize('financial_officer', 'a
         const bill = activeFinalBill(project);
         if (!bill) return res.status(404).json({ success: false, message: 'No active final bill found for this project.' });
         if (bill.financeReleased) return res.status(409).json({ success: false, message: 'Final bill payment has already been released.' });
+        normalizeApprovedBillMeta(bill);
         if (bill.status !== 'approved' || !bill.engineerVerifiedAt || !bill.approvalAuthorityAt) {
             return res.status(400).json({ success: false, message: 'Site Engineer verification and Approval Authority approval are required before Finance can release payment.' });
         }
