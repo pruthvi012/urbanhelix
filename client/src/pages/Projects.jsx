@@ -51,6 +51,9 @@ export default function Projects() {
     const [releaseForm, setReleaseForm] = useState({ accountNumber: '', ifscCode: '', bankName: '' });
     const [lightboxUrl, setLightboxUrl] = useState(null);
     const [verifyForm, setVerifyForm] = useState({ verified: true, remarks: '', photo: null, expenditureId: '' });
+    const [inspectionGps, setInspectionGps] = useState(null);
+    const [inspectionPhotoGps, setInspectionPhotoGps] = useState(null);
+    const [inspectionStatus, setInspectionStatus] = useState('');
     const [revisionForm, setRevisionForm] = useState({ newBudget: '', reason: '' });
     const [claimCode, setClaimCode] = useState('');
 
@@ -279,21 +282,54 @@ export default function Projects() {
         e.preventDefault();
         if (!verifyForm.expenditureId) { alert('Select an expenditure to verify!'); return; }
         if (verifyForm.verified && !verifyForm.photo) { alert('Physical verification photo is mandatory!'); return; }
+        if (verifyForm.verified && (!inspectionGps || !Number.isFinite(inspectionPhotoGps?.lat) || photoDistanceMetres(inspectionPhotoGps, inspectionGps) > 500)) {
+            return alert('The inspection photo does not match the GPS-locked site location. Upload a valid GPS Camera photo.');
+        }
 
         const formData = new FormData();
         formData.append('verified', verifyForm.verified);
         formData.append('remarks', verifyForm.remarks);
+        if (inspectionGps) formData.append('gpsLocation', JSON.stringify(inspectionGps));
         if (verifyForm.photo) formData.append('verificationPhoto', verifyForm.photo);
 
         try {
             await projectAPI.verifyExpenditure(selectedProject._id, verifyForm.expenditureId, formData);
             setShowVerifyModal(false);
             setVerifyForm({ verified: true, remarks: '', photo: null, expenditureId: '' });
+            setInspectionGps(null); setInspectionPhotoGps(null); setInspectionStatus('');
             loadData();
         } catch (err) { 
             console.error('Action error:', err);
             alert(`Error: ${err.response?.data?.message || err.message || 'Unknown error'}`); 
         }
+    };
+
+    const lockInspectionGps = () => {
+        if (!navigator.geolocation) return alert('Your browser does not support GPS location locking.');
+        setInspectionStatus('Locking site GPS location…');
+        navigator.geolocation.getCurrentPosition((position) => {
+            const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+            setInspectionGps(coords);
+            setInspectionStatus(`✓ Site GPS locked: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}. Upload the GPS Camera photo.`);
+        }, () => setInspectionStatus('⚠ Allow location access, then lock the site GPS again.'), { enableHighAccuracy: true, maximumAge: 0 });
+    };
+
+    const checkInspectionPhoto = async (event) => {
+        const photo = event.target.files?.[0] || null;
+        setVerifyForm({ ...verifyForm, photo }); setInspectionPhotoGps(null);
+        if (!photo) return setInspectionStatus('');
+        if (!inspectionGps) return setInspectionStatus('⚠ Lock site GPS before selecting the inspection photo.');
+        setInspectionStatus('Checking inspection photo GPS…');
+        try {
+            const { default: EXIF } = await import('exif-js');
+            let coords = await new Promise((resolve) => EXIF.getData(photo, function () { resolve({ lat: gpsDecimal(EXIF.getTag(this, 'GPSLatitude'), EXIF.getTag(this, 'GPSLatitudeRef') || 'N'), lng: gpsDecimal(EXIF.getTag(this, 'GPSLongitude'), EXIF.getTag(this, 'GPSLongitudeRef') || 'E') }); }));
+            if (!Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
+                const { recognize } = await import('tesseract.js'); const text = (await recognize(photo, 'eng'))?.data?.text || '';
+                coords = { lat: Number(text.match(/(?:latitude|lat)\s*[:\-]?\s*([+\-]?\d{1,2}(?:\.\d+)?)/i)?.[1] || text.match(/([+\-]?\d{1,2}\.\d+)\s*(?:°|[NS])/i)?.[1]), lng: Number(text.match(/(?:longitude|long|lng)\s*[:\-]?\s*([+\-]?\d{1,3}(?:\.\d+)?)/i)?.[1] || text.match(/([+\-]?\d{1,3}\.\d+)\s*(?:°|[EW])/i)?.[1]) };
+            }
+            setInspectionPhotoGps(coords); const metres = photoDistanceMetres(coords, inspectionGps);
+            setInspectionStatus(metres <= 500 ? `✓ Inspection photo matches the locked GPS (${Math.round(metres)} m away).` : '⚠ Inspection photo is from a different location. Choose a matching GPS Camera photo.');
+        } catch { setInspectionStatus('⚠ GPS could not be read. Use a GPS Camera photo with visible latitude and longitude.'); }
     };
 
     const handleRelease = async (projectId, expId) => {
@@ -1198,7 +1234,12 @@ export default function Projects() {
                             {verifyForm.verified && (
                                 <div className="form-group">
                                     <label className="form-label">📍 GPS Site Inspection Photo (Mandatory)</label>
-                                    <input className="form-input" type="file" accept="image/*" capture="environment" onChange={e => setVerifyForm({...verifyForm, photo: e.target.files[0]})} required />
+                                    <div style={{ padding: '12px', border: '1px solid #fbbf24', borderRadius: '10px', background: '#fffbeb', marginBottom: '10px' }}>
+                                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#92400e', marginBottom: '8px' }}>Core security: lock GPS, then upload a matching GPS Camera photo.</div>
+                                        <button type="button" className="btn btn-outline" onClick={lockInspectionGps} style={{ width: '100%' }}>{inspectionGps ? `GPS locked: ${inspectionGps.lat.toFixed(4)}, ${inspectionGps.lng.toFixed(4)}` : 'Lock site GPS location'}</button>
+                                    </div>
+                                    <input className="form-input" type="file" accept="image/*" capture="environment" onChange={checkInspectionPhoto} required />
+                                    {inspectionStatus && <div style={{ fontSize: '12px', fontWeight: 700, marginTop: '8px', color: inspectionStatus.startsWith('✓') ? '#047857' : '#b45309' }}>{inspectionStatus}</div>}
                                 </div>
                             )}
                             <div className="form-group">

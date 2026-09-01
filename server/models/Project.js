@@ -83,6 +83,9 @@ const projectSchema = new mongoose.Schema({
         verificationRemarks: { type: String, default: '' },
         readyForPayment: { type: Boolean, default: false },
         verificationPhotoUrl: { type: String, default: null },
+        verificationGpsLat: { type: Number, default: null },
+        verificationGpsLng: { type: Number, default: null },
+        verificationPhotoHash: { type: String, default: null },
         financeReleased: { type: Boolean, default: false },
         releasedByFinance: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
         releasedAt: { type: Date, default: null }

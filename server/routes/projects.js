@@ -894,11 +894,21 @@ router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'adm
         const exp = project.expenditures.id(req.params.expId);
         if (!exp) return res.status(404).json({ success: false, message: 'Expenditure record not found' });
 
-        const { verified, remarks } = req.body;
+        const { verified, remarks, gpsLocation } = req.body;
         const isVerified = verified === true || verified === 'true';
 
         if (isVerified && (!req.file && !exp.verificationPhotoUrl)) {
             return res.status(400).json({ success: false, message: 'Physical verification photo is mandatory for approval' });
+        }
+        let inspectionGps = null;
+        if (isVerified) {
+            try { inspectionGps = typeof gpsLocation === 'string' ? JSON.parse(gpsLocation) : gpsLocation; } catch (_) {}
+            if (!Number.isFinite(inspectionGps?.lat) || !Number.isFinite(inspectionGps?.lng)) {
+                return res.status(400).json({ success: false, message: 'Lock the site GPS location before approving this expenditure.' });
+            }
+            if (req.user.role === 'engineer' && project.engineer && project.engineer.toString() !== req.user._id.toString()) {
+                return res.status(403).json({ success: false, message: 'Only the assigned Site Engineer can approve this expenditure.' });
+            }
         }
 
         exp.engineerVerified = isVerified;
@@ -909,8 +919,20 @@ router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'adm
         
         if (req.file) {
             exp.verificationPhotoUrl = req.file.location || `/uploads/projects/${req.file.filename}`;
+            exp.verificationPhotoHash = crypto.createHash('sha256').update(req.file.buffer || req.file.location || req.file.filename).digest('hex');
         }
+        if (inspectionGps) { exp.verificationGpsLat = inspectionGps.lat; exp.verificationGpsLng = inspectionGps.lng; }
 
+        await project.save();
+
+        const verificationHash = await HashChainService.addRecord(
+            'expenditure_logged',
+            { projectId: project._id, expenditureId: exp._id, verified: isVerified, inspectionGps, verificationPhotoHash: exp.verificationPhotoHash, verifiedBy: req.user._id },
+            { entityType: 'project', entityId: project._id },
+            req.user._id
+        );
+        project.hashChainRecordId = verificationHash._id;
+        project.proofHash = verificationHash.recordHash;
         await project.save();
 
         await AuditLog.create({
