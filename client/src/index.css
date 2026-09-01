@@ -379,7 +379,8 @@ body {
 /* ─── CHATBOT / AI ASSISTANT ─── */
 .chatbot-container {
     position: fixed;
-    bottom: 24px;
+    /* Keep the assistant above the sidebar Sign Out control. */
+    bottom: 88px;
     left: 24px;
     z-index: 1000;
 }
@@ -1353,7 +1354,8 @@ body {
 /* ─── CHATBOT / AI ASSISTANT (Bottom-Left, Dark Theme) ─── */
 .chatbot-container {
     position: fixed;
-    bottom: 24px;
+    /* Keep the assistant above the sidebar Sign Out control. */
+    bottom: 88px;
     left: 24px;
     z-index: 9999;
     display: flex;
