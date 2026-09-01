@@ -23,6 +23,21 @@ const formatCurrency = (amt) => {
     return `₹${amt.toLocaleString()}`;
 };
 
+const toDecimalGps = (value, ref) => {
+    if (Number.isFinite(value)) return ['S', 'W'].includes(ref) ? -Math.abs(value) : Math.abs(value);
+    if (!value || value.length < 3) return NaN;
+    const number = (part) => typeof part === 'object' && part?.denominator ? part.numerator / part.denominator : Number(part);
+    const decimal = number(value[0]) + number(value[1]) / 60 + number(value[2]) / 3600;
+    return ['S', 'W'].includes(ref) ? -decimal : decimal;
+};
+
+const distanceInMetres = (first, second) => {
+    if (!Number.isFinite(first?.lat) || !Number.isFinite(first?.lng) || !Number.isFinite(second?.lat) || !Number.isFinite(second?.lng)) return Infinity;
+    const lat = (first.lat - second.lat) * 111_320;
+    const lng = (first.lng - second.lng) * 111_320 * Math.cos(second.lat * Math.PI / 180);
+    return Math.hypot(lat, lng);
+};
+
 export default function ContractorExpenses() {
     const { user } = useAuth();
     const [projects, setProjects] = useState([]);
@@ -33,6 +48,9 @@ export default function ContractorExpenses() {
     const [gpsLoading, setGpsLoading] = useState(false);
     const [projectCode, setProjectCode] = useState('');
     const [codeSearched, setCodeSearched] = useState(false);
+    const [lockedLocation, setLockedLocation] = useState(null);
+    const [photoLocation, setPhotoLocation] = useState(null);
+    const [photoStatus, setPhotoStatus] = useState('');
     const [form, setForm] = useState({
         date: new Date().toISOString().split('T')[0],
         invoiceDate: new Date().toISOString().split('T')[0],
@@ -66,19 +84,21 @@ export default function ContractorExpenses() {
         setProjects([]);
         try {
             // Fetch projects filtered by code for efficiency and to bypass pagination limits
-            const res = await projectAPI.getAll({ projectCode: projectCode.trim() });
+            // Fetch the contractor's own active projects as the reliable source of truth.
+            // This avoids false "invalid code" messages caused by restricted code-search results.
+            const res = await projectAPI.getAll({ contractor: user?._id || user?.id, limit: 100 });
             const allProjects = res.data.projects || [];
             
             const targetCode = projectCode.trim().toUpperCase();
             const allFound = allProjects.filter(p => 
-                (p.projectCode && p.projectCode.toUpperCase() === targetCode) || 
-                ('UHX-' + p._id.substring(18).toUpperCase() === targetCode)
+                (p.projectCode && p.projectCode.trim().toUpperCase() === targetCode) ||
+                ('UHX-' + String(p._id).slice(-6).toUpperCase() === targetCode)
             );
             
             const mine = allFound.filter(p => {
-                const contractorId = p.contractor?._id || p.contractor;
+                const contractorId = p.contractor?._id || p.contractor?.id || p.contractor;
                 const myId = user?._id || user?.id;
-                return contractorId && myId && contractorId.toString() === myId.toString();
+                return contractorId && myId && String(contractorId) === String(myId);
             });
 
             if (allFound.length > 0 && mine.length === 0) {
@@ -86,7 +106,7 @@ export default function ContractorExpenses() {
             }
 
             setProjects(mine);
-            if (mine.length === 1) setSelectedProject(mine[0]);
+            setSelectedProject(mine.length === 1 ? mine[0] : null);
         } catch (e) { 
             console.error("Search error:", e);
             setProjects([]); 
@@ -217,27 +237,87 @@ export default function ContractorExpenses() {
     const submitFinishedWork = () => {
         if (!selectedProject) return alert('Enter your assigned project code first.');
         if (!form.progressPhoto) return alert('Upload the GPS-tagged finished-work photo first.');
-        if (!navigator.geolocation) return alert('Browser GPS is required for finished-work verification.');
+        if (!lockedLocation) return alert('Click "Lock GPS location" before submitting the photo.');
+        if (!Number.isFinite(photoLocation?.lat) || !Number.isFinite(photoLocation?.lng)) return alert('Photo GPS could not be verified. Use a GPS Camera photo with clear coordinates.');
+        if (distanceInMetres(photoLocation, lockedLocation) > 500) return alert('Invalid photo location. This photo does not match the GPS-locked location. Upload a valid site photo.');
         setSubmitting(true);
-        navigator.geolocation.getCurrentPosition(async (position) => {
+        (async () => {
             try {
                 const data = new FormData();
                 data.append('status', 'verification');
                 data.append('remarks', 'Contractor finished-work evidence submitted for Site Engineer verification.');
-                data.append('gpsLocation', JSON.stringify({ lat: position.coords.latitude, lng: position.coords.longitude }));
+                data.append('gpsLocation', JSON.stringify(lockedLocation));
                 data.append('progressPhoto', form.progressPhoto);
                 await projectAPI.updateStatus(selectedProject._id, data);
                 setSuccess(true);
                 setForm({ ...form, progressPhoto: null });
+                setPhotoLocation(null);
+                setPhotoStatus('');
                 await searchProject();
             } catch (error) {
                 alert(error.response?.data?.message || 'Could not submit finished-work evidence.');
             } finally { setSubmitting(false); }
-        }, () => { setSubmitting(false); alert('Allow browser location access before uploading the site photo.'); }, { enableHighAccuracy: true, maximumAge: 0 });
+        })();
     };
 
     const openGPSCameraApp = () => {
         window.location.href = 'intent://#Intent;package=com.vcamera.roudndai;scheme=android-app;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.vcamera.roudndai;end';
+    };
+
+    const lockPhotoLocation = () => {
+        if (!navigator.geolocation) return alert('Your browser does not support location locking.');
+        setGpsLoading(true);
+        setPhotoStatus('Locking browser GPS location…');
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const nextLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+                setLockedLocation(nextLocation);
+                setGpsLoading(false);
+                setPhotoStatus(`✓ GPS locked: ${nextLocation.lat.toFixed(4)}, ${nextLocation.lng.toFixed(4)}. Upload the GPS Camera photo.`);
+            },
+            () => {
+                setGpsLoading(false);
+                setPhotoStatus('⚠ Location access was denied. Allow browser location access, then try again.');
+            },
+            { enableHighAccuracy: true, maximumAge: 0 }
+        );
+    };
+
+    const readPhotoLocation = async (image) => {
+        const { default: EXIF } = await import('exif-js');
+        const embedded = await new Promise((resolve) => EXIF.getData(image, function () {
+            resolve({
+                lat: toDecimalGps(EXIF.getTag(this, 'GPSLatitude'), EXIF.getTag(this, 'GPSLatitudeRef') || 'N'),
+                lng: toDecimalGps(EXIF.getTag(this, 'GPSLongitude'), EXIF.getTag(this, 'GPSLongitudeRef') || 'E')
+            });
+        }));
+        if (Number.isFinite(embedded.lat) && Number.isFinite(embedded.lng)) return embedded;
+        const { recognize } = await import('tesseract.js');
+        const text = (await recognize(image, 'eng'))?.data?.text || '';
+        const lat = text.match(/(?:latitude|lat)\s*[:\-]?\s*([+\-]?\d{1,2}(?:\.\d+)?)/i)?.[1]
+            || text.match(/([+\-]?\d{1,2}\.\d+)\s*(?:°|[NS])/i)?.[1];
+        const lng = text.match(/(?:longitude|long|lng)\s*[:\-]?\s*([+\-]?\d{1,3}(?:\.\d+)?)/i)?.[1]
+            || text.match(/([+\-]?\d{1,3}\.\d+)\s*(?:°|[EW])/i)?.[1];
+        return { lat: Number(lat), lng: Number(lng) };
+    };
+
+    const handleFinishedWorkPhoto = async (event) => {
+        const image = event.target.files?.[0] || null;
+        setForm({ ...form, progressPhoto: image });
+        setPhotoLocation(null);
+        if (!image) return setPhotoStatus('');
+        if (!lockedLocation) return setPhotoStatus('⚠ Lock the browser GPS location first, then upload the GPS Camera photo.');
+        setPhotoStatus('Checking the photo GPS location…');
+        try {
+            const detected = await readPhotoLocation(image);
+            setPhotoLocation(detected);
+            const distance = distanceInMetres(detected, lockedLocation);
+            setPhotoStatus(distance <= 500
+                ? `✓ Photo matches the locked GPS location (${Math.round(distance)} m away). You can submit.`
+                : '⚠ Photo GPS does not match the locked location. Choose a different photo.');
+        } catch {
+            setPhotoStatus('⚠ GPS location could not be read. Use a GPS Camera photo with clear latitude and longitude.');
+        }
     };
 
     if (user?.role === 'contractor') {
@@ -246,7 +326,17 @@ export default function ContractorExpenses() {
             <div className="glass-card" style={{ padding: '28px' }}>
                 <div className="form-group"><label className="form-label">Assigned project code</label><div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}><input className="form-input" placeholder="UHX-XXXXXX" value={projectCode} onChange={(event) => { setProjectCode(event.target.value.toUpperCase()); setCodeSearched(false); }} style={{ flex: '1 1 260px', margin: 0 }} /><button className="btn btn-primary" type="button" onClick={searchProject}>Find project</button></div></div>
                 {codeSearched && !loading && !selectedProject && <div style={{ color: 'var(--accent-rose)', fontWeight: 700 }}>No assigned project was found for this code.</div>}
-                {selectedProject && <><div style={{ padding: '14px', background: 'var(--bg-subtle)', borderRadius: '10px', marginBottom: '18px' }}><strong>{selectedProject.title}</strong><div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>Status: {selectedProject.status.replace('_', ' ')}</div></div><div style={{ padding: '16px', background: 'var(--bg-glass)', border: '1px solid var(--accent-orange)', borderRadius: '10px', marginBottom: '16px' }}><div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}><strong style={{ color: 'var(--accent-orange)' }}>⚠ Location verification required.</strong><br />Use GPS Camera on a phone, or for this laptop demo upload the GPS Camera photo after the browser locks your current location.</div><button type="button" className="btn btn-primary" onClick={openGPSCameraApp} style={{ width: '100%', marginBottom: '14px' }}>📸 Open / Download GPS Camera App</button><div className="form-group" style={{ marginBottom: 0 }}><label className="form-label">Attach your finished-work photo</label><input className="form-input" type="file" accept="image/*" capture="environment" onChange={(event) => setForm({ ...form, progressPhoto: event.target.files?.[0] || null })} required />{form.progressPhoto && <div style={{ marginTop: '8px', color: 'var(--accent-green)', fontWeight: 700, fontSize: '13px' }}>✓ {form.progressPhoto.name} selected</div>}</div></div><div style={{ padding: '12px', background: 'var(--accent-amber-light)', borderRadius: '8px', fontSize: '12px', marginBottom: '16px' }}>Your browser will lock the current site location when you submit. The Site Engineer must later upload a matching field-verification photo before payment can be released.</div><button className="btn btn-primary" type="button" disabled={submitting || selectedProject.status === 'verification' || selectedProject.status === 'completed'} onClick={submitFinishedWork}>{submitting ? 'Uploading site evidence…' : selectedProject.status === 'verification' ? 'Awaiting Site Engineer verification' : selectedProject.status === 'completed' ? 'Project already completed' : 'Upload finished-work photo'}</button></>}
+                {selectedProject && <>
+                    <div style={{ padding: '14px', background: 'var(--bg-subtle)', borderRadius: '10px', marginBottom: '18px' }}><strong>{selectedProject.title}</strong><div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>Status: {selectedProject.status.replace('_', ' ')}</div></div>
+                    <div style={{ padding: '16px', background: 'var(--bg-glass)', border: '1px solid var(--accent-orange)', borderRadius: '10px', marginBottom: '16px' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}><strong style={{ color: 'var(--accent-orange)' }}>⚠ Location verification required.</strong><br />This works exactly like the citizen grievance upload: lock browser GPS, then attach a GPS Camera photo. For a laptop demo, select an existing GPS Camera image.</div>
+                        <button type="button" className="btn btn-outline" onClick={lockPhotoLocation} disabled={gpsLoading} style={{ width: '100%', marginBottom: '10px' }}>📍 {gpsLoading ? 'Locking GPS…' : lockedLocation ? `GPS locked: ${lockedLocation.lat.toFixed(4)}, ${lockedLocation.lng.toFixed(4)}` : 'Lock GPS location'}</button>
+                        <button type="button" className="btn btn-primary" onClick={openGPSCameraApp} style={{ width: '100%', marginBottom: '14px' }}>📸 Open / Download GPS Camera App</button>
+                        <div className="form-group" style={{ marginBottom: 0 }}><label className="form-label">Attach your finished-work photo</label><input className="form-input" type="file" accept="image/*" capture="environment" onChange={handleFinishedWorkPhoto} required />{form.progressPhoto && <div style={{ marginTop: '8px', color: 'var(--accent-green)', fontWeight: 700, fontSize: '13px' }}>✓ {form.progressPhoto.name} selected</div>}{photoStatus && <div style={{ fontSize: '12px', fontWeight: 700, marginTop: '10px', color: photoStatus.startsWith('✓') ? '#047857' : '#b45309' }}>{photoStatus}</div>}</div>
+                    </div>
+                    <div style={{ padding: '12px', background: 'var(--accent-amber-light)', borderRadius: '8px', fontSize: '12px', marginBottom: '16px' }}>Only photos that match the GPS-locked location can be submitted. The Site Engineer must later upload a matching field-verification photo before payment can be released.</div>
+                    <button className="btn btn-primary" type="button" disabled={submitting || selectedProject.status === 'verification' || selectedProject.status === 'completed'} onClick={submitFinishedWork}>{submitting ? 'Uploading site evidence…' : selectedProject.status === 'verification' ? 'Awaiting Site Engineer verification' : selectedProject.status === 'completed' ? 'Project already completed' : 'Upload finished-work photo'}</button>
+                </>}
             </div>
         </div>;
     }

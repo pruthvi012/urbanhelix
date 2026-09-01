@@ -65,7 +65,7 @@ REASON: [Your brief reason]`;
 
 const calculateEntryHash = (data) => {
     const { amount, date, invoiceUrl, vendor, progressPhotoUrl } = data;
-    const str = `${amount}|${}|${new Date(date).toISOString()}|${invoiceUrl}|${vendor}|${progressPhotoUrl||''}`;
+    const str = `${amount}|${new Date(date).toISOString()}|${invoiceUrl}|${vendor}|${progressPhotoUrl||''}`;
     return crypto.createHash('sha256').update(str).digest('hex');
 };
 
@@ -552,6 +552,9 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
         const { status, remarks, gpsLocation } = req.body;
 
         if (req.user.role === 'contractor') {
+            if (!project.contractor || project.contractor.toString() !== req.user._id.toString()) {
+                return res.status(403).json({ success: false, message: 'You can upload evidence only for a project assigned to your contractor account.' });
+            }
             if (status !== 'verification') return res.status(403).json({ success: false, message: 'Contractors can only submit finished work for Site Engineer verification.' });
             if (!req.files?.progressPhoto?.length) return res.status(400).json({ success: false, message: 'A GPS-tagged finished-work photo is required.' });
             if (!gpsLocation) return res.status(400).json({ success: false, message: 'Lock browser GPS before uploading finished-work evidence.' });
@@ -848,7 +851,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             action: 'log_expenditure',
             resourceType: 'project',
             resourceId: project._id,
-            details: `Project "${project.title}" (${project.projectCode}): Logged tamper-proof expenditure: ₹${expAmount.toLocaleString()} for ${} from ${vendor}. Awaiting engineer verification.`,
+            details: `Project "${project.title}" (${project.projectCode}): Logged tamper-proof expenditure: ₹${expAmount.toLocaleString()} from ${vendor}. Awaiting engineer verification.`,
         });
 
         // Notify assigned engineer for cross-verification
@@ -856,7 +859,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             await notificationService.sendPushNotification(
                 project.engineer._id || project.engineer,
                 '🔍 Expense Needs Physical Verification',
-                `Contractor logged ₹${expAmount.toLocaleString()} for "${}" on project "${project.title}". Please visit site and verify physically.`,
+                `Contractor logged ₹${expAmount.toLocaleString()} on project "${project.title}". Please visit site and verify physically.`,
                 { type: 'system', relatedEntity: { entityType: 'Project', entityId: project._id } }
             );
         }
@@ -865,7 +868,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
         await notificationService.sendPushNotification(
             req.user._id,
             '✅ Expense Logged (Pending Review)',
-            `Your expenditure of ₹${expAmount.toLocaleString()} for "${}" has been submitted. It is now waiting for the Engineer's physical verification.`,
+            `Your expenditure of ₹${expAmount.toLocaleString()} has been submitted. It is now waiting for the Engineer's physical verification.`,
             { type: 'system', relatedEntity: { entityType: 'Project', entityId: project._id } }
         );
 
