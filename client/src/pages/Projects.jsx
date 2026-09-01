@@ -859,11 +859,11 @@ export default function Projects() {
                                                         {(['engineer', 'admin', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && p.contractor?._id === user?._id)) && (
                                                             <td>
                                                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                                                    {user?.role === 'admin' && p.status === 'proposed' && (
+                                                                    {user?.role === 'admin' && ['proposed', 'approved', 'in_progress', 'verification'].includes(p.status) && (
                                                                         <>
-                                                                            {p.budgetEstimateProofUrl && <button className="btn btn-outline btn-sm" style={{ borderColor: 'var(--accent-blue)', color: 'var(--accent-blue)' }} onClick={() => setLightboxUrl(p.budgetEstimateProofUrl)}>🖼 View Evidence</button>}
+                                                                            {p.budgetEstimateProofUrl && <button className="btn btn-outline btn-sm" style={{ borderColor: 'var(--accent-blue)', color: 'var(--accent-blue)' }} onClick={() => window.open(p.budgetEstimateProofUrl.startsWith('http') ? p.budgetEstimateProofUrl : `${window.location.origin}${p.budgetEstimateProofUrl}`, '_blank', 'noopener,noreferrer')}>🖼 View Budget PDF</button>}
                                                                             <input className="form-input" type="number" min="1" max={p.estimatedBudget} value={allocationDrafts[p._id] ?? ''} placeholder="Budget allocation (₹)" onChange={(event) => setAllocationDrafts({ ...allocationDrafts, [p._id]: event.target.value })} style={{ width: '150px', padding: '7px 9px' }} aria-label="Budget allocation amount" />
-                                                                            <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Approve</button>
+                                                                            <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Proceed</button>
                                                                             <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
                                                                         </>
                                                                     )}

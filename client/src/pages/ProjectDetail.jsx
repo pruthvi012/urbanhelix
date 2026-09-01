@@ -164,6 +164,15 @@ export default function ProjectDetail() {
 
     const beforePhotoUrl = project?.imageUrl || project?.progressPhotos?.[0]?.url || null;
     const afterPhotoUrl = project?.progressPhotos?.length ? project.progressPhotos[project.progressPhotos.length - 1].url : project?.imageUrl || null;
+    const budgetProofUrl = project?.budgetEstimateProofUrl ? (project.budgetEstimateProofUrl.startsWith('http') ? project.budgetEstimateProofUrl : `${window.location.origin}${project.budgetEstimateProofUrl}`) : null;
+
+    const openBudgetProof = () => {
+        if (!budgetProofUrl) {
+            alert('No budget proof file is attached to this project yet.');
+            return;
+        }
+        window.open(budgetProofUrl, '_blank', 'noopener,noreferrer');
+    };
 
     const formatCurrency = (amt) => {
         if (!amt) return '₹0';
@@ -311,10 +320,11 @@ export default function ProjectDetail() {
             {(['engineer', 'admin', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && project.contractor?._id === user?._id)) && (
                 <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>ACTIONS:</span>
-                    {user?.role === 'admin' && project.status === 'proposed' && (
+                    {user?.role === 'admin' && ['proposed', 'approved', 'in_progress', 'verification'].includes(project.status) && (
                         <>
-                            <button className="btn btn-success btn-sm" onClick={handleApprove}>Approve Project</button>
-                            <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject Project</button>
+                            {budgetProofUrl && <button className="btn btn-outline btn-sm" onClick={openBudgetProof}>View Budget PDF</button>}
+                            <button className="btn btn-success btn-sm" onClick={handleApprove}>Proceed</button>
+                            <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject</button>
                         </>
                     )}
                     {['engineer', 'admin'].includes(user?.role) && ['approved', 'in_progress'].includes(project.status) && !project.contractor && (
@@ -410,10 +420,10 @@ export default function ProjectDetail() {
                             </div>
                         )}
                         <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                            {project.budgetEstimateProofUrl && (
-                                <a href={`${project.budgetEstimateProofUrl}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{ flex: 1 }}>
-                                    <FiImage /> View Budget Proof
-                                </a>
+                            {budgetProofUrl && (
+                                <button type="button" onClick={openBudgetProof} className="btn btn-outline btn-sm" style={{ flex: 1 }}>
+                                    <FiImage /> View Budget PDF
+                                </button>
                             )}
                             {project.reportUrl && (
                                 <a href={`${project.reportUrl}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{ flex: 1 }}>
