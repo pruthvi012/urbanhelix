@@ -36,7 +36,7 @@ export default function ContractorExpenses() {
     const [form, setForm] = useState({
         date: new Date().toISOString().split('T')[0],
         invoiceDate: new Date().toISOString().split('T')[0],
-        amount: '', material: '', vendor: '', remarks: '',
+        amount: '', vendor: '', remarks: '',
         invoice: null, progressPhoto: null
     });
     const location = useLocation();
@@ -108,7 +108,6 @@ export default function ContractorExpenses() {
         formData.append('date', form.date);
         formData.append('invoiceDate', form.invoiceDate);
         formData.append('amount', form.amount);
-        formData.append('material', form.material);
         formData.append('vendor', form.vendor);
         formData.append('remarks', form.remarks);
         formData.append('invoice', form.invoice);
@@ -185,7 +184,7 @@ export default function ContractorExpenses() {
 
             if (apiSucceeded) {
                 setSuccess(true);
-                setForm({ date: new Date().toISOString().split('T')[0], invoiceDate: new Date().toISOString().split('T')[0], amount: '', material: '', vendor: '', remarks: '', invoice: null, progressPhoto: null });
+                setForm({ date: new Date().toISOString().split('T')[0], invoiceDate: new Date().toISOString().split('T')[0], amount: '', vendor: '', remarks: '', invoice: null, progressPhoto: null });
                 window.scrollTo({ top: 0, behavior: 'smooth' });
                 
                 // Try to refresh from backend
@@ -356,14 +355,6 @@ export default function ContractorExpenses() {
                                 </div>
                             )}
 
-                            {/* Material */}
-                            <div className="form-group">
-                                <label className="form-label">
-                                    📦 Material / Expense Type
-                                </label>
-                                <input className="form-input" type="text" placeholder="e.g. Cement, Machinery Rental, Labour" value={form.material} onChange={e => setForm({ ...form, material: e.target.value })} required />
-                            </div>
-
                             {/* Vendor */}
                             <div className="form-group">
                                 <label className="form-label">🏢 Vendor / Supplier Name</label>
@@ -394,9 +385,17 @@ export default function ContractorExpenses() {
                                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <FiCamera /> Site Progress Photo <span style={{ color: 'var(--accent-red)', fontSize: '11px' }}>*Mandatory</span>
                                 </label>
+                                <button
+                                    type="button"
+                                    className="btn btn-primary"
+                                    onClick={() => window.open('intent://#Intent;package=com.vcamera.roudndai;scheme=android-app;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.vcamera.roudndai;end', '_blank')}
+                                    style={{ width: '100%', marginBottom: '12px', fontSize: '13px', background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                                >
+                                    📍 Open GPS Camera App
+                                </button>
                                 <input className="form-input" type="file" accept="image/*" capture="environment" onChange={e => setForm({ ...form, progressPhoto: e.target.files[0] })} required style={{ border: 'none', background: 'transparent', padding: '4px 0' }} />
                                 {form.progressPhoto && <div style={{ fontSize: '12px', color: 'var(--accent-green)', marginTop: '6px' }}>✅ {form.progressPhoto.name}</div>}
-                                <small style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Take a live photo at the actual work site. Location must match the project ward to prevent fake submissions.</small>
+                                <small style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Use the GPS Camera App to take a geotagged photo at the actual work site. Location must match the project ward.</small>
                             </div>
 
 
@@ -435,14 +434,13 @@ export default function ContractorExpenses() {
                             <div className="table-container">
                                 <table className="table">
                                     <thead>
-                                        <tr><th>Date</th><th>Material</th><th>Vendor</th><th>Amount</th><th>Invoice</th><th>Engineer Status</th></tr>
+                                        <tr><th>Date</th><th>Vendor</th><th>Amount</th><th>Invoice</th><th>Engineer Status</th></tr>
                                     </thead>
                                     <tbody>
                                         {[...selectedProject.expenditures].reverse().map((exp) => (
                                             <tr key={exp._id}>
                                                 <td style={{ fontSize: '13px' }}>{new Date(exp.date).toLocaleDateString()}</td>
-                                                <td style={{ fontWeight: 600 }}>{exp.material}</td>
-                                                <td style={{ fontSize: '13px' }}>{exp.vendor}</td>
+                                                <td style={{ fontWeight: 600 }}>{exp.vendor}</td>
                                                 <td style={{ fontWeight: 700, color: 'var(--accent-red)' }}>{formatCurrency(exp.amount)}</td>
                                                 <td><a href={exp.invoiceUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent-blue)', textDecoration: 'none' }}>📄 View</a></td>
 

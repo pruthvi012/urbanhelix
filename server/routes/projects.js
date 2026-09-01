@@ -64,8 +64,8 @@ REASON: [Your brief reason]`;
 }
 
 const calculateEntryHash = (data) => {
-    const { amount, material, date, invoiceUrl, vendor, progressPhotoUrl } = data;
-    const str = `${amount}|${material}|${new Date(date).toISOString()}|${invoiceUrl}|${vendor}|${progressPhotoUrl||''}`;
+    const { amount, date, invoiceUrl, vendor, progressPhotoUrl } = data;
+    const str = `${amount}|${}|${new Date(date).toISOString()}|${invoiceUrl}|${vendor}|${progressPhotoUrl||''}`;
     return crypto.createHash('sha256').update(str).digest('hex');
 };
 
@@ -204,7 +204,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
             for (const exp of project.expenditures) {
                 const currentHash = calculateEntryHash({
                     amount: exp.amount,
-                    material: exp.material,
+                    
                     date: exp.date,
                     invoiceUrl: exp.invoiceUrl,
                     vendor: exp.vendor,
@@ -754,10 +754,10 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
         const project = await Project.findById(req.params.id).populate('engineer', 'name _id');
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        const { date, invoiceDate, amount, material, vendor, remarks } = req.body;
+        const { date, invoiceDate, amount, vendor, remarks } = req.body;
 
-        if (!date || !invoiceDate || !amount || !material || !vendor) {
-            return res.status(400).json({ success: false, message: 'All fields (date, invoiceDate, amount, material, vendor) are required' });
+        if (!date || !invoiceDate || !amount || !vendor) {
+            return res.status(400).json({ success: false, message: 'All fields (date, invoiceDate, amount, vendor) are required' });
         }
 
         // Robust file check
@@ -805,7 +805,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
 
         // Calculate Cryptographic Hash including all fields
         const entryHash = calculateEntryHash({
-            amount: expAmount, material, date, invoiceUrl, vendor,
+            amount: expAmount, date, invoiceUrl, vendor,
             progressPhotoUrl
         });
 
@@ -814,7 +814,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             date: new Date(date),
             invoiceDate: new Date(invoiceDate),
             amount: expAmount,
-            material,
+           
             vendor,
             invoiceUrl,
             progressPhotoUrl,
@@ -831,7 +831,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
         try {
             const hashRecord = await HashChainService.addRecord(
                 'expenditure_logged',
-                { projectId: project._id, projectCode: project.projectCode, amount: expAmount, material, vendor, entryHash, loggedBy: req.user.name },
+                { projectId: project._id, projectCode: project.projectCode, amount: expAmount, vendor, entryHash, loggedBy: req.user.name },
                 { entityType: 'project', entityId: project._id },
                 req.user._id
             );
@@ -848,7 +848,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             action: 'log_expenditure',
             resourceType: 'project',
             resourceId: project._id,
-            details: `Project "${project.title}" (${project.projectCode}): Logged tamper-proof expenditure: ₹${expAmount.toLocaleString()} for ${material} from ${vendor}. Awaiting engineer verification.`,
+            details: `Project "${project.title}" (${project.projectCode}): Logged tamper-proof expenditure: ₹${expAmount.toLocaleString()} for ${} from ${vendor}. Awaiting engineer verification.`,
         });
 
         // Notify assigned engineer for cross-verification
@@ -856,7 +856,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             await notificationService.sendPushNotification(
                 project.engineer._id || project.engineer,
                 '🔍 Expense Needs Physical Verification',
-                `Contractor logged ₹${expAmount.toLocaleString()} for "${material}" on project "${project.title}". Please visit site and verify physically.`,
+                `Contractor logged ₹${expAmount.toLocaleString()} for "${}" on project "${project.title}". Please visit site and verify physically.`,
                 { type: 'system', relatedEntity: { entityType: 'Project', entityId: project._id } }
             );
         }
@@ -865,7 +865,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
         await notificationService.sendPushNotification(
             req.user._id,
             '✅ Expense Logged (Pending Review)',
-            `Your expenditure of ₹${expAmount.toLocaleString()} for "${material}" has been submitted. It is now waiting for the Engineer's physical verification.`,
+            `Your expenditure of ₹${expAmount.toLocaleString()} for "${}" has been submitted. It is now waiting for the Engineer's physical verification.`,
             { type: 'system', relatedEntity: { entityType: 'Project', entityId: project._id } }
         );
 
@@ -908,7 +908,7 @@ router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'adm
             action: 'verify_expenditure',
             resourceType: 'project',
             resourceId: project._id,
-            details: `Engineer ${exp.engineerVerified ? 'VERIFIED ✅' : 'REJECTED ❌'} expenditure of ₹${exp.amount.toLocaleString()} for ${exp.material}. Remarks: ${remarks || 'None'}`,
+            details: `Engineer ${exp.engineerVerified ? 'VERIFIED ✅' : 'REJECTED ❌'} expenditure of ₹${exp.amount.toLocaleString()} for ${exp.vendor}. Remarks: ${remarks || 'None'}`,
         });
 
         // Notify Contractor of verification result
@@ -916,8 +916,8 @@ router.put('/:id/expenditure/:expId/verify', protect, authorize('engineer', 'adm
             exp.recordedBy,
             exp.engineerVerified ? '✅ Expense Verified' : '❌ Expense Rejected',
             exp.engineerVerified 
-                ? `Your expense for "${exp.material}" (₹${exp.amount.toLocaleString()}) has been verified. It is now queued for Finance payment.`
-                : `Your expense for "${exp.material}" has been rejected by the Engineer. Reason: ${remarks}`,
+                ? `Your expense for "${exp.vendor}" (₹${exp.amount.toLocaleString()}) has been verified. It is now queued for Finance payment.`
+                : `Your expense for "${exp.vendor}" has been rejected by the Engineer. Reason: ${remarks}`,
             { type: 'system', relatedEntity: { entityType: 'Project', entityId: project._id } }
         );
 
@@ -962,7 +962,7 @@ router.put('/:id/expenditure/:expId/release', protect, authorize('financial_offi
         try {
             await HashChainService.addRecord(
                 'payment_released',
-                { projectId: project._id, amount: exp.amount, material: exp.material, account: req.body.accountNumber, releasedBy: req.user.name },
+                { projectId: project._id, amount: exp.amount, account: req.body.accountNumber, releasedBy: req.user.name },
                 { entityType: 'project', entityId: project._id },
                 req.user._id
             );
@@ -975,7 +975,7 @@ router.put('/:id/expenditure/:expId/release', protect, authorize('financial_offi
             action: 'disburse',
             resourceType: 'project',
             resourceId: project._id,
-            details: `Finance RELEASED payment: ₹${exp.amount.toLocaleString()} to A/C ${req.body.accountNumber || 'N/A'} for ${exp.material} on project ${project.title}`,
+            details: `Finance RELEASED payment: ₹${exp.amount.toLocaleString()} to A/C ${req.body.accountNumber || 'N/A'} for ${exp.vendor} on project ${project.title}`,
         });
 
         // Notify Contractor
@@ -983,7 +983,7 @@ router.put('/:id/expenditure/:expId/release', protect, authorize('financial_offi
             await notificationService.sendPushNotification(
                 project.contractor._id || project.contractor,
                 '💰 Payment Released!',
-                `BBMP Finance has released ₹${exp.amount.toLocaleString()} for "${exp.material}" to your bank account.`,
+                `BBMP Finance has released ₹${exp.amount.toLocaleString()} for "${exp.vendor}" to your bank account.`,
                 { type: 'system', relatedEntity: { entityType: 'Project', entityId: project._id } }
             );
         }
