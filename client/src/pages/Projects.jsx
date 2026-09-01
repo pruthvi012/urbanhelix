@@ -800,6 +800,7 @@ export default function Projects() {
                                                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                                                     {user?.role === 'admin' && p.status === 'proposed' && (
                                                                         <>
+                                                                            {p.budgetEstimateProofUrl && <button className="btn btn-outline btn-sm" style={{ borderColor: 'var(--accent-blue)', color: 'var(--accent-blue)' }} onClick={() => setLightboxUrl(p.budgetEstimateProofUrl)}>🖼 View Evidence</button>}
                                                                             <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget)}>Approve</button>
                                                                             <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
                                                                         </>
