@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { projectAPI, milestoneAPI, auditAPI, authAPI } from '../services/api';
 import { FiMapPin, FiClock, FiShield, FiFileText, FiImage, FiTrendingUp, FiActivity, FiDollarSign } from 'react-icons/fi';
+import { jsPDF } from 'jspdf';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProjectDetail() {
@@ -169,11 +170,24 @@ export default function ProjectDetail() {
     const budgetProofUrl = project?.budgetEstimateProofUrl ? (project.budgetEstimateProofUrl.startsWith('http') ? project.budgetEstimateProofUrl : `${window.location.origin}${project.budgetEstimateProofUrl}`) : null;
 
     const openBudgetProof = () => {
-        if (!budgetProofUrl) {
-            alert('No budget proof file is attached to this project yet.');
+        // Older demo records sometimes have a GPS image in this field. Never
+        // present that image as a budget document; open real PDFs only.
+        if (budgetProofUrl && /\.pdf(?:$|[?#])/i.test(budgetProofUrl)) {
+            window.open(budgetProofUrl, '_blank', 'noopener,noreferrer');
             return;
         }
-        window.open(budgetProofUrl, '_blank', 'noopener,noreferrer');
+        if (!project) return;
+        const doc = new jsPDF();
+        doc.setFontSize(18); doc.text('UrbanHelix — Budget Allocation', 20, 22);
+        doc.setFontSize(12);
+        doc.text(`Project: ${project.title || 'Untitled project'}`, 20, 38);
+        doc.text(`Project code: ${project.projectCode || 'N/A'}`, 20, 48);
+        doc.text(`Location: ${project.location?.area || ''}, Ward ${project.location?.wardNo || project.location?.ward || 'N/A'}`, 20, 58);
+        doc.text(`Proposed budget: Rs. ${Number(project.estimatedBudget || 0).toLocaleString('en-IN')}`, 20, 72);
+        doc.text(`Allocated budget: Rs. ${Number(project.allocatedBudget || 0).toLocaleString('en-IN')}`, 20, 82);
+        doc.text(`Status: ${project.status || 'N/A'}`, 20, 92);
+        doc.text('This document contains the approved budget record.', 20, 112);
+        window.open(URL.createObjectURL(doc.output('blob')), '_blank', 'noopener,noreferrer');
     };
 
     const formatCurrency = (amt) => {
