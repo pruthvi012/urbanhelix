@@ -101,22 +101,29 @@ export default function ProjectDetail() {
         }
     };
 
-    const handleUpdateStatus = async () => {
-        const status = prompt('Enter new status (in_progress, verification, completed):');
-        if (!status) return;
-        const remarks = prompt('Remarks:');
+    const handleUpdateStatus = async (status) => {
+        const remarks = prompt('Site visit / completion remarks:');
+        if (!progressFile) return alert('Upload the GPS-tagged work photo first.');
 
-        const formData = new FormData();
-        formData.append('status', status);
-        formData.append('remarks', remarks || '');
-        if (reportFile) formData.append('report', reportFile);
-        if (progressFile) formData.append('progressPhoto', progressFile);
-
-        try {
+        const submitStatus = async (coords) => {
+            const formData = new FormData();
+            formData.append('status', status);
+            formData.append('remarks', remarks || '');
+            formData.append('gpsLocation', JSON.stringify(coords));
+            if (reportFile) formData.append('report', reportFile);
+            if (progressFile) formData.append('progressPhoto', progressFile);
             await projectAPI.updateStatus(id, formData);
             setReportFile(null);
             setProgressFile(null);
             loadData();
+        };
+        try {
+            if (!navigator.geolocation) return alert('Browser GPS is required for this site evidence.');
+            navigator.geolocation.getCurrentPosition(
+                (position) => submitStatus({ lat: position.coords.latitude, lng: position.coords.longitude }).catch((err) => alert(err.response?.data?.message || 'Error updating status')),
+                () => alert('Allow browser location access before uploading site evidence.'),
+                { enableHighAccuracy: true, maximumAge: 0 }
+            );
         } catch (err) { alert(err.response?.data?.message || 'Error updating status'); }
     };
 
@@ -282,19 +289,14 @@ export default function ProjectDetail() {
                         ['approved', 'in_progress', 'verification'].includes(project.status) && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '10px', marginBottom: 0 }}>Progress Photo</label>
+                                    <label className="form-label" style={{ fontSize: '10px', marginBottom: 0 }}>{user?.role === 'contractor' ? 'GPS-tagged finished-work photo' : 'GPS-tagged Site Engineer verification photo'}</label>
                                     <input type="file" onChange={(e) => setProgressFile(e.target.files[0])} style={{ fontSize: '11px' }} />
                                 </div>
-                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                {user?.role !== 'contractor' && <div className="form-group" style={{ marginBottom: 0 }}>
                                     <label className="form-label" style={{ fontSize: '10px', marginBottom: 0 }}>Bill / Report PDF</label>
                                     <input type="file" onChange={(e) => setReportFile(e.target.files[0])} style={{ fontSize: '11px' }} />
-                                </div>
-                                <button className="btn btn-outline btn-sm" onClick={handleUpdateStatus}>Update Progress</button>
-                                {user?.role === 'contractor' && (
-                                    <button className="btn btn-primary btn-sm" onClick={() => setShowExpenseModal(true)}>
-                                        <FiDollarSign /> Log Material Expense
-                                    </button>
-                                )}
+                                </div>}
+                                {user?.role === 'contractor' ? <button className="btn btn-primary btn-sm" onClick={() => handleUpdateStatus('verification')}>Submit finished work for engineer verification</button> : user?.role === 'engineer' && project.status === 'verification' ? <button className="btn btn-success btn-sm" onClick={() => handleUpdateStatus('completed')}>Verify on site & mark completed</button> : <button className="btn btn-outline btn-sm" onClick={() => handleUpdateStatus('in_progress')}>Upload ongoing work update</button>}
                             </div>
                         )}
                     {user?.role === 'admin' && (

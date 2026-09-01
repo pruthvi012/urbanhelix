@@ -549,7 +549,18 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        const { status, remarks } = req.body;
+        const { status, remarks, gpsLocation } = req.body;
+
+        if (req.user.role === 'contractor') {
+            if (status !== 'verification') return res.status(403).json({ success: false, message: 'Contractors can only submit finished work for Site Engineer verification.' });
+            if (!req.files?.progressPhoto?.length) return res.status(400).json({ success: false, message: 'A GPS-tagged finished-work photo is required.' });
+            if (!gpsLocation) return res.status(400).json({ success: false, message: 'Lock browser GPS before uploading finished-work evidence.' });
+        }
+        if (req.user.role === 'engineer' && status === 'completed') {
+            if (project.status !== 'verification') return res.status(400).json({ success: false, message: 'Contractor completion evidence must be submitted before engineer completion verification.' });
+            if (!req.files?.progressPhoto?.length) return res.status(400).json({ success: false, message: 'A GPS-tagged Site Engineer verification photo is required.' });
+            if (!gpsLocation) return res.status(400).json({ success: false, message: 'Lock browser GPS before uploading Site Engineer evidence.' });
+        }
 
         project.status = status;
         if (status === 'completed') project.actualEndDate = new Date();
@@ -558,9 +569,14 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
         if (req.files) {
             if (req.files.report) project.reportUrl = req.files.report[0].location || `/uploads/projects/${req.files.report[0].filename}`;
             if (req.files.progressPhoto) {
+                let gpsNote = '';
+                try {
+                    const coords = typeof gpsLocation === 'string' ? JSON.parse(gpsLocation) : gpsLocation;
+                    if (Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)) gpsNote = ` · GPS locked: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
+                } catch (_) {}
                 project.progressPhotos.push({
                     url: req.files.progressPhoto[0].location || `/uploads/projects/${req.files.progressPhoto[0].filename}`,
-                    description: remarks || `Progress update for ${status}`,
+                    description: `${remarks || `Progress update for ${status}`}${gpsNote}`,
                     timestamp: new Date()
                 });
             }
@@ -922,6 +938,9 @@ router.put('/:id/expenditure/:expId/release', protect, authorize('financial_offi
 
         if (!exp.readyForPayment) {
             return res.status(400).json({ success: false, message: 'Expenditure must be verified by an Engineer before release' });
+        }
+        if (project.status !== 'completed') {
+            return res.status(400).json({ success: false, message: 'Payment can be released only after the Site Engineer has verified the completed project.' });
         }
 
         exp.financeReleased = true;

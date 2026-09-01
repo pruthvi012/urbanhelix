@@ -492,6 +492,13 @@ export default function Projects() {
                 <p className="page-subtitle">Municipal infrastructure projects lifecycle</p>
             </div>
 
+            {user?.role === 'engineer' && (
+                <div className="grid-2" style={{ marginBottom: '20px' }}>
+                    <div className="glass-card" style={{ marginBottom: 0, borderLeft: '5px solid var(--accent-blue)' }}><div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Ongoing projects</div><div style={{ fontSize: '28px', fontWeight: 800, marginTop: '6px' }}>{projects.filter((p) => ['approved', 'in_progress', 'verification'].includes(p.status)).length}</div><p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>Track contractor work and field verification.</p></div>
+                    <div className="glass-card" style={{ marginBottom: 0, borderLeft: '5px solid var(--accent-green)' }}><div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Finished projects</div><div style={{ fontSize: '28px', fontWeight: 800, marginTop: '6px' }}>{projects.filter((p) => p.status === 'completed').length}</div><p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>Site Engineer GPS evidence verified.</p></div>
+                </div>
+            )}
+
             {user?.role === 'contractor' && (
                 <div className="glass-card" style={{ padding: '24px', marginBottom: '32px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>

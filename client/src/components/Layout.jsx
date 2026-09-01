@@ -15,7 +15,7 @@ const ROLES = [
     { key: 'contractor', label: 'Contractor', desc: 'Civil works execution', email: 'vikram@contractor.com', icon: <FiBriefcase /> },
     { key: 'engineer', label: 'Site Engineer', desc: 'Technical & field audit', email: 'rajesh.engineer@urbanhelix.gov', icon: <FiTool /> },
     { key: 'financial_officer', label: 'Financial Officer', desc: 'Treasury & escrow release', email: 'sunita.finance@urbanhelix.gov', icon: <FiDollarSign /> },
-    { key: 'admin', label: 'City Admin', desc: 'Municipal governance', email: 'admin@urbanhelix.gov', icon: <FiUserCheck /> }
+    { key: 'admin', label: 'Authorized Approving Officer', desc: 'Project approval & oversight', email: 'admin@urbanhelix.gov', icon: <FiUserCheck /> }
 ];
 
 const NAV_LINKS = [

@@ -215,6 +215,13 @@ export default function ContractorExpenses() {
     const materials = selectedProject ? (CATEGORY_MATERIALS[selectedProject.category] || CATEGORY_MATERIALS.other) : [];
     const remaining = selectedProject ? (selectedProject.allocatedBudget || selectedProject.estimatedBudget) - selectedProject.spentBudget : 0;
 
+    if (user?.role === 'contractor') {
+        return <div className="glass-card" style={{ maxWidth: '760px', padding: '28px' }}>
+            <h2 style={{ marginBottom: '8px' }}>Finished-work submission</h2>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>Material expense entry is not available for contractor accounts. Open your assigned project and upload the GPS-tagged finished-work photo for Site Engineer verification.</p>
+        </div>;
+    }
+
     return (
         <div>
             <div className="page-header">
