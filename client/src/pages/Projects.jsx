@@ -697,7 +697,7 @@ export default function Projects() {
                                                                     <Link to={`/projects/${p._id}`} style={{ color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 500 }}>
                                                                         {p.title}
                                                                     </Link>
-                                                                    {['engineer', 'admin', 'financial_officer'].includes(user?.role) && (
+                                                                    {['engineer', 'admin', 'financial_officer'].includes(user?.role) && p.status !== 'proposed' && p.status !== 'rejected' && (
                                                                         <div style={{ fontSize: '14px', color: '#ff3b3b', fontWeight: 900, marginTop: '6px', background: 'rgba(255,59,59,0.1)', padding: '4px 8px', borderRadius: '4px', display: 'inline-block' }}>
                                                                             🔑 CODE: {p.projectCode || ('UHX-' + p._id.substring(18).toUpperCase())}
                                                                         </div>
