@@ -1271,6 +1271,9 @@ router.put('/:id/final-bill/release', protect, authorize('financial_officer', 'a
         bill.financeReleased = true;
         bill.releasedByFinance = req.user._id;
         bill.releasedAt = new Date();
+        if (project.contractor && req.body.accountNumber && req.body.ifscCode) {
+            await User.findByIdAndUpdate(project.contractor, { bankDetails: { accountNumber: req.body.accountNumber, ifscCode: req.body.ifscCode, bankName: req.body.bankName || '' } });
+        }
         await recordFinalBillWorkflow(project, bill, 'payment_released', req.user._id, { amount: bill.claimedAmount, releasedBy: String(req.user._id) });
         project.markModified('finalBills');
         await project.save();

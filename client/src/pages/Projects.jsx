@@ -870,7 +870,7 @@ export default function Projects() {
                                                                     {['engineer', 'admin'].includes(user?.role) && p.status === 'approved' && !p.contractor && (
                                                                         <button className="btn btn-primary btn-sm" onClick={() => openAssign(p)}>Assign</button>
                                                                     )}
-                                                                    {['engineer', 'admin'].includes(user?.role) && ['approved', 'in_progress', 'verification'].includes(p.status) && (
+                                                                    {user?.role === 'engineer' && ['approved', 'in_progress', 'verification'].includes(p.status) && (
                                                                         <button 
                                                                             className="btn btn-primary btn-sm" 
                                                                             onClick={() => {
@@ -883,6 +883,12 @@ export default function Projects() {
                                                                         >
                                                                             🔍 Verify Work
                                                                         </button>
+                                                                    )}
+
+                                                                    {user?.role === 'admin' && p.status !== 'proposed' && (
+                                                                        <Link to={`/projects/${p._id}`} className="btn btn-outline btn-sm" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                            👁️ View Evidence
+                                                                        </Link>
                                                                     )}
 
                                                                     {(user?.role === 'financial_officer' || user?.role === 'admin') && p.expenditures?.some(e => e.readyForPayment && !e.financeReleased) && (

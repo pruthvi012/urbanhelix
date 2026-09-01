@@ -101,8 +101,12 @@ export default function ProjectDetail() {
 
     const handleReleaseFinalBill = async () => {
         if (!window.confirm('Release this approved final bill payment?')) return;
+        const accountNumber = prompt('Enter contractor bank account number:');
+        if (!accountNumber) return;
+        const ifscCode = prompt('Enter contractor IFSC code:');
+        if (!ifscCode) return;
         try {
-            await projectAPI.releaseFinalBill(id);
+            await projectAPI.releaseFinalBill(id, { accountNumber, ifscCode });
             loadData();
         } catch (err) {
             alert(err.response?.data?.message || 'Could not release the final bill payment.');
