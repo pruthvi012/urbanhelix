@@ -877,13 +877,19 @@ export default function Projects() {
                                                             </>
                                                         )}
                                                         <td>
-                                                            <button 
+                                                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                            <button
                                                                 className="btn btn-outline btn-sm" 
                                                                 style={{ borderColor: 'var(--accent-blue)', color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '4px' }}
                                                                 onClick={() => downloadProjectReport(p._id, p.title)}
                                                             >
                                                                 <FiDownload /> PDF
                                                             </button>
+                                                            {isApprovalAuthority && <>
+                                                                <button className="btn btn-success btn-sm" onClick={() => handleProceedFunds(p)}>Proceed</button>
+                                                                <button className="btn btn-danger btn-sm" onClick={() => p.finalBills?.some((bill) => bill.active) ? handleFinalBillDecision(p, false) : handleReject(p._id)}>Reject</button>
+                                                            </>}
+                                                            </div>
                                                         </td>
                                                         {(isApprovalAuthority || ['engineer', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && p.contractor?._id === user?._id)) && (
                                                             <td>
