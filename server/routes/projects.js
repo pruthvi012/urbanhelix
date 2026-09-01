@@ -14,6 +14,54 @@ const User = require('../models/User');
 const crypto = require('crypto');
 
 const router = express.Router();
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const fs = require('fs');
+
+async function validateVendorWithAI(file, typedVendorName) {
+    if (!process.env.GEMINI_API_KEY) return { isValid: true };
+    try {
+        let buffer;
+        if (file.buffer) {
+            buffer = file.buffer;
+        } else if (file.path && fs.existsSync(file.path)) {
+            buffer = fs.readFileSync(file.path);
+        } else if (file.location) {
+            const fetchRes = await fetch(file.location);
+            buffer = Buffer.from(await fetchRes.arrayBuffer());
+        }
+
+        if (!buffer) return { isValid: true };
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `You are a fraud detection AI checking vendor details.
+I have a typed vendor name: "${typedVendorName}".
+Look at the attached invoice image/PDF. Does the vendor name on the invoice reasonably match "${typedVendorName}"? (Allow for minor typos or legal suffixes like Pvt Ltd).
+
+Respond EXACTLY in this format:
+MATCH: [YES or NO]
+REASON: [Your brief reason]`;
+
+        const imageParts = [{
+            inlineData: {
+                data: buffer.toString("base64"),
+                mimeType: file.mimetype
+            }
+        }];
+
+        const result = await model.generateContent([prompt, ...imageParts]);
+        const text = result.response.text();
+        
+        if (text.includes('MATCH: NO')) {
+            return { isValid: false, reason: text.split('REASON:')[1]?.trim() || 'Incorrect dealer: The vendor name typed does not match the uploaded invoice.' };
+        }
+        return { isValid: true };
+    } catch (err) {
+        console.error("AI Validation error:", err);
+        return { isValid: true };
+    }
+}
 
 const calculateEntryHash = (data) => {
     const { amount, material, date, invoiceUrl, vendor, progressPhotoUrl } = data;
@@ -711,6 +759,12 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
         // Strict date matching validation
         if (date !== invoiceDate) {
             return res.status(400).json({ success: false, message: 'Expenditure date must exactly match the date printed on the invoice' });
+        }
+
+        // AI Vendor Name Validation against Invoice Document
+        const aiCheck = await validateVendorWithAI(req.files.invoice[0], vendor);
+        if (!aiCheck.isValid) {
+            return res.status(400).json({ success: false, message: aiCheck.reason });
         }
 
         // Material whitelist validation
