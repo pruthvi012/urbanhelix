@@ -667,14 +667,8 @@ export default function ProjectDetail() {
                                 <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '10px', fontWeight: 600 }}>⚠️ Date mismatch! Dates must be identical.</div>
                             )}
                             <div className="form-group">
-                                <label className="form-label">Material / Expense Type <span style={{ color: 'var(--accent-blue)', fontSize: '11px' }}>AI-Suggested for {project.category?.replace('_',' ')}</span></label>
-                                <select className="form-select" value={expenseForm.material} onChange={(e) => setExpenseForm({ ...expenseForm, material: e.target.value })} required>
-                                    <option value="">-- Select Material --</option>
-                                    {(CATEGORY_MATERIALS[project.category] || CATEGORY_MATERIALS.other).map(mat => (
-                                        <option key={mat} value={mat}>{mat}</option>
-                                    ))}
-                                </select>
-                                <small style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Only approved materials for this project type are shown. Custom entries are blocked.</small>
+                                <label className="form-label">📦 Material / Expense Type</label>
+                                <input className="form-input" type="text" placeholder="e.g. Cement, Machinery Rental, Labour" value={expenseForm.material} onChange={(e) => setExpenseForm({ ...expenseForm, material: e.target.value })} required />
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Vendor / Supplier Name</label>
