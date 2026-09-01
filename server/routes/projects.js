@@ -764,10 +764,13 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
         const project = await Project.findById(req.params.id).populate('engineer', 'name _id');
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        const { date, invoiceDate, amount, vendor, remarks } = req.body;
+        const { date, invoiceDate, amount, material, vendor, remarks } = req.body;
 
-        if (!date || !invoiceDate || !amount || !vendor) {
-            return res.status(400).json({ success: false, message: 'All fields (date, invoiceDate, amount, vendor) are required' });
+        if (!date || !invoiceDate || !amount || !material || !vendor) {
+            return res.status(400).json({ success: false, message: 'Material, amount, supplier, work date, and invoice date are required.' });
+        }
+        if (req.user.role === 'contractor' && (!project.contractor || project.contractor.toString() !== req.user._id.toString())) {
+            return res.status(403).json({ success: false, message: 'You can add billing details only to a project assigned to your contractor account.' });
         }
 
         // Robust file check
@@ -824,7 +827,7 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             date: new Date(date),
             invoiceDate: new Date(invoiceDate),
             amount: expAmount,
-           
+            material,
             vendor,
             invoiceUrl,
             progressPhotoUrl,

@@ -54,7 +54,7 @@ export default function ContractorExpenses() {
     const [form, setForm] = useState({
         date: new Date().toISOString().split('T')[0],
         invoiceDate: new Date().toISOString().split('T')[0],
-        amount: '', vendor: '', remarks: '',
+        amount: '', material: '', vendor: '', remarks: '',
         invoice: null, progressPhoto: null
     });
     const location = useLocation();
@@ -240,9 +240,21 @@ export default function ContractorExpenses() {
         if (!lockedLocation) return alert('Click "Lock GPS location" before submitting the photo.');
         if (!Number.isFinite(photoLocation?.lat) || !Number.isFinite(photoLocation?.lng)) return alert('Photo GPS could not be verified. Use a GPS Camera photo with clear coordinates.');
         if (distanceInMetres(photoLocation, lockedLocation) > 500) return alert('Invalid photo location. This photo does not match the GPS-locked location. Upload a valid site photo.');
+        if (!form.material || !form.amount || !form.vendor || !form.invoice) return alert('Add the material used, bill amount, supplier, and invoice before submitting finished work.');
+        if (form.date !== form.invoiceDate) return alert('The work date and invoice date must match.');
         setSubmitting(true);
         (async () => {
             try {
+                const expenseData = new FormData();
+                expenseData.append('date', form.date);
+                expenseData.append('invoiceDate', form.invoiceDate);
+                expenseData.append('amount', form.amount);
+                expenseData.append('material', form.material);
+                expenseData.append('vendor', form.vendor);
+                expenseData.append('remarks', form.remarks || `Finished work materials: ${form.material}`);
+                expenseData.append('invoice', form.invoice);
+                expenseData.append('progressPhoto', form.progressPhoto);
+                await projectAPI.logExpenditure(selectedProject._id, expenseData);
                 const data = new FormData();
                 data.append('status', 'verification');
                 data.append('remarks', 'Contractor finished-work evidence submitted for Site Engineer verification.');
@@ -333,6 +345,16 @@ export default function ContractorExpenses() {
                         <button type="button" className="btn btn-outline" onClick={lockPhotoLocation} disabled={gpsLoading} style={{ width: '100%', marginBottom: '10px' }}>📍 {gpsLoading ? 'Locking GPS…' : lockedLocation ? `GPS locked: ${lockedLocation.lat.toFixed(4)}, ${lockedLocation.lng.toFixed(4)}` : 'Lock GPS location'}</button>
                         <button type="button" className="btn btn-primary" onClick={openGPSCameraApp} style={{ width: '100%', marginBottom: '14px' }}>📸 Open / Download GPS Camera App</button>
                         <div className="form-group" style={{ marginBottom: 0 }}><label className="form-label">Attach your finished-work photo</label><input className="form-input" type="file" accept="image/*" capture="environment" onChange={handleFinishedWorkPhoto} required />{form.progressPhoto && <div style={{ marginTop: '8px', color: 'var(--accent-green)', fontWeight: 700, fontSize: '13px' }}>✓ {form.progressPhoto.name} selected</div>}{photoStatus && <div style={{ fontSize: '12px', fontWeight: 700, marginTop: '10px', color: photoStatus.startsWith('✓') ? '#047857' : '#b45309' }}>{photoStatus}</div>}</div>
+                    </div>
+                    <div style={{ padding: '16px', border: '1px solid var(--accent-blue)', borderRadius: '10px', marginBottom: '16px', background: 'var(--bg-glass)' }}>
+                        <div style={{ fontWeight: 800, marginBottom: '12px' }}>🧾 Materials and billing details</div>
+                        <div className="grid-2">
+                            <div className="form-group"><label className="form-label">Material used</label><input className="form-input" placeholder="e.g. Bitumen, cement, labour" value={form.material} onChange={(event) => setForm({ ...form, material: event.target.value })} /></div>
+                            <div className="form-group"><label className="form-label">Bill amount (₹)</label><input className="form-input" type="number" min="1" placeholder="Amount" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} /></div>
+                            <div className="form-group"><label className="form-label">Supplier / vendor</label><input className="form-input" placeholder="Supplier name" value={form.vendor} onChange={(event) => setForm({ ...form, vendor: event.target.value })} /></div>
+                            <div className="form-group"><label className="form-label">Invoice date</label><input className="form-input" type="date" value={form.invoiceDate} onChange={(event) => setForm({ ...form, invoiceDate: event.target.value })} /></div>
+                        </div>
+                        <div className="form-group"><label className="form-label">Invoice / bill (PDF or image)</label><input className="form-input" type="file" accept="image/*,.pdf,application/pdf" onChange={(event) => setForm({ ...form, invoice: event.target.files?.[0] || null })} />{form.invoice && <div style={{ marginTop: '8px', color: 'var(--accent-green)', fontSize: '12px', fontWeight: 700 }}>✓ {form.invoice.name} attached</div>}</div>
                     </div>
                     <div style={{ padding: '12px', background: 'var(--accent-amber-light)', borderRadius: '8px', fontSize: '12px', marginBottom: '16px' }}>Only photos that match the GPS-locked location can be submitted. The Site Engineer must later upload a matching field-verification photo before payment can be released.</div>
                     <button className="btn btn-primary" type="button" disabled={submitting || selectedProject.status === 'verification' || selectedProject.status === 'completed'} onClick={submitFinishedWork}>{submitting ? 'Uploading site evidence…' : selectedProject.status === 'verification' ? 'Awaiting Site Engineer verification' : selectedProject.status === 'completed' ? 'Project already completed' : 'Upload finished-work photo'}</button>
