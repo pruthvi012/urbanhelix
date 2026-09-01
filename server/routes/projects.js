@@ -18,7 +18,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
 
 async function validateVendorWithAI(file, typedVendorName) {
-    if (!process.env.GEMINI_API_KEY) return { isValid: true };
+    if (!process.env.GEMINI_API_KEY) return { isValid: false, reason: 'Supplier verification is temporarily unavailable. Please try again later.' };
     try {
         let buffer;
         if (file.buffer) {
@@ -30,14 +30,14 @@ async function validateVendorWithAI(file, typedVendorName) {
             buffer = Buffer.from(await fetchRes.arrayBuffer());
         }
 
-        if (!buffer) return { isValid: true };
+        if (!buffer) return { isValid: false, reason: 'The supplier bill could not be read for verification.' };
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const prompt = `You are a fraud detection AI checking vendor details.
-I have a typed vendor name: "${typedVendorName}".
-Look at the attached invoice image/PDF. Does the vendor name on the invoice reasonably match "${typedVendorName}"? (Allow for minor typos or legal suffixes like Pvt Ltd).
+The selected approved supplier is: "${typedVendorName}".
+Look at the attached invoice image/PDF. Does the supplier/vendor printed inside the document match that selected supplier? Reject a different supplier. Only allow harmless legal suffix differences such as "Pvt Ltd".
 
 Respond EXACTLY in this format:
 MATCH: [YES or NO]
@@ -56,10 +56,10 @@ REASON: [Your brief reason]`;
         if (text.includes('MATCH: NO')) {
             return { isValid: false, reason: text.split('REASON:')[1]?.trim() || 'Incorrect dealer: The vendor name typed does not match the uploaded invoice.' };
         }
-        return { isValid: true };
+        return { isValid: text.includes('MATCH: YES'), reason: 'The supplier name inside the bill does not match the selected supplier.' };
     } catch (err) {
         console.error("AI Validation error:", err);
-        return { isValid: true };
+        return { isValid: false, reason: 'The supplier bill could not be verified. Please upload a clear PDF/image and try again.' };
     }
 }
 
