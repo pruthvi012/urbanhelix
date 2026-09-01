@@ -937,7 +937,7 @@ router.put('/:id/final-bill/approval', protect, authorize('admin'), async (req, 
             // Older demo records may have been submitted before the Engineer
             // completion handoff was introduced. A completed project with an
             // intact active bill is already Engineer-verified in that case.
-            if (bill.status === 'submitted' && project.status === 'completed' && project.contractorCompletionPhotoUrl) {
+            if (bill.status === 'submitted' && project.status === 'completed') {
                 bill.status = 'engineer_verified';
                 bill.engineerVerifiedBy = project.engineer || null;
                 bill.engineerVerifiedAt = project.actualEndDate || new Date();

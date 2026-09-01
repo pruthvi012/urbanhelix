@@ -162,7 +162,9 @@ export default function ProjectDetail() {
         } catch (err) { alert(err.response?.data?.message || 'Error updating status'); }
     };
 
-    const beforePhotoUrl = project?.imageUrl || project?.progressPhotos?.[0]?.url || null;
+    // imageUrl is the original citizen complaint photo; never substitute a
+    // contractor/engineer progress image into the Before panel.
+    const beforePhotoUrl = project?.imageUrl || null;
     const afterPhotoUrl = project?.contractorCompletionPhotoUrl || (project?.progressPhotos?.length ? project.progressPhotos[project.progressPhotos.length - 1].url : null);
     const budgetProofUrl = project?.budgetEstimateProofUrl ? (project.budgetEstimateProofUrl.startsWith('http') ? project.budgetEstimateProofUrl : `${window.location.origin}${project.budgetEstimateProofUrl}`) : null;
 
@@ -351,11 +353,11 @@ export default function ProjectDetail() {
                         )}
                     {user?.role === 'admin' && (
                         <>
-                            {project.finalBills?.some((bill) => bill.active && (bill.status === 'engineer_verified' || (bill.status === 'submitted' && project.status === 'completed' && project.contractorCompletionPhotoUrl))) && <>
+                            {project.finalBills?.some((bill) => bill.active && (bill.status === 'engineer_verified' || (bill.status === 'submitted' && project.status === 'completed'))) && <>
                                 <button className="btn btn-success btn-sm" onClick={() => handleFinalBillDecision(true)}>Approve final bill</button>
                                 <button className="btn btn-danger btn-sm" onClick={() => handleFinalBillDecision(false)}>Reject final bill</button>
                             </>}
-                            {project.finalBills?.some((bill) => bill.active && bill.status === 'submitted' && !(project.status === 'completed' && project.contractorCompletionPhotoUrl)) && (
+                            {project.finalBills?.some((bill) => bill.active && bill.status === 'submitted' && project.status !== 'completed') && (
                                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Awaiting Site Engineer verification</span>
                             )}
                             <button className="btn btn-outline btn-sm">Edit Details</button>
