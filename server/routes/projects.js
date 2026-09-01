@@ -713,12 +713,6 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
             return res.status(400).json({ success: false, message: 'Expenditure date must exactly match the date printed on the invoice' });
         }
 
-        // Material whitelist validation
-        const allowedMaterials = CATEGORY_MATERIALS[project.category] || CATEGORY_MATERIALS.other;
-        if (!allowedMaterials.includes(material)) {
-            return res.status(400).json({ success: false, message: `Invalid material "${material}" for category "${project.category}". Allowed: ${allowedMaterials.join(', ')}` });
-        }
-
         const expAmount = Number(amount);
 
         // Budget remaining check
