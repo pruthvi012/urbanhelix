@@ -320,11 +320,13 @@ export default function ProjectDetail() {
             {(['engineer', 'admin', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && project.contractor?._id === user?._id)) && (
                 <div className="glass-card" style={{ marginBottom: '20px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>ACTIONS:</span>
-                    {user?.role === 'admin' && ['proposed', 'approved', 'in_progress', 'verification'].includes(project.status) && (
+                    {user?.role === 'admin' && (
                         <>
                             {budgetProofUrl && <button className="btn btn-outline btn-sm" onClick={openBudgetProof}>View Budget PDF</button>}
-                            <button className="btn btn-success btn-sm" onClick={handleApprove}>Proceed</button>
-                            <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject</button>
+                            {['proposed', 'approved', 'in_progress', 'verification'].includes(project.status) && <>
+                                <button className="btn btn-success btn-sm" onClick={handleApprove}>Proceed</button>
+                                <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject</button>
+                            </>}
                         </>
                     )}
                     {['engineer', 'admin'].includes(user?.role) && ['approved', 'in_progress'].includes(project.status) && !project.contractor && (
@@ -353,6 +355,9 @@ export default function ProjectDetail() {
                                 <button className="btn btn-success btn-sm" onClick={() => handleFinalBillDecision(true)}>Approve final bill</button>
                                 <button className="btn btn-danger btn-sm" onClick={() => handleFinalBillDecision(false)}>Reject final bill</button>
                             </>}
+                            {project.finalBills?.some((bill) => bill.active && bill.status === 'submitted') && (
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Awaiting Site Engineer verification</span>
+                            )}
                             <button className="btn btn-outline btn-sm">Edit Details</button>
                         </>
                     )}
@@ -533,7 +538,7 @@ export default function ProjectDetail() {
                 <div className="section-header">
                     <h2 className="section-title"><FiImage style={{ verticalAlign: 'middle', marginRight: '8px' }} /> Construction Visual Proof (Before & After)</h2>
                 </div>
-                <div className="grid-3" style={{ gap: '16px' }}>
+                <div className="grid-2" style={{ gap: '16px' }}>
                     {/* Before Image (Original) */}
                     <div className="glass-card" style={{ padding: '12px' }}>
                         <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', textAlign: 'center' }}>Original Condition (Before)</div>
@@ -544,27 +549,14 @@ export default function ProjectDetail() {
                         )}
                     </div>
 
-                    {/* Progress Photos */}
-                    {(project.progressPhotos || []).map((photo, idx) => (
-                        <div key={idx} className="glass-card" style={{ padding: '12px' }}>
-                            <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', textAlign: 'center' }}>Progress {idx + 1}</div>
-                            <img src={`${photo.url}`} alt={`Progress ${idx}`} style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} />
-                            <div style={{ fontSize: '11px', marginTop: '6px', color: 'var(--text-secondary)' }}>{photo.description}</div>
-                            <div style={{ fontSize: '9px', color: 'var(--text-muted)' }}>{new Date(photo.timestamp).toLocaleDateString()}</div>
-                        </div>
-                    ))}
-
-                    {/* Final Image (If completed) */}
-                    {project.status === 'completed' && (
-                        <div className="glass-card" style={{ padding: '12px', border: '1px solid var(--accent-green)' }}>
-                            <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', textAlign: 'center', color: 'var(--accent-green)' }}>Completed (After)</div>
-                            {afterPhotoUrl ? (
-                                <img src={afterPhotoUrl} alt="After" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} />
-                            ) : (
-                                <div style={{ height: '200px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>No final photo</div>
-                            )}
-                        </div>
-                    )}
+                    <div className="glass-card" style={{ padding: '12px', border: '1px solid var(--accent-green)' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', textAlign: 'center', color: 'var(--accent-green)' }}>Completed / Site-visit evidence (After)</div>
+                        {afterPhotoUrl ? (
+                            <img src={afterPhotoUrl} alt="After" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} />
+                        ) : (
+                            <div style={{ height: '200px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>No completed-work photo</div>
+                        )}
+                    </div>
                 </div>
             </div>
 

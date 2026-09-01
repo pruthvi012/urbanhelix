@@ -231,18 +231,37 @@ router.post('/:id/final-bill', protect, authorize('contractor'), upload.single('
         if (!Number.isFinite(amount) || amount <= 0 || amount > approvedAmount) return res.status(400).json({ success: false, message: 'Enter a final bill amount within the approved project amount.' });
         const billUrl = req.file.location || `/uploads/projects/${req.file.filename}`;
         const originalFileHash = sha256(req.file.buffer || await getStoredFileBuffer(billUrl, req.file.key));
-        project.finalBills.push({ billUrl, storageKey: req.file.key || null, supplier, claimedAmount: amount, originalFileHash, metadataSnapshot: {}, metadataHash: '', workflowSnapshot: {}, workflowHash: '', submittedBy: req.user._id, active: true, status: 'submitted' });
+        // This endpoint is available only after the Site Engineer has completed the
+        // physical visit.  Therefore the new bill enters the Approval Authority
+        // queue directly; it must not wait for a second Engineer verification.
+        const engineerAlreadyVerified = project.status === 'completed';
+        project.finalBills.push({
+            billUrl,
+            storageKey: req.file.key || null,
+            supplier,
+            claimedAmount: amount,
+            originalFileHash,
+            metadataSnapshot: {},
+            metadataHash: '',
+            workflowSnapshot: {},
+            workflowHash: '',
+            submittedBy: req.user._id,
+            active: true,
+            status: engineerAlreadyVerified ? 'engineer_verified' : 'submitted',
+            engineerVerifiedBy: engineerAlreadyVerified ? (project.engineer || null) : null,
+            engineerVerifiedAt: engineerAlreadyVerified ? new Date() : null
+        });
         const bill = project.finalBills[project.finalBills.length - 1];
         bill.metadataSnapshot = finalBillSnapshot(project, bill);
         bill.metadataHash = sha256(JSON.stringify(bill.metadataSnapshot));
         const record = await HashChainService.addRecord('final_bill_submitted', { projectId: String(project._id), billId: String(bill._id), metadataSnapshot: bill.metadataSnapshot, metadataHash: bill.metadataHash }, { entityType: 'project', entityId: project._id }, req.user._id);
         bill.hashChainRecordId = record._id;
-        await recordFinalBillWorkflow(project, bill, 'final_bill_submitted', req.user._id);
+        await recordFinalBillWorkflow(project, bill, engineerAlreadyVerified ? 'final_bill_engineer_verified' : 'final_bill_submitted', req.user._id);
         project.completionInvoiceUrl = billUrl;
         project.completionSupplier = supplier;
         project.markModified('finalBills');
         await project.save();
-        res.status(201).json({ success: true, project, bill, message: 'Final bill submitted for Approval Authority review.' });
+        res.status(201).json({ success: true, project, bill, message: engineerAlreadyVerified ? 'Final bill submitted for Approval Authority review.' : 'Final bill submitted. Site Engineer verification is required.' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
