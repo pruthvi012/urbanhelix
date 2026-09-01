@@ -853,7 +853,12 @@ export default function Projects() {
                                                                     {['engineer', 'admin'].includes(user?.role) && ['approved', 'in_progress', 'verification'].includes(p.status) && (
                                                                         <button 
                                                                             className="btn btn-primary btn-sm" 
-                                                                            onClick={() => { setSelectedProject(p); setShowVerifyModal(true); }}
+                                                                            onClick={() => {
+                                                                                setSelectedProject(p);
+                                                                                const pending = p.expenditures?.find((expense) => !expense.engineerVerified);
+                                                                                setVerifyForm({ verified: true, remarks: '', photo: null, expenditureId: pending?._id || '' });
+                                                                                setShowVerifyModal(true);
+                                                                            }}
                                                                             style={{ background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '4px' }}
                                                                         >
                                                                             🔍 Verify Work
@@ -1221,15 +1226,6 @@ export default function Projects() {
                             <button className="btn-close" onClick={() => setShowVerifyModal(false)}>&times;</button>
                         </div>
                         <form onSubmit={handleVerify}>
-                            <div className="form-group">
-                                <label className="form-label">Select Pending Expenditure</label>
-                                <select className="form-select" value={verifyForm.expenditureId} onChange={e => setVerifyForm({...verifyForm, expenditureId: e.target.value})} required>
-                                    <option value="">-- Choose Expenditure --</option>
-                                    {selectedProject?.expenditures?.filter(e => !e.engineerVerified).map(e => (
-                                        <option key={e._id} value={e._id}>{e.material} - ₹{e.amount.toLocaleString()} ({new Date(e.date).toLocaleDateString()})</option>
-                                    ))}
-                                </select>
-                            </div>
                             <div className="form-group">
                                 <label className="form-label">Decision</label>
                                 <select className="form-select" value={verifyForm.verified} onChange={e => setVerifyForm({...verifyForm, verified: e.target.value === 'true'})}>
