@@ -397,7 +397,6 @@ router.put('/:id/reject', protect, authorize('admin'), async (req, res) => {
         await project.save();
         
         // Notify proposer
-        const notificationService = require('../services/notificationService');
         await notificationService.sendPushNotification(
             project.proposedBy,
             'Project Proposal Rejected',
