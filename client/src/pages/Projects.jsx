@@ -291,6 +291,27 @@ export default function Projects() {
         }
     };
 
+    const handleProceedFunds = async (project) => {
+        const bill = project.finalBills?.find((item) => item.active);
+        if (!bill) return alert('No contractor final bill has been submitted for this project yet.');
+        try {
+            if (bill.status !== 'approved') {
+                if (bill.status !== 'engineer_verified' && !(bill.status === 'submitted' && project.status === 'completed')) {
+                    return alert('Engineer verification is required before funds can be released.');
+                }
+                await projectAPI.decideFinalBill(project._id, { approved: true });
+            }
+            const accountNumber = prompt('Enter contractor bank account number:');
+            if (!accountNumber) return;
+            const ifscCode = prompt('Enter contractor IFSC code:');
+            if (!ifscCode) return;
+            const bankName = prompt('Enter contractor bank name:') || '';
+            await projectAPI.releaseFinalBill(project._id, { accountNumber, ifscCode, bankName });
+            alert('Payment released successfully.');
+            loadData();
+        } catch (err) { alert(err.response?.data?.message || 'Funds could not be released.'); }
+    };
+
     const handleClaim = async () => {
         if (!claimCode.trim()) { alert('Please enter a project code'); return; }
         try {
@@ -869,13 +890,11 @@ export default function Projects() {
                                                                     {user?.role === 'admin' && (
                                                                         <>
                                                                             {['proposed', 'approved', 'in_progress', 'verification'].includes(p.status) && <>
-                                                                                <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Proceed</button>
+                                                                                <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Approve Project</button>
                                                                                 <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
                                                                             </>}
-                                                                            {p.status === 'completed' && p.finalBills?.some((bill) => bill.active && (bill.status === 'engineer_verified' || bill.status === 'submitted')) && <>
-                                                                                <button className="btn btn-success btn-sm" onClick={() => handleFinalBillDecision(p, true)}>Proceed to Finance</button>
-                                                                                <button className="btn btn-danger btn-sm" onClick={() => handleFinalBillDecision(p, false)}>Reject Final Bill</button>
-                                                                            </>}
+                                                                            <button className="btn btn-success btn-sm" onClick={() => handleProceedFunds(p)}>Proceed</button>
+                                                                            <button className="btn btn-danger btn-sm" onClick={() => p.finalBills?.some((bill) => bill.active) ? handleFinalBillDecision(p, false) : handleReject(p._id)}>Reject</button>
                                                                         </>
                                                                     )}
                                                                     {['engineer', 'admin'].includes(user?.role) && p.status === 'approved' && !p.contractor && (
