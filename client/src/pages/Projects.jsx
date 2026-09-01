@@ -882,7 +882,7 @@ export default function Projects() {
                                                                         </button>
                                                                     )}
 
-                                                                    {user?.role === 'contractor' && p.contractor?._id === user?._id && ['approved', 'in_progress', 'verification'].includes(p.status) && (
+                                                                    {user?.role === 'contractor' && p.contractor?._id === user?._id && ['approved', 'in_progress', 'verification', 'completed'].includes(p.status) && (
                                                                         <div style={{ display: 'flex', gap: '6px' }}>
                                                                             <button className="btn btn-outline btn-sm" onClick={() => handleUpdateStatus(p._id)}>Status</button>
                                                                             {p.projectCode && (
@@ -891,7 +891,7 @@ export default function Projects() {
                                                                                     className="btn btn-primary btn-sm"
                                                                                     style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
                                                                                 >
-                                                                                    💰 Log Expense
+                                                                                    {p.status === 'completed' ? '🧾 Upload Final Bill PDF' : '📸 Submit Finished Work'}
                                                                                 </Link>
                                                                             )}
                                                                         </div>
