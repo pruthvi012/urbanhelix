@@ -24,12 +24,6 @@ const formatCurrency = (amt) => {
 };
 
 const APPROVED_SUPPLIERS = ['UrbanHelix', 'Bengaluru Civic Materials Pvt Ltd'];
-const supplierMatchesBillName = (supplier, file) => {
-    if (!supplier || !file) return false;
-    const normalizedSupplier = supplier.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const normalizedName = file.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    return normalizedName.includes(normalizedSupplier);
-};
 
 const toDecimalGps = (value, ref) => {
     if (Number.isFinite(value)) return ['S', 'W'].includes(ref) ? -Math.abs(value) : Math.abs(value);
@@ -246,7 +240,6 @@ export default function ContractorExpenses() {
         if (!selectedProject) return alert('Enter your assigned project code first.');
         if (!form.progressPhoto) return alert('Upload the GPS-tagged finished-work photo first.');
         if (!form.vendor || !form.invoice) return alert('Select an approved supplier and upload its bill before submitting.');
-        if (!supplierMatchesBillName(form.vendor, form.invoice)) return alert(`The bill filename must include the selected supplier name: ${form.vendor}.`);
         if (!lockedLocation) return alert('Click "Lock GPS location" before submitting the photo.');
         if (!Number.isFinite(photoLocation?.lat) || !Number.isFinite(photoLocation?.lng)) return alert('Photo GPS could not be verified. Use a GPS Camera photo with clear coordinates.');
         if (distanceInMetres(photoLocation, lockedLocation) > 500) return alert('Invalid photo location. This photo does not match the GPS-locked location. Upload a valid site photo.');
@@ -348,10 +341,10 @@ export default function ContractorExpenses() {
                     </div>
                     <div style={{ padding: '16px', border: '1px solid var(--accent-blue)', borderRadius: '10px', marginBottom: '16px', background: 'var(--bg-glass)' }}>
                         <div style={{ fontWeight: 800, marginBottom: '8px' }}>🧾 Completion bill verification</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>Select the supplier and upload the bill. For security, the bill filename must contain the selected supplier name.</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>Select the supplier and upload the bill. The supplier name inside the PDF/image is checked securely before submission.</div>
                         <div className="grid-2">
                             <div className="form-group"><label className="form-label">Approved supplier</label><select className="form-select" value={form.vendor} onChange={(event) => setForm({ ...form, vendor: event.target.value })}><option value="">Select supplier</option>{APPROVED_SUPPLIERS.map((supplier) => <option key={supplier} value={supplier}>{supplier}</option>)}</select></div>
-                            <div className="form-group"><label className="form-label">Supplier bill (PDF or image)</label><input className="form-input" type="file" accept="image/*,.pdf,application/pdf" onChange={(event) => setForm({ ...form, invoice: event.target.files?.[0] || null })} />{form.invoice && <div style={{ marginTop: '7px', fontSize: '12px', fontWeight: 700, color: supplierMatchesBillName(form.vendor, form.invoice) ? '#047857' : '#b45309' }}>{supplierMatchesBillName(form.vendor, form.invoice) ? '✓ Supplier and bill filename match' : '⚠ Filename must contain the selected supplier name'}</div>}</div>
+                            <div className="form-group"><label className="form-label">Supplier bill (PDF or image)</label><input className="form-input" type="file" accept="image/*,.pdf,application/pdf" onChange={(event) => setForm({ ...form, invoice: event.target.files?.[0] || null })} />{form.invoice && <div style={{ marginTop: '7px', fontSize: '12px', fontWeight: 700, color: '#047857' }}>✓ {form.invoice.name} selected — supplier name will be checked inside the bill</div>}</div>
                         </div>
                     </div>
                     <div style={{ padding: '12px', background: 'var(--accent-amber-light)', borderRadius: '8px', fontSize: '12px', marginBottom: '16px' }}>Only photos that match the GPS-locked location can be submitted. The Site Engineer must later upload a matching field-verification photo before payment can be released.</div>

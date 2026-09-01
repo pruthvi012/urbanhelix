@@ -567,9 +567,8 @@ router.put('/:id/status', protect, authorize('engineer', 'contractor', 'admin'),
             if (!req.files?.completionInvoice?.length || !completionSupplier) return res.status(400).json({ success: false, message: 'Select an approved supplier and upload the matching completion bill.' });
             const approvedSuppliers = ['UrbanHelix', 'Bengaluru Civic Materials Pvt Ltd'];
             if (!approvedSuppliers.includes(completionSupplier)) return res.status(400).json({ success: false, message: 'The selected supplier is not approved.' });
-            const normalizedSupplier = completionSupplier.toLowerCase().replace(/[^a-z0-9]/g, '');
-            const normalizedFilename = req.files.completionInvoice[0].originalname.toLowerCase().replace(/[^a-z0-9]/g, '');
-            if (!normalizedFilename.includes(normalizedSupplier)) return res.status(400).json({ success: false, message: 'The bill filename must contain the selected supplier name.' });
+            const supplierCheck = await validateVendorWithAI(req.files.completionInvoice[0], completionSupplier);
+            if (!supplierCheck.isValid) return res.status(400).json({ success: false, message: supplierCheck.reason || 'The supplier name inside the bill does not match the selected supplier.' });
             if (!gpsLocation) return res.status(400).json({ success: false, message: 'Lock browser GPS before uploading finished-work evidence.' });
         }
         if (req.user.role === 'engineer' && status === 'completed') {
