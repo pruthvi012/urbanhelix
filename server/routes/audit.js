@@ -5,9 +5,36 @@ const AuditLog = require('../models/AuditLog');
 const FundTransaction = require('../models/FundTransaction');
 const Project = require('../models/Project');
 const Department = require('../models/Department');
-const { protect } = require('../middleware/auth');
+const { protect, authorize } = require('../middleware/auth');
+const Notification = require('../models/Notification');
 
 const router = express.Router();
+
+// POST /api/audit/reset-legacy-demo — admin-only reset for a deliberately corrupted demo chain.
+router.post('/reset-legacy-demo', protect, authorize('admin'), async (req, res) => {
+    try {
+        const chain = await HashChainService.verifyChain();
+        if (chain.valid) return res.json({ success: true, message: 'Audit chain is already clean.', removedRecords: 0 });
+
+        const firstError = chain.errors?.[0];
+        if (firstError?.sequenceNumber !== 1 || firstError.error !== 'Data hash mismatch') {
+            return res.status(409).json({ success: false, message: 'The audit chain is not the known legacy demo state and was not reset.' });
+        }
+
+        const legacyRecords = await HashChainRecord.find({}, '_id').sort({ sequenceNumber: 1 }).limit(12);
+        if (legacyRecords.length !== 11) {
+            return res.status(409).json({ success: false, message: 'The legacy record count changed; no records were removed.' });
+        }
+
+        const [records, alerts] = await Promise.all([
+            HashChainRecord.deleteMany({ _id: { $in: legacyRecords.map((record) => record._id) } }),
+            Notification.deleteMany({ $or: [{ title: 'SYSTEM SECURITY ALERT' }, { message: /Hash chain tampered/i }] })
+        ]);
+        res.json({ success: true, message: 'Legacy demo audit data reset successfully.', removedRecords: records.deletedCount, removedAlerts: alerts.deletedCount });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 // GET /api/audit/verify-chain — verify entire hash chain integrity (public)
 router.get('/verify-chain', async (req, res) => {
