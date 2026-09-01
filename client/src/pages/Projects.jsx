@@ -61,6 +61,18 @@ export default function Projects() {
 
     const loadData = async () => {
         try {
+            // Contractor projects are deliberately code-gated: do not reveal any
+            // assigned project details until the contractor enters its project code.
+            if (user?.role === 'contractor' && !filter.projectCode?.trim()) {
+                setProjects([]);
+                const [deptRes, wardRes] = await Promise.all([
+                    deptAPI.getAll(),
+                    (wardAPI && wardAPI.getAll) ? wardAPI.getAll() : fetch('/api/wards').then(r => r.json()),
+                ]);
+                setDepartments(deptRes.data?.departments || deptRes.departments || []);
+                setWards(mergeWithFallbackWards(wardRes.data?.wards || wardRes.wards || []));
+                return;
+            }
             const params = {};
             // Engineers need the complete current register, not only the first paginated page.
             if (user?.role === 'engineer') params.limit = 100;
@@ -69,13 +81,7 @@ export default function Projects() {
             if (filter.wardNo) params.wardNo = filter.wardNo;
             if (filter.area) params.area = filter.area;
             
-            if (user?.role === 'contractor') {
-                if (filter.projectCode) {
-                    params.projectCode = filter.projectCode;
-                } else {
-                    params.contractor = user._id;
-                }
-            }
+            if (user?.role === 'contractor') params.projectCode = filter.projectCode.trim();
 
             const [projRes, deptRes, wardRes] = await Promise.all([
                 projectAPI.getAll(params),

@@ -54,6 +54,41 @@ const projectSchema = new mongoose.Schema({
     reportUrl: String,
     completionInvoiceUrl: String,
     completionSupplier: String,
+    // Final bills are kept as an append-only history. Only one item may be active;
+    // rejected bills that explicitly require correction remain in this array.
+    finalBills: [{
+        billUrl: { type: String, required: true },
+        storageKey: { type: String, default: null },
+        supplier: { type: String, required: true },
+        claimedAmount: { type: Number, required: true },
+        originalFileHash: { type: String, required: true },
+        metadataSnapshot: { type: mongoose.Schema.Types.Mixed, required: true },
+        metadataHash: { type: String, required: true },
+        hashChainRecordId: { type: mongoose.Schema.Types.ObjectId, ref: 'HashChainRecord', default: null },
+        workflowSnapshot: { type: mongoose.Schema.Types.Mixed, required: true },
+        workflowHash: { type: String, required: true },
+        workflowHashChainRecordId: { type: mongoose.Schema.Types.ObjectId, ref: 'HashChainRecord', default: null },
+        submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        submittedAt: { type: Date, default: Date.now },
+        active: { type: Boolean, default: true },
+        status: {
+            type: String,
+            enum: ['submitted', 'engineer_verified', 'approved', 'rejected', 'correction_required', 'suspicious'],
+            default: 'submitted'
+        },
+        suspicious: { type: Boolean, default: false },
+        tamperReason: { type: String, default: '' },
+        engineerVerifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+        engineerVerifiedAt: { type: Date, default: null },
+        approvalAuthorityBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+        approvalAuthorityAt: { type: Date, default: null },
+        financeReleased: { type: Boolean, default: false },
+        releasedByFinance: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+        releasedAt: { type: Date, default: null },
+        rejectionReason: { type: String, default: '' },
+        correctionRequired: { type: Boolean, default: false }
+    }],
+    paymentBlocked: { type: Boolean, default: false },
     verifications: [
         {
             stage: Number,
@@ -112,5 +147,7 @@ const projectSchema = new mongoose.Schema({
         transactionHash: String
     }],
 }, { timestamps: true });
+
+projectSchema.index({ _id: 1, 'finalBills.active': 1 });
 
 module.exports = mongoose.model('Project', projectSchema);

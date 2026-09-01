@@ -53,7 +53,11 @@ export default function Grievances() {
                 grievanceAPI.getAll({}),
                 wardAPI.getAll()
             ]);
-            setGrievances(gRes.data.grievances || []);
+            const priorityRank = { high: 0, moderate: 1 };
+            setGrievances([...(gRes.data.grievances || [])].sort((first, second) =>
+                (priorityRank[first.siteVisit?.priority] ?? 2) - (priorityRank[second.siteVisit?.priority] ?? 2)
+                || new Date(second.createdAt) - new Date(first.createdAt)
+            ));
             setWards(mergeWithFallbackWards(wRes.data?.wards || []));
         } catch (err) {
             console.error(err);

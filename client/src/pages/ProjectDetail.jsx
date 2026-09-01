@@ -78,6 +78,30 @@ export default function ProjectDetail() {
         }
     };
 
+    const handleFinalBillDecision = async (approved) => {
+        const activeBill = project.finalBills?.find((bill) => bill.active);
+        if (!activeBill) return alert('There is no active final bill to review.');
+        const remarks = approved ? '' : prompt('Reason for rejection (required):');
+        if (!approved && !remarks) return;
+        const correctionRequired = !approved && window.confirm('Allow the contractor to submit one corrected final bill?');
+        try {
+            await projectAPI.decideFinalBill(id, { approved, correctionRequired, remarks });
+            loadData();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Could not record the final-bill decision.');
+        }
+    };
+
+    const handleReleaseFinalBill = async () => {
+        if (!window.confirm('Release this approved final bill payment?')) return;
+        try {
+            await projectAPI.releaseFinalBill(id);
+            loadData();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Could not release the final bill payment.');
+        }
+    };
+
     const openAssign = async () => {
         try {
             const res = await authAPI.getUsers('contractor');
@@ -300,7 +324,13 @@ export default function ProjectDetail() {
                             </div>
                         )}
                     {user?.role === 'admin' && (
-                        <button className="btn btn-outline btn-sm">Edit Details</button>
+                        <>
+                            {project.finalBills?.some((bill) => bill.active && bill.status === 'engineer_verified') && <>
+                                <button className="btn btn-success btn-sm" onClick={() => handleFinalBillDecision(true)}>Approve final bill</button>
+                                <button className="btn btn-danger btn-sm" onClick={() => handleFinalBillDecision(false)}>Reject final bill</button>
+                            </>}
+                            <button className="btn btn-outline btn-sm">Edit Details</button>
+                        </>
                     )}
                 </div>
             )}
@@ -380,6 +410,21 @@ export default function ProjectDetail() {
                     </div>
                 </div>
             </div>
+
+            {project.finalBills?.length > 0 && (
+                <div className="glass-card" style={{ marginBottom: '24px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '10px' }}>Final bill integrity</h3>
+                    {project.finalBills.map((bill) => <div key={bill._id} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', fontSize: '13px', padding: '10px 0', borderTop: '1px solid var(--glass-border)' }}>
+                        <span className={`badge badge-${bill.suspicious ? 'rejected' : bill.status === 'approved' ? 'approved' : 'pending'}`}>{bill.suspicious ? 'suspicious' : bill.status.replace('_', ' ')}</span>
+                        <strong>{formatCurrency(bill.claimedAmount)}</strong>
+                        <span style={{ color: 'var(--text-secondary)' }}>{bill.supplier}</span>
+                        {bill.billUrl && <a href={bill.billUrl} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">View final bill</a>}
+                        {user?.role === 'financial_officer' && bill.active && bill.status === 'approved' && !bill.financeReleased && <button className="btn btn-success btn-sm" onClick={handleReleaseFinalBill}>Release payment</button>}
+                        {bill.financeReleased && <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>Payment released</span>}
+                        {bill.tamperReason && <span style={{ color: 'var(--accent-red)', fontWeight: 700 }}>{bill.tamperReason}</span>}
+                    </div>)}
+                </div>
+            )}
 
             {/* Expenditures List */}
             {project.expenditures && project.expenditures.length > 0 && (

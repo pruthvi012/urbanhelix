@@ -5,7 +5,8 @@ const hashChainRecordSchema = new mongoose.Schema({
     recordType: {
         type: String,
         enum: ['fund_allocation', 'fund_disbursement', 'project_created', 'project_approved', 'project_status_change',
-            'milestone_submitted', 'milestone_approved', 'payment_released', 'grievance_filed', 'expenditure_logged', 'budget_revision'],
+            'milestone_submitted', 'milestone_approved', 'payment_released', 'grievance_filed', 'expenditure_logged', 'budget_revision',
+            'final_bill_submitted', 'final_bill_engineer_verified', 'final_bill_approved', 'final_bill_rejected'],
         required: true,
     },
     data: { type: mongoose.Schema.Types.Mixed, required: true },

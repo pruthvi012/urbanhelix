@@ -235,11 +235,16 @@ export default function ContractorExpenses() {
 
     const materials = selectedProject ? (CATEGORY_MATERIALS[selectedProject.category] || CATEGORY_MATERIALS.other) : [];
     const remaining = selectedProject ? (selectedProject.allocatedBudget || selectedProject.estimatedBudget) - selectedProject.spentBudget : 0;
+    const finalBillAwaitingCorrection = selectedProject?.finalBills?.some((bill) => bill.status === 'correction_required');
+    const activeFinalBill = selectedProject?.finalBills?.find((bill) => bill.active);
 
     const submitFinishedWork = () => {
         if (!selectedProject) return alert('Enter your assigned project code first.');
         if (!form.progressPhoto) return alert('Upload the GPS-tagged finished-work photo first.');
         if (!form.vendor || !form.invoice) return alert('Select an approved supplier and upload its bill before submitting.');
+        if (!Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0) return alert('Enter the final bill amount.');
+        const approvedAmount = Number(selectedProject.allocatedBudget || selectedProject.estimatedBudget || 0);
+        if (Number(form.amount) > approvedAmount) return alert(`Final bill amount cannot exceed the approved amount of ${formatCurrency(approvedAmount)}.`);
         if (!lockedLocation) return alert('Click "Lock GPS location" before submitting the photo.');
         if (!Number.isFinite(photoLocation?.lat) || !Number.isFinite(photoLocation?.lng)) return alert('Photo GPS could not be verified. Use a GPS Camera photo with clear coordinates.');
         if (distanceInMetres(photoLocation, lockedLocation) > 500) return alert('Invalid photo location. This photo does not match the GPS-locked location. Upload a valid site photo.');
@@ -253,6 +258,7 @@ export default function ContractorExpenses() {
                 data.append('progressPhoto', form.progressPhoto);
                 data.append('completionSupplier', form.vendor);
                 data.append('completionInvoice', form.invoice);
+                data.append('claimedAmount', form.amount);
                 await projectAPI.updateStatus(selectedProject._id, data);
                 setSuccess(true);
                 setForm({ ...form, progressPhoto: null });
@@ -346,9 +352,10 @@ export default function ContractorExpenses() {
                             <div className="form-group"><label className="form-label">Approved supplier</label><select className="form-select" value={form.vendor} onChange={(event) => setForm({ ...form, vendor: event.target.value })}><option value="">Select supplier</option>{APPROVED_SUPPLIERS.map((supplier) => <option key={supplier} value={supplier}>{supplier}</option>)}</select></div>
                             <div className="form-group"><label className="form-label">Supplier bill (PDF or image)</label><input className="form-input" type="file" accept="image/*,.pdf,application/pdf" onChange={(event) => setForm({ ...form, invoice: event.target.files?.[0] || null })} />{form.invoice && <div style={{ marginTop: '7px', fontSize: '12px', fontWeight: 700, color: '#047857' }}>✓ {form.invoice.name} selected — supplier name will be checked inside the bill</div>}</div>
                         </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}><label className="form-label">Final bill amount (₹)</label><input className="form-input" type="number" min="1" max={selectedProject.allocatedBudget || selectedProject.estimatedBudget} value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} placeholder={`Up to ${formatCurrency(selectedProject.allocatedBudget || selectedProject.estimatedBudget)}`} /></div>
                     </div>
                     <div style={{ padding: '12px', background: 'var(--accent-amber-light)', borderRadius: '8px', fontSize: '12px', marginBottom: '16px' }}>Only photos that match the GPS-locked location can be submitted. The Site Engineer must later upload a matching field-verification photo before payment can be released.</div>
-                    <button className="btn btn-primary" type="button" disabled={submitting || selectedProject.status === 'verification' || selectedProject.status === 'completed'} onClick={submitFinishedWork}>{submitting ? 'Uploading site evidence…' : selectedProject.status === 'verification' ? 'Awaiting Site Engineer verification' : selectedProject.status === 'completed' ? 'Project already completed' : 'Upload finished-work photo'}</button>
+                    <button className="btn btn-primary" type="button" disabled={submitting || Boolean(activeFinalBill) || ((selectedProject.status === 'verification' || selectedProject.status === 'completed') && !finalBillAwaitingCorrection)} onClick={submitFinishedWork}>{submitting ? 'Uploading site evidence…' : activeFinalBill ? 'Final bill already submitted' : finalBillAwaitingCorrection ? 'Submit corrected final bill' : selectedProject.status === 'verification' ? 'Awaiting Site Engineer verification' : selectedProject.status === 'completed' ? 'Project already completed' : 'Submit final bill and finished-work photo'}</button>
                 </>}
             </div>
         </div>;

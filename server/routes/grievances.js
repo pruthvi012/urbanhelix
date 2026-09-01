@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Grievance = require('../models/Grievance');
 const AuditLog = require('../models/AuditLog');
 const HashChainService = require('../services/hashChainService');
@@ -19,13 +20,32 @@ router.get('/', async (req, res) => {
         if (project) filter.project = project;
         if (status) filter.status = status;
 
-        const grievances = await Grievance.find(filter)
-            .populate('project', 'title status')
-            .populate('citizen', 'name')
-            .populate('resolution.resolvedBy', 'name')
-            .sort({ createdAt: -1 })
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit));
+        // Site-visit priority is set by the engineer. High is intentionally first,
+        // followed by moderate and then complaints awaiting site classification.
+        const match = { ...filter };
+        if (match.project && mongoose.Types.ObjectId.isValid(match.project)) match.project = new mongoose.Types.ObjectId(match.project);
+        const grievances = await Grievance.aggregate([
+            { $match: match },
+            { $addFields: {
+                priorityOrder: {
+                    $switch: {
+                        branches: [
+                            { case: { $eq: ['$siteVisit.priority', 'high'] }, then: 0 },
+                            { case: { $eq: ['$siteVisit.priority', 'moderate'] }, then: 1 }
+                        ],
+                        default: 2
+                    }
+                }
+            } },
+            { $sort: { priorityOrder: 1, createdAt: -1 } },
+            { $skip: (parseInt(page) - 1) * parseInt(limit) },
+            { $limit: parseInt(limit) }
+        ]);
+        await Grievance.populate(grievances, [
+            { path: 'project', select: 'title status' },
+            { path: 'citizen', select: 'name' },
+            { path: 'resolution.resolvedBy', select: 'name' }
+        ]);
 
         const total = await Grievance.countDocuments(filter);
 
