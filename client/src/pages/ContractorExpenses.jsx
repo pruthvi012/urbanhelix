@@ -215,10 +215,36 @@ export default function ContractorExpenses() {
     const materials = selectedProject ? (CATEGORY_MATERIALS[selectedProject.category] || CATEGORY_MATERIALS.other) : [];
     const remaining = selectedProject ? (selectedProject.allocatedBudget || selectedProject.estimatedBudget) - selectedProject.spentBudget : 0;
 
+    const submitFinishedWork = () => {
+        if (!selectedProject) return alert('Enter your assigned project code first.');
+        if (!form.progressPhoto) return alert('Upload the GPS-tagged finished-work photo first.');
+        if (!navigator.geolocation) return alert('Browser GPS is required for finished-work verification.');
+        setSubmitting(true);
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            try {
+                const data = new FormData();
+                data.append('status', 'verification');
+                data.append('remarks', 'Contractor finished-work evidence submitted for Site Engineer verification.');
+                data.append('gpsLocation', JSON.stringify({ lat: position.coords.latitude, lng: position.coords.longitude }));
+                data.append('progressPhoto', form.progressPhoto);
+                await projectAPI.updateStatus(selectedProject._id, data);
+                setSuccess(true);
+                setForm({ ...form, progressPhoto: null });
+                await searchProject();
+            } catch (error) {
+                alert(error.response?.data?.message || 'Could not submit finished-work evidence.');
+            } finally { setSubmitting(false); }
+        }, () => { setSubmitting(false); alert('Allow browser location access before uploading the site photo.'); }, { enableHighAccuracy: true, maximumAge: 0 });
+    };
+
     if (user?.role === 'contractor') {
-        return <div className="glass-card" style={{ maxWidth: '760px', padding: '28px' }}>
-            <h2 style={{ marginBottom: '8px' }}>Finished-work submission</h2>
-            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>Material expense entry is not available for contractor accounts. Open your assigned project and upload the GPS-tagged finished-work photo for Site Engineer verification.</p>
+        return <div style={{ maxWidth: '820px' }}>
+            <div className="page-header"><h1 className="page-title">Finished-work submission</h1><p className="page-subtitle">Submit your GPS-locked completion photo for Site Engineer verification.</p></div>
+            <div className="glass-card" style={{ padding: '28px' }}>
+                <div className="form-group"><label className="form-label">Assigned project code</label><div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}><input className="form-input" placeholder="UHX-XXXXXX" value={projectCode} onChange={(event) => { setProjectCode(event.target.value.toUpperCase()); setCodeSearched(false); }} style={{ flex: '1 1 260px', margin: 0 }} /><button className="btn btn-primary" type="button" onClick={searchProject}>Find project</button></div></div>
+                {codeSearched && !loading && !selectedProject && <div style={{ color: 'var(--accent-rose)', fontWeight: 700 }}>No assigned project was found for this code.</div>}
+                {selectedProject && <><div style={{ padding: '14px', background: 'var(--bg-subtle)', borderRadius: '10px', marginBottom: '18px' }}><strong>{selectedProject.title}</strong><div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>Status: {selectedProject.status.replace('_', ' ')}</div></div><div className="form-group"><label className="form-label">GPS-tagged finished-work photo</label><input className="form-input" type="file" accept="image/*" capture="environment" onChange={(event) => setForm({ ...form, progressPhoto: event.target.files?.[0] || null })} required />{form.progressPhoto && <div style={{ marginTop: '8px', color: 'var(--accent-green)', fontWeight: 700, fontSize: '13px' }}>✓ {form.progressPhoto.name} selected</div>}</div><div style={{ padding: '12px', background: 'var(--accent-amber-light)', borderRadius: '8px', fontSize: '12px', marginBottom: '16px' }}>Your browser will lock the current site location when you submit. The Site Engineer must later upload a matching field-verification photo before payment can be released.</div><button className="btn btn-primary" type="button" disabled={submitting || selectedProject.status === 'verification' || selectedProject.status === 'completed'} onClick={submitFinishedWork}>{submitting ? 'Uploading site evidence…' : selectedProject.status === 'verification' ? 'Awaiting Site Engineer verification' : selectedProject.status === 'completed' ? 'Project already completed' : 'Upload finished-work photo'}</button></>}
+            </div>
         </div>;
     }
 
