@@ -57,8 +57,15 @@ export default function ProjectDetail() {
     };
 
     const handleApprove = async () => {
+        const enteredAmount = prompt(`Allocate budget for this project (maximum proposed: ₹${Number(project.estimatedBudget).toLocaleString()}):`, String(project.estimatedBudget));
+        if (enteredAmount === null) return;
+        const allocatedBudget = Number(enteredAmount);
+        if (!Number.isFinite(allocatedBudget) || allocatedBudget <= 0 || allocatedBudget > Number(project.estimatedBudget)) {
+            alert('Enter a valid allocation that does not exceed the proposed budget.');
+            return;
+        }
         try {
-            await projectAPI.approve(id, { allocatedBudget: Number(project.estimatedBudget), remarks: 'Approved from details' });
+            await projectAPI.approve(id, { allocatedBudget, remarks: `Approved with budget allocation of ₹${allocatedBudget.toLocaleString()}` });
             loadData();
         } catch (err) { 
             console.error('Approve error:', err);

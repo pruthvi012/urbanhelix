@@ -237,8 +237,19 @@ export default function Projects() {
     };
 
     const handleApprove = async (id, estimatedBudget) => {
+        const enteredAmount = prompt(`Allocate budget for this project (maximum proposed: ₹${Number(estimatedBudget).toLocaleString()}):`, String(estimatedBudget));
+        if (enteredAmount === null) return;
+        const allocatedBudget = Number(enteredAmount);
+        if (!Number.isFinite(allocatedBudget) || allocatedBudget <= 0) {
+            alert('Enter a valid budget allocation amount.');
+            return;
+        }
+        if (allocatedBudget > Number(estimatedBudget)) {
+            alert('Allocated budget cannot exceed the proposed budget.');
+            return;
+        }
         try {
-            const res = await projectAPI.approve(id, { allocatedBudget: Number(estimatedBudget), remarks: 'Approved' });
+            const res = await projectAPI.approve(id, { allocatedBudget, remarks: `Approved with budget allocation of ₹${allocatedBudget.toLocaleString()}` });
             loadData();
             
             // If the old server didn't generate a code, we deterministically create one from the ID
