@@ -56,6 +56,7 @@ export default function Projects() {
     const [inspectionStatus, setInspectionStatus] = useState('');
     const [revisionForm, setRevisionForm] = useState({ newBudget: '', reason: '' });
     const [claimCode, setClaimCode] = useState('');
+    const [allocationDrafts, setAllocationDrafts] = useState({});
 
     useEffect(() => { loadData(); }, [filter]);
 
@@ -236,9 +237,9 @@ export default function Projects() {
         }
     };
 
-    const handleApprove = async (id, estimatedBudget) => {
-        const enteredAmount = prompt(`Allocate budget for this project (maximum proposed: ₹${Number(estimatedBudget).toLocaleString()}):`, String(estimatedBudget));
-        if (enteredAmount === null) return;
+    const handleApprove = async (id, estimatedBudget, draftAmount) => {
+        const enteredAmount = draftAmount ?? prompt(`Allocate budget for this project (maximum proposed: ₹${Number(estimatedBudget).toLocaleString()}):`, String(estimatedBudget));
+        if (enteredAmount === null || enteredAmount === '') return;
         const allocatedBudget = Number(enteredAmount);
         if (!Number.isFinite(allocatedBudget) || allocatedBudget <= 0) {
             alert('Enter a valid budget allocation amount.');
@@ -861,7 +862,8 @@ export default function Projects() {
                                                                     {user?.role === 'admin' && p.status === 'proposed' && (
                                                                         <>
                                                                             {p.budgetEstimateProofUrl && <button className="btn btn-outline btn-sm" style={{ borderColor: 'var(--accent-blue)', color: 'var(--accent-blue)' }} onClick={() => setLightboxUrl(p.budgetEstimateProofUrl)}>🖼 View Evidence</button>}
-                                                                            <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget)}>Approve</button>
+                                                                            <input className="form-input" type="number" min="1" max={p.estimatedBudget} value={allocationDrafts[p._id] ?? ''} placeholder="Budget allocation (₹)" onChange={(event) => setAllocationDrafts({ ...allocationDrafts, [p._id]: event.target.value })} style={{ width: '150px', padding: '7px 9px' }} aria-label="Budget allocation amount" />
+                                                                            <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Approve</button>
                                                                             <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
                                                                         </>
                                                                     )}
