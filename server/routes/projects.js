@@ -84,6 +84,7 @@ router.get('/', optionalAuth, async (req, res) => {
             .populate('proposedBy', 'name email')
             .populate('engineer', 'name email')
             .populate('contractor', 'name email bankDetails')
+            .populate('statusHistory.changedBy', 'name role')
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));

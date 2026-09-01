@@ -523,6 +523,7 @@ export default function Projects() {
                         <option value="in_progress">In Progress</option>
                         <option value="verification">Verification</option>
                         <option value="completed">Completed</option>
+                        <option value="rejected">Rejected</option>
                     </select>
 
                     <select className="form-select" style={{ width: 'auto' }} value={filter.category} onChange={(e) => setFilter({ ...filter, category: e.target.value })}>
@@ -582,6 +583,53 @@ export default function Projects() {
                     </div>
                 </div>
             )}
+
+            {user?.role === 'engineer' && (() => {
+                const myProposals = projects.filter(p => p.proposedBy?._id === user._id || p.proposedBy === user._id);
+                if (myProposals.length === 0) return null;
+                return (
+                    <div className="glass-card" style={{ marginBottom: '28px', padding: '20px 24px', border: '1.5px solid var(--border-glass)' }}>
+                        <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            📋 My Submitted Proposals
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {myProposals.map(p => {
+                                const statusConfig = {
+                                    proposed: { label: '⏳ Pending Approval', bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+                                    approved: { label: '✅ Approved', bg: '#dcfce7', color: '#166534', border: '#86efac' },
+                                    rejected: { label: '❌ Rejected', bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+                                    in_progress: { label: '🔨 In Progress', bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
+                                    completed: { label: '🏆 Completed', bg: '#f0fdf4', color: '#14532d', border: '#86efac' },
+                                    verification: { label: '🔍 Under Verification', bg: '#ede9fe', color: '#5b21b6', border: '#c4b5fd' },
+                                };
+                                const s = statusConfig[p.status] || statusConfig['proposed'];
+                                const lastHistory = p.statusHistory?.[p.statusHistory.length - 1];
+                                return (
+                                    <div key={p._id} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', padding: '12px 16px', border: '1px solid var(--border-glass)' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
+                                                <a href={`/projects/${p._id}`} style={{ color: 'var(--accent-blue)', textDecoration: 'none' }}>{p.title}</a>
+                                            </div>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                                                Ward {p.location?.wardNo} · {p.location?.area} · ₹{Number(p.estimatedBudget).toLocaleString()}
+                                                {p.projectCode && <span style={{ marginLeft: '8px', fontWeight: 600, color: 'var(--accent-blue)' }}>🔑 {p.projectCode}</span>}
+                                            </div>
+                                            {lastHistory?.remarks && p.status === 'rejected' && (
+                                                <div style={{ fontSize: '12px', color: '#991b1b', marginTop: '4px' }}>
+                                                    Reason: {lastHistory.remarks}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, background: s.bg, color: s.color, border: `1px solid ${s.border}`, whiteSpace: 'nowrap' }}>
+                                            {s.label}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
 
             <div className="projects-categorized">
                 {['road', 'drainage', 'water_supply', 'sanitation', 'electricity', 'park', 'bridge', 'building', 'other']
