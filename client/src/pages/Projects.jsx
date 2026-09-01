@@ -900,8 +900,6 @@ export default function Projects() {
                                                                                 <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Approve Project</button>
                                                                                 <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
                                                                             </>}
-                                                                            <button className="btn btn-success btn-sm" onClick={() => handleProceedFunds(p)}>Proceed</button>
-                                                                            <button className="btn btn-danger btn-sm" onClick={() => p.finalBills?.some((bill) => bill.active) ? handleFinalBillDecision(p, false) : handleReject(p._id)}>Reject</button>
                                                                         </>
                                                                     )}
                                                                     {['engineer', 'admin'].includes(user?.role) && p.status === 'approved' && !p.contractor && (
