@@ -7,6 +7,19 @@ import { fallbackWards, mergeWithFallbackWards } from '../data/wardsFallback';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const photoDistanceMetres = (photo, locked) => {
+    if (!Number.isFinite(photo?.lat) || !Number.isFinite(photo?.lng) || !Number.isFinite(locked?.lat) || !Number.isFinite(locked?.lng)) return Infinity;
+    return Math.hypot((photo.lat - locked.lat) * 111_320, (photo.lng - locked.lng) * 111_320 * Math.cos(locked.lat * Math.PI / 180));
+};
+
+const gpsDecimal = (value, ref) => {
+    if (Number.isFinite(value)) return ['S', 'W'].includes(ref) ? -Math.abs(value) : Math.abs(value);
+    if (!value || value.length < 3) return NaN;
+    const numeric = (part) => part?.denominator ? part.numerator / part.denominator : Number(part);
+    const result = numeric(value[0]) + numeric(value[1]) / 60 + numeric(value[2]) / 3600;
+    return ['S', 'W'].includes(ref) ? -result : result;
+};
+
 export default function Projects() {
     const { user } = useAuth();
     const [projects, setProjects] = useState([]);
@@ -29,6 +42,9 @@ export default function Projects() {
         location: { ward: '', area: '', address: '' }, spentBudget: 0
     });
     const [budgetProof, setBudgetProof] = useState(null);
+    const [proposalGps, setProposalGps] = useState(null);
+    const [proposalPhotoGps, setProposalPhotoGps] = useState(null);
+    const [proposalPhotoStatus, setProposalPhotoStatus] = useState('');
     const [showRevisionModal, setShowRevisionModal] = useState(false);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [showReleaseModal, setShowReleaseModal] = useState(false);
@@ -114,6 +130,40 @@ export default function Projects() {
         );
     };
 
+    const lockProposalGps = () => {
+        if (!navigator.geolocation) return alert('Your browser does not support GPS location locking.');
+        setProposalPhotoStatus('Locking browser GPS location…');
+        navigator.geolocation.getCurrentPosition((position) => {
+            const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+            setProposalGps(coords);
+            setForm(prev => ({ ...prev, location: { ...prev.location, coordinates: coords } }));
+            setProposalPhotoStatus(`✓ GPS locked: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}. Upload the GPS Camera proof photo.`);
+        }, () => setProposalPhotoStatus('⚠ Allow browser location access, then lock GPS again.'), { enableHighAccuracy: true, maximumAge: 0 });
+    };
+
+    const checkProposalPhoto = async (event) => {
+        const photo = event.target.files?.[0] || null;
+        setBudgetProof(photo);
+        setProposalPhotoGps(null);
+        if (!photo) return setProposalPhotoStatus('');
+        if (!proposalGps) return setProposalPhotoStatus('⚠ Lock browser GPS before uploading the proof photo.');
+        setProposalPhotoStatus('Checking proof photo GPS…');
+        try {
+            const { default: EXIF } = await import('exif-js');
+            let coordinates = await new Promise((resolve) => EXIF.getData(photo, function () {
+                resolve({ lat: gpsDecimal(EXIF.getTag(this, 'GPSLatitude'), EXIF.getTag(this, 'GPSLatitudeRef') || 'N'), lng: gpsDecimal(EXIF.getTag(this, 'GPSLongitude'), EXIF.getTag(this, 'GPSLongitudeRef') || 'E') });
+            }));
+            if (!Number.isFinite(coordinates.lat) || !Number.isFinite(coordinates.lng)) {
+                const { recognize } = await import('tesseract.js');
+                const text = (await recognize(photo, 'eng'))?.data?.text || '';
+                coordinates = { lat: Number(text.match(/(?:latitude|lat)\s*[:\-]?\s*([+\-]?\d{1,2}(?:\.\d+)?)/i)?.[1] || text.match(/([+\-]?\d{1,2}\.\d+)\s*(?:°|[NS])/i)?.[1]), lng: Number(text.match(/(?:longitude|long|lng)\s*[:\-]?\s*([+\-]?\d{1,3}(?:\.\d+)?)/i)?.[1] || text.match(/([+\-]?\d{1,3}\.\d+)\s*(?:°|[EW])/i)?.[1]) };
+            }
+            setProposalPhotoGps(coordinates);
+            const metres = photoDistanceMetres(coordinates, proposalGps);
+            setProposalPhotoStatus(metres <= 500 ? `✓ Proof photo matches locked GPS (${Math.round(metres)} m away).` : '⚠ Proof photo is from a different location. Choose a matching GPS Camera photo.');
+        } catch { setProposalPhotoStatus('⚠ GPS could not be read. Use a GPS Camera photo with visible latitude and longitude.'); }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -126,6 +176,12 @@ export default function Projects() {
                 }
                 if (form.estimatedBudget !== form.enteredBudget) {
                     return alert("Estimated Budget and Confirm Budget must match exactly to proceed.");
+                }
+                if (user?.role === 'engineer') {
+                    if (!proposalGps) return alert('Lock the site GPS location before submitting the proposal.');
+                    if (!budgetProof || !Number.isFinite(proposalPhotoGps?.lat) || photoDistanceMetres(proposalPhotoGps, proposalGps) > 500) {
+                        return alert('The proposal proof photo does not match the GPS-locked location. Upload a valid GPS Camera photo.');
+                    }
                 }
 
                 const formData = new FormData();
@@ -859,7 +915,12 @@ export default function Projects() {
 
                             <div className="form-group">
                                 <label className="form-label">Budget Estimation Proof</label>
-                                <input type="file" className="form-input" accept="image/*" onChange={(e) => setBudgetProof(e.target.files[0])} required />
+                                {user?.role === 'engineer' && <div style={{ padding: '14px', marginBottom: '10px', border: '1px solid #fbbf24', borderRadius: '10px', background: '#fffbeb' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#92400e', marginBottom: '10px' }}>📍 GPS Camera evidence required — same verification as citizen grievance photos.</div>
+                                    <button type="button" className="btn btn-outline" onClick={lockProposalGps} style={{ width: '100%' }}>{proposalGps ? `GPS locked: ${proposalGps.lat.toFixed(4)}, ${proposalGps.lng.toFixed(4)}` : 'Lock site GPS location'}</button>
+                                </div>}
+                                <input type="file" className="form-input" accept="image/*" capture="environment" onChange={user?.role === 'engineer' ? checkProposalPhoto : (e) => setBudgetProof(e.target.files[0])} required />
+                                {user?.role === 'engineer' && proposalPhotoStatus && <div style={{ fontSize: '12px', fontWeight: 700, marginTop: '8px', color: proposalPhotoStatus.startsWith('✓') ? '#047857' : '#b45309' }}>{proposalPhotoStatus}</div>}
                             </div>
 
                             <div className="ward-area-section" style={{ 

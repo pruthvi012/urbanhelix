@@ -281,6 +281,13 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_o
                 console.error("Failed to parse location JSON", e);
             }
         }
+
+        if (req.user.role === 'engineer' && req.files?.budgetEstimateProof?.length) {
+            const coords = locationData?.coordinates;
+            if (!Number.isFinite(coords?.lat) || !Number.isFinite(coords?.lng)) {
+                return res.status(400).json({ success: false, message: 'Lock the site GPS location before submitting an engineer proposal photo.' });
+            }
+        }
         
         const projectData = {
             ...req.body,
