@@ -3,11 +3,13 @@ const fs = require('fs');
 const path = require('path');
 const dns = require('dns');
 const { Resolver } = dns.promises;
+require('dotenv').config();
 const Project = require('./models/Project');
 const AuditLog = require('./models/AuditLog');
 const HashChainRecord = require('./models/HashChainRecord');
 const Notification = require('./models/Notification');
-require('dotenv').config();
+const ProjectAsset = require('./models/ProjectAsset');
+const { containerClient } = require('./utils/azureStorage');
 
 async function getDirectUri(srvUri) {
     if (!srvUri.startsWith('mongodb+srv://')) return srvUri;
@@ -35,16 +37,28 @@ async function clearAll() {
         await mongoose.connect(uri);
         console.log('✅ Connected.');
 
-        // 1. Delete all projects
+        // 1. Collect ids before deletion so every project-linked hash is removed too.
+        const projectIds = (await Project.find({}, '_id')).map((project) => project._id);
+        const projectIdStrings = projectIds.map(String);
+
+        // 2. Delete all projects
         const pResult = await Project.deleteMany({});
         console.log(`🗑️  Deleted ${pResult.deletedCount} projects.`);
 
-        // 2. Clean up related data
+        // 3. Clean up related data
         const aResult = await AuditLog.deleteMany({ resourceType: 'project' });
         console.log(`🗑️  Deleted ${aResult.deletedCount} project-related audit logs.`);
 
-        const hResult = await HashChainRecord.deleteMany({ 'metadata.entityType': 'project' });
+        const hResult = await HashChainRecord.deleteMany({
+            $or: [
+                { 'relatedEntity.entityType': 'project' },
+                { 'data.projectId': { $in: projectIdStrings } }
+            ]
+        });
         console.log(`🗑️  Deleted ${hResult.deletedCount} project-related hashchain records.`);
+
+        const assetResult = await ProjectAsset.deleteMany({ projectId: { $in: projectIds } });
+        console.log(`🗑️  Deleted ${assetResult.deletedCount} project-file metadata records.`);
 
         const nResult = await Notification.deleteMany({ 'relatedEntity.entityType': 'Project' });
         console.log(`🗑️  Deleted ${nResult.deletedCount} project-related notifications.`);
@@ -61,6 +75,16 @@ async function clearAll() {
                 }
             }
             console.log(`🗑️  Deleted ${count} uploaded files/invoices locally.`);
+        }
+
+        // Azure stores only file blobs; delete project files but never grievance/user uploads.
+        if (containerClient) {
+            let deletedBlobs = 0;
+            for await (const blob of containerClient.listBlobsFlat({ prefix: 'projects/' })) {
+                await containerClient.deleteBlob(blob.name);
+                deletedBlobs++;
+            }
+            console.log(`🗑️  Deleted ${deletedBlobs} project files from Azure Blob Storage.`);
         }
 
         console.log('\n✨ Database and files are now clean of projects. You can start fresh!');
