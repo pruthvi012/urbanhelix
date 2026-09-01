@@ -206,6 +206,40 @@ const verifyFinalBillIntegrity = async (project, bill) => {
     return { valid: true, message: 'Integrity Verified.' };
 };
 
+// Contractor final-bill handoff after the Site Engineer has completed the visit.
+// The Engineer evidence already on the project is intentionally preserved.
+router.post('/:id/final-bill', protect, authorize('contractor'), upload.single('completionInvoice'), async (req, res) => {
+    try {
+        const project = await Project.findById(req.params.id);
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+        if (!project.contractor || String(project.contractor) !== String(req.user._id)) return res.status(403).json({ success: false, message: 'You can submit a bill only for your assigned project.' });
+        if (!['completed', 'verification'].includes(project.status)) return res.status(400).json({ success: false, message: 'The Site Engineer must verify the completed project before the final bill can be submitted.' });
+        if (activeFinalBill(project)) return res.status(409).json({ success: false, message: 'Final bill already submitted for this project.' });
+        const supplier = String(req.body.completionSupplier || '');
+        const amount = Number(req.body.claimedAmount);
+        const approvedAmount = Number(project.allocatedBudget || project.estimatedBudget || 0);
+        if (!req.file || !supplier) return res.status(400).json({ success: false, message: 'Select UrbanHelix and upload the final bill PDF.' });
+        if (supplier !== 'UrbanHelix') return res.status(400).json({ success: false, message: 'Select the supplier printed on the uploaded bill.' });
+        if (!Number.isFinite(amount) || amount <= 0 || amount > approvedAmount) return res.status(400).json({ success: false, message: 'Enter a final bill amount within the approved project amount.' });
+        const billUrl = req.file.location || `/uploads/projects/${req.file.filename}`;
+        const originalFileHash = sha256(req.file.buffer || await getStoredFileBuffer(billUrl, req.file.key));
+        project.finalBills.push({ billUrl, storageKey: req.file.key || null, supplier, claimedAmount: amount, originalFileHash, metadataSnapshot: {}, metadataHash: '', workflowSnapshot: {}, workflowHash: '', submittedBy: req.user._id, active: true, status: 'submitted' });
+        const bill = project.finalBills[project.finalBills.length - 1];
+        bill.metadataSnapshot = finalBillSnapshot(project, bill);
+        bill.metadataHash = sha256(JSON.stringify(bill.metadataSnapshot));
+        const record = await HashChainService.addRecord('final_bill_submitted', { projectId: String(project._id), billId: String(bill._id), metadataSnapshot: bill.metadataSnapshot, metadataHash: bill.metadataHash }, { entityType: 'project', entityId: project._id }, req.user._id);
+        bill.hashChainRecordId = record._id;
+        await recordFinalBillWorkflow(project, bill, 'final_bill_submitted', req.user._id);
+        project.completionInvoiceUrl = billUrl;
+        project.completionSupplier = supplier;
+        project.markModified('finalBills');
+        await project.save();
+        res.status(201).json({ success: true, project, bill, message: 'Final bill submitted for Approval Authority review.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // Allowed materials per category (whitelist)
 const CATEGORY_MATERIALS = {
     road: ['Asphalt/Bitumen','Gravel/Crushed Stone','Concrete','Sand','Cement','Steel Rebar','Labour/Wages','Machinery Rental'],

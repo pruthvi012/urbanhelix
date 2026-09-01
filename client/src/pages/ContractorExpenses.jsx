@@ -271,6 +271,27 @@ export default function ContractorExpenses() {
         })();
     };
 
+    const submitFinalBillOnly = async () => {
+        if (!selectedProject) return alert('Enter your assigned project code first.');
+        if (!form.vendor || !form.invoice) return alert('Select UrbanHelix and upload the final bill PDF first.');
+        if (!Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0) return alert('Enter the final bill amount.');
+        const approvedAmount = Number(selectedProject.allocatedBudget || selectedProject.estimatedBudget || 0);
+        if (Number(form.amount) > approvedAmount) return alert(`Final bill amount cannot exceed ${formatCurrency(approvedAmount)}.`);
+        setSubmitting(true);
+        try {
+            const data = new FormData();
+            data.append('completionSupplier', form.vendor);
+            data.append('claimedAmount', form.amount);
+            data.append('completionInvoice', form.invoice);
+            await projectAPI.submitFinalBill(selectedProject._id, data);
+            setSuccess(true);
+            setForm({ ...form, invoice: null, amount: '' });
+            await searchProject();
+        } catch (error) {
+            alert(error.response?.data?.message || 'Could not submit the final bill.');
+        } finally { setSubmitting(false); }
+    };
+
     const openGPSCameraApp = () => {
         window.location.href = 'intent://#Intent;package=com.vcamera.roudndai;scheme=android-app;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.vcamera.roudndai;end';
     };
@@ -355,7 +376,7 @@ export default function ContractorExpenses() {
                         <div className="form-group" style={{ marginBottom: 0 }}><label className="form-label">Final bill amount (₹)</label><input className="form-input" type="number" min="1" max={selectedProject.allocatedBudget || selectedProject.estimatedBudget} value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} placeholder={`Up to ${formatCurrency(selectedProject.allocatedBudget || selectedProject.estimatedBudget)}`} /></div>
                     </div>
                     <div style={{ padding: '12px', background: 'var(--accent-amber-light)', borderRadius: '8px', fontSize: '12px', marginBottom: '16px' }}>Only photos that match the GPS-locked location can be submitted. The Site Engineer must later upload a matching field-verification photo before payment can be released.</div>
-                    <button className="btn btn-primary" type="button" disabled={submitting || Boolean(activeFinalBill) || ((selectedProject.status === 'verification' || selectedProject.status === 'completed') && !finalBillAwaitingCorrection)} onClick={submitFinishedWork}>{submitting ? 'Uploading site evidence…' : activeFinalBill ? 'Final bill already submitted' : finalBillAwaitingCorrection ? 'Submit corrected final bill' : selectedProject.status === 'verification' ? 'Awaiting Site Engineer verification' : selectedProject.status === 'completed' ? 'Project already completed' : 'Submit final bill and finished-work photo'}</button>
+                    <button className="btn btn-primary" type="button" disabled={submitting || Boolean(activeFinalBill) || (selectedProject.status === 'verification' && !finalBillAwaitingCorrection)} onClick={selectedProject.status === 'completed' ? submitFinalBillOnly : submitFinishedWork}>{submitting ? 'Submitting final bill…' : activeFinalBill ? 'Final bill already submitted' : finalBillAwaitingCorrection ? 'Submit corrected final bill' : selectedProject.status === 'verification' ? 'Awaiting Site Engineer verification' : selectedProject.status === 'completed' ? 'Submit final bill for approval' : 'Submit final bill and finished-work photo'}</button>
                 </>}
             </div>
         </div>;

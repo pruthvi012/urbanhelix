@@ -129,6 +129,7 @@ export const projectAPI = {
     verifyFinalBillIntegrity: (id) => api.get(`/projects/${id}/final-bill/integrity`),
     decideFinalBill: (id, data) => api.put(`/projects/${id}/final-bill/approval`, data),
     releaseFinalBill: (id) => api.put(`/projects/${id}/final-bill/release`),
+    submitFinalBill: (id, data) => api.post(`/projects/${id}/final-bill`, data),
     reviseBudget: (id, data) => api.put(`/projects/${id}/revision`, data),
     logExpenditure: (id, data) => api.post(`/projects/${id}/expenditure`, data),
     verifyExpenditure: (projectId, expId, data) => api.put(`/projects/${projectId}/expenditure/${expId}/verify`, data),
