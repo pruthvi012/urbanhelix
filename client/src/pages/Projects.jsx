@@ -238,17 +238,10 @@ export default function Projects() {
     };
 
     const handleApprove = async (id, estimatedBudget, draftAmount) => {
-        const enteredAmount = draftAmount ?? prompt(`Allocate budget for this project (maximum proposed: ₹${Number(estimatedBudget).toLocaleString()}):`, String(estimatedBudget));
-        if (enteredAmount === null || enteredAmount === '') return;
-        const allocatedBudget = Number(enteredAmount);
-        if (!Number.isFinite(allocatedBudget) || allocatedBudget <= 0) {
-            alert('Enter a valid budget allocation amount.');
-            return;
-        }
-        if (allocatedBudget > Number(estimatedBudget)) {
-            alert('Allocated budget cannot exceed the proposed budget.');
-            return;
-        }
+        // Approval uses the already approved proposal amount. Budget allocation
+        // is not a second user action in the Approval Authority workflow.
+        const allocatedBudget = Number(estimatedBudget);
+        if (!Number.isFinite(allocatedBudget) || allocatedBudget <= 0) return alert('This project has no valid proposed budget.');
         try {
             const res = await projectAPI.approve(id, { allocatedBudget, remarks: `Approved with budget allocation of ₹${allocatedBudget.toLocaleString()}` });
             loadData();
@@ -876,7 +869,6 @@ export default function Projects() {
                                                                     {user?.role === 'admin' && (
                                                                         <>
                                                                             {['proposed', 'approved', 'in_progress', 'verification'].includes(p.status) && <>
-                                                                                <input className="form-input" type="number" min="1" max={p.estimatedBudget} value={allocationDrafts[p._id] ?? ''} placeholder="Budget allocation (₹)" onChange={(event) => setAllocationDrafts({ ...allocationDrafts, [p._id]: event.target.value })} style={{ width: '150px', padding: '7px 9px' }} aria-label="Budget allocation amount" />
                                                                                 <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Proceed</button>
                                                                                 <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
                                                                             </>}
