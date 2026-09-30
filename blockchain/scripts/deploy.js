@@ -10,7 +10,14 @@ async function main() {
   console.log("Wallet balance:", ethers.formatEther(balance), "MATIC");
 
   const Factory = await ethers.getContractFactory("ExpenditureLogger");
-  const contract = await Factory.deploy();
+  
+  // Hardcode max gas fee so it fits in 0.1 MATIC (e.g. 15 gwei max fee, 15 gwei priority)
+  const txOptions = {
+      maxFeePerGas: ethers.parseUnits("35", "gwei"),
+      maxPriorityFeePerGas: ethers.parseUnits("30", "gwei")
+  };
+  
+  const contract = await Factory.deploy(txOptions);
   await contract.waitForDeployment();
 
   const address = await contract.getAddress();
