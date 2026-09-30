@@ -14,12 +14,13 @@ router.post('/ask', async (req, res) => {
         }
 
         // We use gemini-1.5-flash for fast responses
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const prompt = `
 You are UrbanBot, a helpful AI assistant for the UrbanHeliX municipal governance portal.
 You speak to citizens directly to give them information about their city, wards, and ongoing projects.
 Keep your answers concise, friendly, and factual based ONLY on the provided context.
+If a user asks about a specific ward or area, check the context. If there are no projects there, explicitly state "No project found in this area or ward."
 If the citizen asks something unrelated to the city/projects, politely redirect them.
 
 CURRENT CITY DATA CONTEXT:
@@ -60,7 +61,7 @@ CITIZEN'S QUESTION: "${question}"
             }).join('\n');
             answer = `Here's what's happening:\n\n${summary}${matched.length > 3 ? `\n\n...and ${matched.length - 3} more project(s).` : ''}`;
         } else if (projects.length > 0) {
-            answer = `I couldn't find specific projects matching your query. Currently there are ${projects.length} active projects citywide. Try asking about a specific ward like "Koramangala" or "BTM Layout".`;
+            answer = `No project found in this area or ward. Currently, there are ${projects.length} active projects citywide.`;
         } else {
             answer = `No project data available right now. Please check the Projects section for live updates.`;
         }
