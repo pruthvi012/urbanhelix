@@ -392,7 +392,7 @@ export default function ProjectDetail() {
                     {['engineer', 'admin'].includes(user?.role) && project.status === 'approved' && project.contractor && (
                         <button className="btn btn-outline btn-sm" onClick={openAssign}>🔄 Reassign Contractor</button>
                     )}
-                    {(['engineer', 'admin'].includes(user?.role) || (user?.role === 'contractor' && project.contractor?._id === user?._id)) &&
+                    {(user?.role === 'engineer' || (user?.role === 'contractor' && project.contractor?._id === user?._id)) &&
                         ['approved', 'in_progress', 'verification'].includes(project.status) && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                 <div className="form-group" style={{ marginBottom: 0 }}>
