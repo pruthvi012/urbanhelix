@@ -291,26 +291,7 @@ export default function Projects() {
         }
     };
 
-    const handleProceedFunds = async (project) => {
-        const bill = project.finalBills?.find((item) => item.active);
-        if (!bill) return alert('No contractor final bill has been submitted for this project yet.');
-        try {
-            if (bill.status !== 'approved') {
-                if (bill.status !== 'engineer_verified' && !(bill.status === 'submitted' && project.status === 'completed')) {
-                    return alert('Engineer verification is required before funds can be released.');
-                }
-                await projectAPI.decideFinalBill(project._id, { approved: true });
-            }
-            const accountNumber = prompt('Enter contractor bank account number:');
-            if (!accountNumber) return;
-            const ifscCode = prompt('Enter contractor IFSC code:');
-            if (!ifscCode) return;
-            const bankName = prompt('Enter contractor bank name:') || '';
-            await projectAPI.releaseFinalBill(project._id, { accountNumber, ifscCode, bankName });
-            alert('Payment released successfully.');
-            loadData();
-        } catch (err) { alert(err.response?.data?.message || 'Funds could not be released.'); }
-    };
+
 
     const handleClaim = async () => {
         if (!claimCode.trim()) { alert('Please enter a project code'); return; }
