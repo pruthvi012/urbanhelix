@@ -439,9 +439,10 @@ export default function ProjectDetail() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#ef4444' }}>
                         <span style={{ fontSize: '24px' }}>🚨</span>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>TAMPER DETECTED: AUDIT FAILED</h3>
+                            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>🔴 TAMPER DETECTED: AUDIT FAILED</h3>
                             <p style={{ margin: '4px 0 0', fontSize: '13px', opacity: 0.9 }}>
-                                The cryptographic hashes for this project's expenditures do not match the original records. 
+                                The cryptographic hashes for this project's records do not match the immutable ledger. 
+                                Budget or expenditure values may have been altered outside the authorized workflow.
                                 This project has been flagged for immediate investigation by Citizens and the Administration.
                             </p>
                         </div>

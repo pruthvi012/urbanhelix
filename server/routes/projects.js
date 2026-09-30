@@ -470,6 +470,16 @@ router.get('/:id', optionalAuth, async (req, res) => {
             }
         }
 
+        // Verify budget integrity against hash chain record
+        if (project.hashChainRecordId) {
+            try {
+                const budgetIntegrity = await HashChainService.verifyProjectIntegrity(project._id);
+                if (!budgetIntegrity.valid && budgetIntegrity.discrepancies?.length > 0) {
+                    isTampered = true;
+                }
+            } catch (err) { console.error('Budget integrity check error:', err); }
+        }
+
         if (isTampered) {
             // Only notify citizens — and only ONCE per tamper event (track via a flag on project)
             if (!project.tamperNotified) {
