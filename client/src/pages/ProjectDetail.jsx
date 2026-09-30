@@ -344,7 +344,9 @@ export default function ProjectDetail() {
                         {['engineer', 'admin', 'financial_officer'].includes(user?.role) && project.projectCode && (
                             <span className="badge" style={{ fontSize: '14px', background: 'rgba(255,59,59,0.1)', color: '#ff3b3b', fontWeight: 900, border: '1px solid #ff3b3b' }}>🔑 CODE: {project.projectCode}</span>
                         )}
-                        <span className="tx-tag">⛓️ Verified on Blockchain</span>
+                        {['citizen', 'admin'].includes(user?.role) && (
+                            <span className="tx-tag">⛓️ Verified on Blockchain</span>
+                        )}
                     </div>
                     <h1 className="page-title">{project.title}</h1>
                     <p className="page-subtitle"><FiMapPin /> {project.location?.address}, Ward {project.location?.wardNo}: {project.location?.ward} • {project.category?.replace('_', ' ')}</p>
@@ -547,7 +549,7 @@ export default function ProjectDetail() {
                     <div className="table-container">
                         <table className="table">
                             <thead>
-                                <tr><th>Date</th><th>Vendor</th><th>Amount</th><th>Evidence</th><th>Audit Hash</th><th>⛓️ Polygon Proof</th><th>Status &amp; Actions</th></tr>
+                                <tr><th>Date</th><th>Vendor</th><th>Amount</th><th>Evidence</th><th>Audit Hash</th>{['citizen', 'admin'].includes(user?.role) && <th>⛓️ Polygon Proof</th>}<th>Status &amp; Actions</th></tr>
                             </thead>
                             <tbody>
                                 {project.expenditures.sort((a, b) => new Date(b.date) - new Date(a.date)).map((exp) => (
@@ -569,6 +571,7 @@ export default function ProjectDetail() {
                                                 </span>
                                             </div>
                                         </td>
+                                        {['citizen', 'admin'].includes(user?.role) && (
                                         <td>
                                             {exp.txHash ? (
                                                 <a href={`https://amoy.polygonscan.com/tx/${exp.txHash}`} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', textDecoration: 'none' }}>
@@ -580,6 +583,7 @@ export default function ProjectDetail() {
                                                 <span className="tx-tag" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>⏳ Pending Block</span>
                                             )}
                                         </td>
+                                        )}
                                         <td>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                                 {exp.engineerVerified ? (
