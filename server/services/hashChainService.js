@@ -141,6 +141,26 @@ class HashChainService {
             }
         }
 
+        // Verify live project records against ledger blocks
+        try {
+            const Project = require('../models/Project');
+            const projects = await Project.find({ hashChainRecordId: { $ne: null } });
+            for (const p of projects) {
+                const projCheck = await this.verifyProjectIntegrity(p._id);
+                if (!projCheck.valid && projCheck.discrepancies?.length > 0) {
+                    for (const disc of projCheck.discrepancies) {
+                        errors.push({
+                            sequenceNumber: projCheck.sequenceNumber || 0,
+                            error: `Project "${p.title}" database tampering detected (${disc.field || 'budget'})`,
+                            details: { expected: disc.ledger, stored: disc.current, projectId: p._id }
+                        });
+                    }
+                }
+            }
+        } catch (projErr) {
+            console.error('Project state audit error during verifyChain:', projErr);
+        }
+
         return {
             valid: errors.length === 0,
             totalRecords: records.length,
