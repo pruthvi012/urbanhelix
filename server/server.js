@@ -53,6 +53,21 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
+app.get('/api/clear-demo-data', async (req, res) => {
+    try {
+        await require('./models/Project').deleteMany({});
+        await require('./models/AuditLog').deleteMany({});
+        await require('./models/Notification').deleteMany({});
+        await require('./models/HashChainRecord').deleteMany({});
+        await require('./models/FundTransaction').deleteMany({});
+        await require('./models/Grievance').deleteMany({});
+        await require('./models/Milestone').deleteMany({});
+        res.json({ success: true, message: 'All test data cleared! Users kept intact.' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/projects', projectRoutes);
@@ -160,3 +175,4 @@ connectDB().then(async () => {
 });
 
 module.exports = app;
+
