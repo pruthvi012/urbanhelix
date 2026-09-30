@@ -380,14 +380,17 @@ export default function Dashboard() {
     const completedCitizenWorks = citizenProjects.filter(p => p.status === 'Completed');
 
     // South wards directory list
-    // When a ward is already selected (selectedWardObj), don't filter by areaSearch text
-    // so the full grid stays visible and the user can select a different ward
+    // When a ward is already selected (selectedWardObj), show ALL wards without any filter
+    // so the full grid stays visible and the user can select a different ward from any AC
     const filteredSouthWards = fallbackWards.filter(w => {
+        // If a ward is already selected, show everything (no AC or text filter)
+        if (selectedWardObj) return true;
+        // AC filter (only when no ward selected)
         if (wardACFilter !== 'All' && !w.assemblyConstituency.toLowerCase().includes(wardACFilter.toLowerCase())) {
             return false;
         }
-        // Only text-filter when user is actively typing AND no ward has been chosen yet
-        if (!selectedWardObj && areaSearch && areaSearch.trim()) {
+        // Text filter (only when user is actively typing AND no ward chosen)
+        if (areaSearch && areaSearch.trim()) {
             const term = areaSearch.toLowerCase().trim();
             const matchesNo = String(w.wardNo).includes(term);
             const matchesName = w.name.toLowerCase().includes(term);
@@ -557,9 +560,10 @@ export default function Dashboard() {
                         <div style={{ 
                             display: 'flex', 
                             flexDirection: 'column', 
-                            gap: '8px', 
-                            overflowY: 'visible', 
-                            paddingRight: '4px'
+                            gap: '5px', 
+                            overflowY: 'auto',
+                            maxHeight: selectedArea ? '300px' : '520px',
+                            paddingRight: '2px'
                         }}>
                             {BBMP_CIVIC_WORKS.map((work, idx) => {
                                 const isSelected = selectedCivicWork === work.name;
@@ -574,24 +578,24 @@ export default function Dashboard() {
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '12px',
-                                            padding: '10px 14px',
-                                            borderRadius: '12px',
+                                            gap: '8px',
+                                            padding: '7px 10px',
+                                            borderRadius: '9px',
                                             border: isSelected ? '2px solid var(--accent-teal)' : '1px solid #f1f5f9',
                                             background: isSelected ? '#f0fdfa' : '#fafbfc',
-                                            boxShadow: isSelected ? '0 4px 12px rgba(13, 148, 136, 0.12)' : 'none',
+                                            boxShadow: isSelected ? '0 2px 8px rgba(13, 148, 136, 0.12)' : 'none',
                                             cursor: 'pointer',
                                             transition: 'all 0.15s ease',
                                         }}
                                     >
                                         <div style={{ 
-                                            fontSize: '20px', 
-                                            width: '36px', 
-                                            height: '36px', 
+                                            fontSize: '15px', 
+                                            width: '28px', 
+                                            height: '28px', 
                                             display: 'flex', 
                                             alignItems: 'center', 
                                             justifyContent: 'center', 
-                                            borderRadius: '10px', 
+                                            borderRadius: '7px', 
                                             background: '#ffffff', 
                                             border: isSelected ? '1px solid var(--accent-teal)' : '1px solid #e2e8f0',
                                             flexShrink: 0 
@@ -599,29 +603,29 @@ export default function Dashboard() {
                                             {work.icon}
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                                                <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: isSelected ? 'var(--accent-teal)' : 'var(--text-main)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1px' }}>
+                                                <h4 style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: isSelected ? 'var(--accent-teal)' : 'var(--text-main)' }}>
                                                     {work.name}
                                                 </h4>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                                     {selectedArea && (
                                                         <span style={{ 
-                                                            fontSize: '11px', 
+                                                            fontSize: '10px', 
                                                             fontWeight: 700, 
                                                             background: countInWard > 0 ? 'rgba(16, 185, 129, 0.15)' : '#f1f5f9', 
                                                             color: countInWard > 0 ? 'var(--accent-green)' : '#94a3b8', 
-                                                            padding: '1px 7px', 
-                                                            borderRadius: '10px' 
+                                                            padding: '1px 6px', 
+                                                            borderRadius: '8px' 
                                                         }}>
-                                                            {countInWard} {countInWard === 1 ? 'work' : 'works'}
+                                                            {countInWard}w
                                                         </span>
                                                     )}
-                                                    <span style={{ fontSize: '10px', color: isSelected ? 'var(--accent-teal)' : '#94a3b8', fontWeight: 600 }}>
-                                                        {isSelected ? 'Active ✓' : `0${idx + 1}`}
+                                                    <span style={{ fontSize: '9px', color: isSelected ? 'var(--accent-teal)' : '#94a3b8', fontWeight: 600 }}>
+                                                        {isSelected ? '✓' : `0${idx + 1}`}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <p style={{ margin: 0, fontSize: '11px', color: '#64748b', lineHeight: '1.3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            <p style={{ margin: 0, fontSize: '10px', color: '#64748b', lineHeight: '1.3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {work.desc}
                                             </p>
                                         </div>
@@ -823,9 +827,24 @@ export default function Dashboard() {
                                             setSelectedWardObj(null);
                                             setShowAreaSuggestions(false); 
                                         }} 
-                                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                                        title="Clear search & selection"
+                                        style={{ 
+                                            position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', 
+                                            background: '#fee2e2', 
+                                            border: '1px solid #fca5a5', 
+                                            borderRadius: '50%',
+                                            width: '22px',
+                                            height: '22px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#ef4444', 
+                                            cursor: 'pointer',
+                                            fontSize: '12px',
+                                            fontWeight: 700
+                                        }}
                                     >
-                                        <FiX />
+                                        <FiX size={12} />
                                     </button>
                                 )}
 
