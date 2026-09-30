@@ -1,49 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { FiAlertTriangle, FiShieldOff, FiX } from 'react-icons/fi';
-import { auditAPI } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { FiShieldOff, FiX } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
+// This popup only fires when explicitly triggered via window.dispatchEvent(new CustomEvent('tamper-detected', { detail: data }))
+// It does NOT auto-poll on its own anymore.
 export default function GlobalTamperWarning() {
     const { user } = useAuth();
     const [isTampered, setIsTampered] = useState(false);
     const [tamperDetails, setTamperDetails] = useState(null);
     const [dismissed, setDismissed] = useState(false);
-    const location = useLocation();
     const navigate = useNavigate();
 
-    // Check for demo mode via URL parameter - instant trigger for demonstration
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('demo') === 'tamper') {
+        const handleTamperEvent = (e) => {
+            setDismissed(false);
             setIsTampered(true);
-            setTamperDetails({ errors: [{ sequenceNumber: 1, error: 'Data hash mismatch — SHA-256 integrity violation detected in Block #1' }] });
-        }
-    }, []);
-
-    useEffect(() => {
-        const checkIntegrity = async () => {
-            if (dismissed || user?.role === 'contractor') return;
-            try {
-                const res = await auditAPI.verifyChain();
-                if (res.data && res.data.valid === false) {
-                    setIsTampered(true);
-                    setTamperDetails(res.data);
-                } else {
-                    // Don't reset if demo mode is active
-                    const params = new URLSearchParams(window.location.search);
-                    if (params.get('demo') !== 'tamper') {
-                        setIsTampered(false);
-                    }
-                }
-            } catch (err) {
-                console.error("Integrity check failed", err);
-            }
+            setTamperDetails(e.detail || {});
         };
-        checkIntegrity();
-        const interval = setInterval(checkIntegrity, 5000);
-        return () => clearInterval(interval);
-    }, [dismissed, user?.role]);
+        window.addEventListener('tamper-detected', handleTamperEvent);
+        return () => window.removeEventListener('tamper-detected', handleTamperEvent);
+    }, []);
 
     if (user?.role === 'contractor' || !isTampered || dismissed) return null;
 

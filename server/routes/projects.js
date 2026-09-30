@@ -380,7 +380,8 @@ router.get('/:id', optionalAuth, async (req, res) => {
             .populate('proposedBy', 'name email role')
             .populate('engineer', 'name email')
             .populate('contractor', 'name email bankDetails')
-            .populate('statusHistory.changedBy', 'name role');
+            .populate('statusHistory.changedBy', 'name role')
+            .populate('feedback.citizen', 'name');
 
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
         
@@ -536,7 +537,7 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_o
         const hashRecord = await HashChainService.addRecord(
             'project_created',
             {
-                projectId: project._id,
+                project: project._id,
                 title: project.title,
                 budget: project.estimatedBudget,
             },
@@ -1362,6 +1363,9 @@ router.put('/:id/expenditure/:expId/release', protect, authorize('financial_offi
         exp.releasedByFinance = req.user._id;
         exp.releasedAt = new Date();
 
+        // FIX: Update project spentBudget so dashboard graphs reflect this payment
+        project.spentBudget = (project.spentBudget || 0) + exp.amount;
+
         // Update contractor bank details if provided
         if (project.contractor && (req.body.accountNumber || req.body.ifscCode)) {
             await User.findByIdAndUpdate(project.contractor, {
@@ -1371,6 +1375,39 @@ router.put('/:id/expenditure/:expId/release', protect, authorize('financial_offi
                     bankName: req.body.bankName
                 }
             });
+        }
+
+        // FIX: Create a FundTransaction so it appears in Finance & Escrow table
+        try {
+            const pop = await Project.findById(project._id).populate('department contractor');
+            await FundTransaction.create({
+                type: 'payment',
+                from: {
+                    entityType: 'department',
+                    entityId: (pop && pop.department) ? pop.department._id : project._id,
+                    name: (pop && pop.department) ? pop.department.name : 'BBMP Department',
+                },
+                to: {
+                    entityType: 'contractor',
+                    entityId: (pop && pop.contractor) ? pop.contractor._id : project._id,
+                    name: (pop && pop.contractor) ? pop.contractor.name : (exp.vendor || 'Contractor'),
+                },
+                amount: exp.amount,
+                description: 'Payment released for ' + (exp.material || exp.vendor || 'item') + ' on project ' + project.title,
+                project: project._id,
+                status: 'approved',
+                initiatedBy: req.user._id,
+                verifications: [{
+                    verifiedBy: req.user._id,
+                    stage: 1,
+                    approved: true,
+                    remarks: 'Released by Finance Officer. A/C: ' + (req.body.accountNumber || 'N/A'),
+                    timestamp: new Date(),
+                }],
+            });
+            console.log('[FundTransaction] Created for project:', project._id);
+        } catch (ftErr) {
+            console.error('[FundTransaction] Creation failed (non-fatal):', ftErr.message);
         }
 
         // Record to HashChain
@@ -1417,3 +1454,41 @@ router.get('/materials/:category', (req, res) => {
 
 
 module.exports = router;
+
+// POST /api/projects/:id/feedback � Citizen project review/feedback
+router.post('/:id/feedback', protect, authorize('citizen'), upload.single('photo'), async (req, res) => {
+    try {
+        const project = await Project.findById(req.params.id);
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+        
+        if (project.status !== 'completed') {
+            return res.status(400).json({ success: false, message: 'Feedback can only be submitted for completed projects.' });
+        }
+
+        const rating = parseInt(req.body.rating);
+        if (isNaN(rating) || rating < 1 || rating > 5) {
+            return res.status(400).json({ success: false, message: 'Valid rating between 1 and 5 is required.' });
+        }
+
+        let gpsLocation = null;
+        if (req.body.gpsLocation) {
+            try { gpsLocation = JSON.parse(req.body.gpsLocation); } catch (e) {}
+        }
+
+        const newFeedback = {
+            citizen: req.user._id,
+            rating,
+            comment: req.body.comment || '',
+            gpsLocation,
+            imageUrl: req.file ? (req.file.location || `/uploads/projects/${req.file.filename}`) : null,
+            createdAt: new Date()
+        };
+
+        project.feedback.push(newFeedback);
+        await project.save();
+
+        res.status(201).json({ success: true, feedback: newFeedback, message: 'Feedback submitted successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});

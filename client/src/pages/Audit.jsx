@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { auditAPI } from '../services/api';
 import { FiShield, FiSearch, FiCheckCircle, FiXCircle, FiActivity, FiRefreshCw, FiAlertTriangle, FiDownload } from 'react-icons/fi';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export default function Audit() {
+    const { user } = useAuth();
+    const isAdmin = user?.role === 'admin';
+
     const [chainStatus, setChainStatus] = useState(null);
     const [records, setRecords] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -221,18 +225,18 @@ export default function Audit() {
                     <button 
                         className="btn btn-outline" 
                         onClick={async () => {
-                            if (window.confirm("CRITICAL: This will intentionally corrupt a database record for demo purposes. Proceed?")) {
-                                try {
-                                    await auditAPI.simulateTamper();
-                                    alert("Record Tampered! Now click 'Verify Integrity' to detect it.");
-                                    loadData();
-                                } catch (err) { alert("Failed to tamper: " + (err.response?.data?.message || err.message)); }
-                            }
+                            try {
+                                await auditAPI.simulateTamper();
+                                const verifyRes = await auditAPI.verifyChain();
+                                window.dispatchEvent(new CustomEvent('tamper-detected', { detail: verifyRes.data }));
+                                loadData();
+                            } catch (err) { alert("Failed to tamper: " + (err.response?.data?.message || err.message)); }
                         }}
                         style={{ padding: '12px 24px', fontSize: '16px', border: '1px solid var(--accent-red)', color: 'var(--accent-red)' }}
                     >
                         ⚠️ Simulate Tamper
                     </button>
+
                     <button 
                         className={`btn ${isVerifying ? 'btn-outline' : 'btn-primary'}`} 
                         onClick={handleVerifyChain}
@@ -247,7 +251,9 @@ export default function Audit() {
 
             <div className="glass-card" style={{ marginBottom: '24px', padding: 0, display: 'flex' }}>
                 <button className={`tab-btn ${activeTab === 'chain' ? 'active' : ''}`} onClick={() => setActiveTab('chain')}><FiShield style={{marginRight: '8px'}}/> Blockchain Audit Trail</button>
-                <button className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => setActiveTab('logs')}><FiActivity style={{marginRight: '8px'}}/> System Activity Logs</button>
+                {isAdmin && (
+                    <button className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => setActiveTab('logs')}><FiActivity style={{marginRight: '8px'}}/> System Activity Logs</button>
+                )}
             </div>
 
             {activeTab === 'chain' ? (
@@ -504,51 +510,66 @@ export default function Audit() {
                 </>
             ) : (
                 <div className="section">
-                    <div className="section-header">
-                        <h2 className="section-title">System Activity Logs</h2>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                             <div style={{ position: 'relative' }}>
-                                <FiSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input 
-                                    className="form-input" 
-                                    placeholder="Search by Project Code..." 
-                                    style={{ paddingLeft: '36px', height: '38px', fontSize: '13px' }} 
-                                    onChange={(e) => {
-                                        // Simple local filter or trigger re-fetch if needed
-                                    }}
-                                />
-                             </div>
+                    {!isAdmin ? (
+                        <div style={{
+                            display: 'flex', flexDirection: 'column', alignItems: 'center',
+                            justifyContent: 'center', padding: '80px 20px', textAlign: 'center'
+                        }}>
+                            <FiShield style={{ fontSize: '56px', color: 'var(--accent-red)', marginBottom: '16px', opacity: 0.7 }} />
+                            <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>Access Restricted</h2>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '15px', maxWidth: '380px' }}>
+                                System Activity Logs are only visible to <strong>Admin</strong> accounts. Contact your administrator for access.
+                            </p>
                         </div>
-                    </div>
-                    
-                    {logLoading && <div className="loading" style={{ padding: '40px' }}><div className="spinner"></div> Loading logs...</div>}
-                    
-                    <div className="table-container">
-                        <table className="table">
-                            <thead>
-                                <tr><th>Timestamp</th><th>User</th><th>Action</th><th>Details</th></tr>
-                            </thead>
-                            <tbody>
-                                {auditLogs.map((log) => (
-                                    <tr key={log._id}>
-                                        <td style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{new Date(log.createdAt).toLocaleString()}</td>
-                                        <td>
-                                            <div style={{ fontSize: '14px', fontWeight: 600 }}>{log.user?.name}</div>
-                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{log.user?.role?.replace('_', ' ')}</div>
-                                        </td>
-                                        <td><span className={`badge badge-${log.action === 'approve' ? 'approved' : log.action === 'reject' ? 'rejected' : 'proposed'}`}>{log.action}</span></td>
-                                        <td style={{ fontSize: '14px', lineHeight: 1.4 }}>{log.details}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    {totalLogPages > 1 && (
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '30px' }}>
-                            <button className="btn btn-outline btn-sm" disabled={logPage <= 1} onClick={() => setLogPage(p => p - 1)}>← Prev</button>
-                            <span style={{ padding: '6px 14px', fontSize: '13px', color: 'var(--text-secondary)' }}>Page {logPage} of {totalLogPages}</span>
-                            <button className="btn btn-outline btn-sm" disabled={logPage >= totalLogPages} onClick={() => setLogPage(p => p + 1)}>Next →</button>
+                    ) : (
+                        <>
+                        <div className="section-header">
+                            <h2 className="section-title">System Activity Logs</h2>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                 <div style={{ position: 'relative' }}>
+                                    <FiSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                    <input
+                                        className="form-input"
+                                        placeholder="Search by Project Code..."
+                                        style={{ paddingLeft: '36px', height: '38px', fontSize: '13px' }}
+                                        onChange={(e) => {
+                                            // Simple local filter or trigger re-fetch if needed
+                                        }}
+                                    />
+                                 </div>
+                            </div>
                         </div>
+
+                        {logLoading && <div className="loading" style={{ padding: '40px' }}><div className="spinner"></div> Loading logs...</div>}
+
+                        <div className="table-container">
+                            <table className="table">
+                                <thead>
+                                    <tr><th>Timestamp</th><th>User</th><th>Action</th><th>Details</th></tr>
+                                </thead>
+                                <tbody>
+                                    {auditLogs.map((log) => (
+                                        <tr key={log._id}>
+                                            <td style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{new Date(log.createdAt).toLocaleString()}</td>
+                                            <td>
+                                                <div style={{ fontSize: '14px', fontWeight: 600 }}>{log.user?.name}</div>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{log.user?.role?.replace('_', ' ')}</div>
+                                            </td>
+                                            <td><span className={`badge badge-${log.action === 'approve' ? 'approved' : log.action === 'reject' ? 'rejected' : 'proposed'}`}>{log.action}</span></td>
+                                            <td style={{ fontSize: '14px', lineHeight: 1.4 }}>{log.details}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        {totalLogPages > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '30px' }}>
+                                <button className="btn btn-outline btn-sm" disabled={logPage <= 1} onClick={() => setLogPage(p => p - 1)}>← Prev</button>
+                                <span style={{ padding: '6px 14px', fontSize: '13px', color: 'var(--text-secondary)' }}>Page {logPage} of {totalLogPages}</span>
+                                <button className="btn btn-outline btn-sm" disabled={logPage >= totalLogPages} onClick={() => setLogPage(p => p + 1)}>Next →</button>
+                            </div>
+                        )}
+                        </>
                     )}
                 </div>
             )}

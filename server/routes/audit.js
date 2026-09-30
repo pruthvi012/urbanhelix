@@ -93,8 +93,8 @@ router.get('/chain', async (req, res) => {
     }
 });
 
-// GET /api/audit/logs — audit logs (admin/auditor)
-router.get('/logs', protect, async (req, res) => {
+// GET /api/audit/logs — audit logs (admin only)
+router.get('/logs', protect, authorize('admin'), async (req, res) => {
     try {
         const { page = 1, limit = 50, action, resourceType } = req.query;
         const filter = {};

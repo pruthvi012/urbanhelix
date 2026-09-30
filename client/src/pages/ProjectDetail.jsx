@@ -23,6 +23,8 @@ export default function ProjectDetail() {
     const [selectedExp, setSelectedExp] = useState(null);
     const [lightboxUrl, setLightboxUrl] = useState(null);
     const [verifyForm, setVerifyForm] = useState({ verified: true, remarks: '', photo: null });
+    const [feedbackForm, setFeedbackForm] = useState({ rating: 0, comment: '', photo: null });
+    const [submittingFeedback, setSubmittingFeedback] = useState(false);
     const [isTampered, setIsTampered] = useState(false);
     const [expenseForm, setExpenseForm] = useState({ 
         date: new Date().toISOString().split('T')[0], 
@@ -57,6 +59,45 @@ export default function ProjectDetail() {
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
+    
+    const handleFeedbackSubmit = async (e) => {
+        e.preventDefault();
+        if (feedbackForm.rating === 0) return alert('Please select a rating.');
+        setSubmittingFeedback(true);
+        const submitData = async (coords) => {
+            const formData = new FormData();
+            formData.append('rating', feedbackForm.rating);
+            formData.append('comment', feedbackForm.comment);
+            if (coords) formData.append('gpsLocation', JSON.stringify(coords));
+            if (feedbackForm.photo) formData.append('photo', feedbackForm.photo);
+            
+            try {
+                await projectAPI.submitFeedback(id, formData);
+                setFeedbackForm({ rating: 0, comment: '', photo: null });
+                loadData();
+                alert('Feedback submitted successfully!');
+            } catch (err) {
+                alert(err.response?.data?.message || 'Error submitting feedback');
+            } finally {
+                setSubmittingFeedback(false);
+            }
+        };
+
+        if (feedbackForm.photo) {
+            if (!navigator.geolocation) {
+                setSubmittingFeedback(false);
+                return alert('Browser GPS is required for site photo.');
+            }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => submitData({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                () => { setSubmittingFeedback(false); alert('Allow browser location access before uploading site photo.'); },
+                { enableHighAccuracy: true, maximumAge: 0 }
+            );
+        } else {
+            submitData(null);
+        }
+    };
+    
     const handleApprove = async () => {
         const enteredAmount = prompt(`Allocate budget for this project (maximum proposed: ₹${Number(project.estimatedBudget).toLocaleString()}):`, String(project.estimatedBudget));
         if (enteredAmount === null) return;
@@ -538,6 +579,7 @@ export default function ProjectDetail() {
                 </div>
             )}
 
+            {user?.role !== 'citizen' && (<>
             <div className="grid-2" style={{ marginBottom: '24px' }}>
                 <div className="glass-card">
                     <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px' }}>Visual Evidence</h3>
@@ -576,6 +618,75 @@ export default function ProjectDetail() {
                 </div>
             </div>
 
+            
+            </>)}
+
+            {/* CITIZEN PROJECT REVIEW / FEEDBACK */}
+            {project.status === 'completed' && (
+                <div className="section" style={{ marginTop: '32px' }}>
+                    <div className="section-header">
+                        <h2 className="section-title" style={{ fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>? Citizen Feedback & Reviews</h2>
+                    </div>
+                    
+                    {user?.role === 'citizen' && (
+                        <div className="glass-card" style={{ marginBottom: '24px', padding: '24px', background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: 'var(--accent-blue)' }}>Share your experience</h3>
+                            <form onSubmit={handleFeedbackSubmit}>
+                                <div className="form-group">
+                                    <label className="form-label">How is the completed work? (Rating)</label>
+                                    <div style={{ display: 'flex', gap: '8px', fontSize: '28px', cursor: 'pointer' }}>
+                                        {[1, 2, 3, 4, 5].map(star => (
+                                            <span key={star} onClick={() => setFeedbackForm({...feedbackForm, rating: star})} style={{ color: star <= feedbackForm.rating ? '#fbbf24' : '#cccccc', cursor: 'pointer', transition: 'color 0.15s' }}>
+                                                &#9733;
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Write your experience...</label>
+                                    <textarea className="form-input" rows="3" placeholder="Is the road condition good? Is the work completed properly?" value={feedbackForm.comment} onChange={e => setFeedbackForm({...feedbackForm, comment: e.target.value})} required></textarea>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">?? Add GPS Photo (Optional)</label>
+                                    <input className="form-input" type="file" accept="image/*" capture="environment" onChange={e => setFeedbackForm({...feedbackForm, photo: e.target.files[0]})} />
+                                    <small style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Take a picture of the current condition. GPS will be attached automatically.</small>
+                                </div>
+                                <button type="submit" className="btn btn-primary" disabled={submittingFeedback}>
+                                    {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+                                </button>
+                            </form>
+                        </div>
+                    )}
+
+                    <div className="feedback-list" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {project.feedback && project.feedback.length > 0 ? project.feedback.map(fb => (
+                            <div key={fb._id} className="glass-card" style={{ padding: '20px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                    <div style={{ fontWeight: 600 }}>{fb.citizen?.name || 'Citizen'}</div>
+                                    <div style={{ color: '#fbbf24', fontSize: '16px' }}>{'?'.repeat(fb.rating)}{'?'.repeat(5 - fb.rating)}</div>
+                                </div>
+                                <p style={{ fontSize: '14px', color: 'var(--text-primary)', marginBottom: '12px' }}>{fb.comment}</p>
+                                {fb.imageUrl && (
+                                    <div style={{ marginTop: '12px' }}>
+                                        <img src={fb.imageUrl} alt="Feedback" style={{ width: '100%', maxWidth: '300px', borderRadius: '8px', border: '1px solid var(--border-glass)', objectFit: 'cover' }} />
+                                    </div>
+                                )}
+                                {fb.gpsLocation?.lat && (
+                                    <div className="tx-tag" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', display: 'inline-block', marginTop: '12px', fontSize: '12px' }}>
+                                        ?? GPS Verified
+                                    </div>
+                                )}
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '12px' }}>
+                                    {new Date(fb.createdAt).toLocaleDateString()}
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="empty-state">No citizen feedback yet.</div>
+                        )}
+                    </div>
+                </div>
+            )}
+    
             {/* Milestones */}
             <div className="section">
                 <div className="section-header">

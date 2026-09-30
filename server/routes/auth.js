@@ -95,32 +95,19 @@ router.get('/users', protect, authorize('admin', 'engineer', 'financial_officer'
 // In-memory OTP storage
 const otpStore = new Map();
 
-// Helper to send SMS via Fast2SMS using Quick SMS route (POST request)
-const sendFast2SMSSMS = (phone, otp) => {
+// Helper to send OTP via 2Factor.in (free, India-focused, simple GET API)
+const sendOTPviaProvider = (phone, otp) => {
     return new Promise((resolve, reject) => {
-        const apiKey = process.env.FAST2SMS_API_KEY;
+        const apiKey = process.env.TWOFACTOR_API_KEY;
         if (!apiKey) {
-            return reject(new Error('FAST2SMS_API_KEY is not defined in environment'));
+            return reject(new Error('TWOFACTOR_API_KEY is not set in .env'));
         }
 
-        // Fast2SMS API bulkV2 payload using Quick SMS route to bypass website verification requirements
-        const postData = JSON.stringify({
-            route: 'q',
-            message: `Your UrbanHeliX verification code is: ${otp}`,
-            language: 'english',
-            flash: 0,
-            numbers: phone
-        });
-
+        // 2Factor.in API: GET https://2factor.in/API/V1/{api_key}/SMS/{phone}/{otp}
         const options = {
-            hostname: 'www.fast2sms.com',
-            path: '/dev/bulkV2',
-            method: 'POST',
-            headers: {
-                'Authorization': apiKey,
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(postData)
-            }
+            hostname: '2factor.in',
+            path: `/API/V1/${apiKey}/SMS/${phone}/${otp}`,
+            method: 'GET',
         };
 
         const req = https.request(options, (res) => {
@@ -129,22 +116,22 @@ const sendFast2SMSSMS = (phone, otp) => {
             res.on('end', () => {
                 try {
                     const parsed = JSON.parse(body);
-                    if (parsed.return === true) {
+                    if (parsed.Status === 'Success') {
                         resolve(parsed);
                     } else {
-                        reject(new Error(parsed.message || 'Fast2SMS returned failure response'));
+                        reject(new Error(parsed.Details || '2Factor.in returned failure'));
                     }
                 } catch (e) {
-                    reject(new Error(`Failed to parse Fast2SMS response: ${body}`));
+                    reject(new Error(`Failed to parse 2Factor response: ${body}`));
                 }
             });
         });
 
         req.on('error', (err) => reject(err));
-        req.write(postData);
         req.end();
     });
 };
+
 
 // POST /api/auth/otp/send
 router.post('/otp/send', async (req, res) => {
@@ -181,7 +168,7 @@ router.post('/otp/send', async (req, res) => {
         let smsSent = false;
         let smsError = '';
         try {
-            await sendFast2SMSSMS(phone, otp);
+            await sendOTPviaProvider(phone, otp);
             smsSent = true;
             console.log(`[OTP] Real SMS delivered to ${phone}`);
         } catch (err) {

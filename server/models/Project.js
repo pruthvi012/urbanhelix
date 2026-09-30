@@ -104,6 +104,17 @@ const projectSchema = new mongoose.Schema({
     ],
     budgetEstimateProofUrl: String,
     isBudgetLocked: { type: Boolean, default: false },
+    feedback: [{
+        citizen: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        rating: { type: Number, required: true, min: 1, max: 5 },
+        comment: { type: String, required: true },
+        imageUrl: { type: String, default: null },
+        gpsLocation: {
+            lat: { type: Number, default: null },
+            lng: { type: Number, default: null }
+        },
+        createdAt: { type: Date, default: Date.now }
+    }],
     expenditures: [{
         date: { type: Date, required: true },
         invoiceDate: { type: Date, required: true },
