@@ -773,12 +773,32 @@ router.put('/:id', protect, async (req, res) => {
             return res.status(403).json({ success: false, message: 'Not authorized to edit this project' });
         }
 
+        const oldEstimate = project.estimatedBudget;
         const allowedUpdates = ['title', 'description', 'category', 'estimatedBudget', 'location', 'priority'];
         allowedUpdates.forEach(update => {
             if (req.body[update] !== undefined) project[update] = req.body[update];
         });
 
         await project.save();
+
+        if (req.body.estimatedBudget && Number(req.body.estimatedBudget) !== Number(oldEstimate)) {
+            try {
+                await HashChainService.addRecord(
+                    'project_estimate_updated',
+                    {
+                        projectId: project._id,
+                        projectCode: project.projectCode,
+                        oldEstimate,
+                        newEstimate: Number(req.body.estimatedBudget),
+                        estimatedBudget: Number(req.body.estimatedBudget),
+                        updatedBy: req.user.name || req.user.role
+                    },
+                    { entityType: 'project', entityId: project._id },
+                    req.user._id
+                );
+            } catch (err) { console.error('HashChain update log failed:', err); }
+        }
+
         res.json({ success: true, project });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

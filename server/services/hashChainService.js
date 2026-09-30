@@ -171,49 +171,77 @@ class HashChainService {
         const project = await Project.findById(projectId);
         if (!project) return { valid: false, error: 'Project not found' };
 
-        if (!project.hashChainRecordId) {
-            return { valid: false, error: 'Project has no linked hash record' };
-        }
+        // Query all hash records for this project
+        const records = await HashChainRecord.find({
+            $or: [
+                { 'relatedEntity.entityId': project._id },
+                { 'data.project': project._id },
+                { 'data.projectId': project._id },
+                { _id: project.hashChainRecordId }
+            ]
+        }).sort({ sequenceNumber: 1 });
 
-        const record = await HashChainRecord.findById(project.hashChainRecordId);
-        if (!record) return { valid: false, error: 'Linked hash record not found' };
-
-        // Recompute data hash of the record to ensure the record itself isn't tampered
-        const recordDataString = JSON.stringify(record.data);
-        const expectedRecordDataHash = this.computeHash(recordDataString);
-        if (expectedRecordDataHash !== record.dataHash) {
-            return { valid: false, error: 'The audit record itself has been tampered with!' };
-        }
-
-        // Compare current project fields with record data
         const discrepancies = [];
-        
-        // Check budget
-        const ledgerBudget = record.data.allocatedBudget || record.data.budget || record.data.estimatedBudget;
-        const currentBudget = project.allocatedBudget || project.estimatedBudget;
-        
-        if (ledgerBudget && currentBudget && Number(ledgerBudget) !== Number(currentBudget)) {
-            discrepancies.push({
-                field: 'budget',
-                ledger: ledgerBudget,
-                current: currentBudget
-            });
+
+        // 1. Check data integrity of linked records themselves
+        for (const record of records) {
+            const recordDataString = JSON.stringify(record.data);
+            const expectedDataHash = this.computeHash(recordDataString);
+            if (expectedDataHash !== record.dataHash) {
+                discrepancies.push({
+                    field: 'hash_chain_ledger',
+                    error: `Ledger block #${record.sequenceNumber} data hash mismatch!`
+                });
+            }
         }
 
-        // Check status
-        if (record.data.newStatus && record.data.newStatus !== project.status) {
-            discrepancies.push({
-                field: 'status',
-                ledger: record.data.newStatus,
-                current: project.status
-            });
+        // 2. Proposal / Creation Stage Check
+        const creationRecord = records.find(r => r.recordType === 'project_created');
+        if (creationRecord) {
+            const initialBudget = creationRecord.data.budget || creationRecord.data.estimatedBudget;
+            if (initialBudget && Number(project.estimatedBudget) !== Number(initialBudget)) {
+                discrepancies.push({
+                    field: 'estimatedBudget',
+                    ledger: initialBudget,
+                    current: project.estimatedBudget,
+                    stage: 'proposal'
+                });
+            }
+        }
+
+        // 3. Approval Stage Check (if approved or budget allocated)
+        const approvalRecord = records.find(r => r.recordType === 'project_approved');
+        if (approvalRecord) {
+            const approvedBudget = approvalRecord.data.allocatedBudget;
+            if (approvedBudget && project.allocatedBudget && Number(project.allocatedBudget) !== Number(approvedBudget)) {
+                discrepancies.push({
+                    field: 'allocatedBudget',
+                    ledger: approvedBudget,
+                    current: project.allocatedBudget,
+                    stage: 'approval'
+                });
+            }
+        }
+
+        // 4. Fallback check for single linked record if creation/approval records not separately identified
+        if (project.hashChainRecordId && !creationRecord && !approvalRecord) {
+            const record = await HashChainRecord.findById(project.hashChainRecordId);
+            if (record) {
+                const ledgerBudget = record.data.allocatedBudget || record.data.budget || record.data.estimatedBudget;
+                const currentBudget = project.allocatedBudget > 0 ? project.allocatedBudget : project.estimatedBudget;
+                if (ledgerBudget && currentBudget && Number(ledgerBudget) !== Number(currentBudget)) {
+                    discrepancies.push({
+                        field: 'budget',
+                        ledger: ledgerBudget,
+                        current: currentBudget
+                    });
+                }
+            }
         }
 
         return {
             valid: discrepancies.length === 0,
             discrepancies,
-            recordId: record._id,
-            sequenceNumber: record.sequenceNumber,
             project: {
                 title: project.title,
                 projectCode: project.projectCode
