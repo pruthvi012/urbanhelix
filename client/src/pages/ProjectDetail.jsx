@@ -484,6 +484,19 @@ export default function ProjectDetail() {
                                 <span style={{ fontSize: '12px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', padding: '4px 12px', borderRadius: '12px', border: '1px solid #fca5a5', whiteSpace: 'nowrap' }}>
                                     ❌ Budget Rejected
                                 </span>
+                            ) : isTampered ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                    <button 
+                                        className="btn btn-sm" 
+                                        disabled 
+                                        style={{ opacity: 0.6, cursor: 'not-allowed', background: '#94a3b8', color: '#ffffff', borderColor: '#64748b', fontWeight: 700 }}
+                                    >
+                                        🔒 Proceed Frozen
+                                    </button>
+                                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                                        ⚠️ PROCEED FROZEN: Budget has been tampered! Action blocked for security investigation.
+                                    </span>
+                                </div>
                             ) : (
                                 <>
                                     <button className="btn btn-success btn-sm" onClick={handleApprove}>Proceed</button>

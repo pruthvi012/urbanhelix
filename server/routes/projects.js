@@ -393,7 +393,8 @@ router.get('/', optionalAuth, async (req, res) => {
         const userRole = req.user?.role;
         const canSeeCode = userRole === 'admin' || userRole === 'engineer' || userRole === 'financial_officer';
         
-        const sanitizedProjects = projects.map(p => {
+        const HashChainService = require('../services/hashChainService');
+        const sanitizedProjects = await Promise.all(projects.map(async p => {
             const pObj = p.toObject();
             // Allow contractor to see the code IF they searched for it explicitly, otherwise hide it
             // Allow contractor to see the code IF they searched for it explicitly, or if they are the contractor
@@ -406,8 +407,14 @@ router.get('/', optionalAuth, async (req, res) => {
             if (!canSeeCode && !isAssignedContractor && !searchedThisCode) {
                 delete pObj.projectCode;
             }
+            try {
+                if (p.hashChainRecordId) {
+                    const check = await HashChainService.verifyProjectIntegrity(p._id);
+                    if (!check.valid) pObj.isTampered = true;
+                }
+            } catch (_) {}
             return pObj;
-        });
+        }));
 
         res.json({ success: true, projects: sanitizedProjects, total, page: parseInt(page), totalPages: Math.ceil(total / limit) });
     } catch (error) {
