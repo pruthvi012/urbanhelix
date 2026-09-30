@@ -53,21 +53,21 @@ CITIZEN'S QUESTION: "${question}"
             return q.split(/s+/).some(word => word.length > 3 && (ward.includes(word) || title.includes(word)));
         });
 
-        let answer;
+                let answer;
         if (matched.length > 0) {
             const summary = matched.slice(0, 5).map(p => {
-                const status = p.status === 'completed' ? '? Completed' :
-                               p.status === 'in_progress' ? '?? In Progress' :
-                               p.status === 'delayed' ? '?? Delayed' : `?? ${p.status}`;
-                return `� ${p.title} � ${status}`;
+                const status = p.status === 'completed' ? '[Completed]' :
+                               p.status === 'in_progress' ? '[In Progress]' :
+                               p.status === 'delayed' ? '[Delayed]' : `[${p.status}]`;
+                return `- ${p.title} : ${status}`;
             }).join('\n');
             answer = `Here's what I found:\n\n${summary}`;
         } else if (isGeneralList && projects.length > 0) {
             const summary = projects.slice(0, 5).map(p => {
-                const status = p.status === 'completed' ? '? Completed' :
-                               p.status === 'in_progress' ? '?? In Progress' :
-                               p.status === 'delayed' ? '?? Delayed' : `?? ${p.status}`;
-                return `� ${p.title} (${p.location?.ward || 'Citywide'}) � ${status}`;
+                const status = p.status === 'completed' ? '[Completed]' :
+                               p.status === 'in_progress' ? '[In Progress]' :
+                               p.status === 'delayed' ? '[Delayed]' : `[${p.status}]`;
+                return `- ${p.title} (${p.location?.ward || 'Citywide'}) : ${status}`;
             }).join('\n');
             answer = `Currently, there are ${projects.length} active projects going on citywide. Here are some of them:\n\n${summary}`;
         } else if (projects.length > 0) {
