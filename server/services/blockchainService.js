@@ -187,7 +187,7 @@ class BlockchainService {
         if (this.polygonContracts) return;
         
         // Connect to Polygon Amoy
-        const polygonRpc = process.env.POLYGON_RPC_URL || 'https://rpc-amoy.polygon.technology';
+        const polygonRpc = process.env.POLYGON_RPC_URL || 'https://polygon-amoy.drpc.org';
         this.polygonProvider = new ethers.JsonRpcProvider(polygonRpc);
         
         // We need a real wallet for the testnet. If not provided in env, use a dummy one just so it doesn't crash 

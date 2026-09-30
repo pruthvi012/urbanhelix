@@ -13,7 +13,7 @@ const { notifyCitizensOnly } = notificationService;
 const FundTransaction = require('../models/FundTransaction');
 const User = require('../models/User');
 const crypto = require('crypto');
-const polygonService = require('../services/polygonService');
+
 
 
 const router = express.Router();
@@ -1220,6 +1220,33 @@ router.post('/:id/expenditure', protect, authorize('contractor', 'engineer'), up
         );
 
         res.json({ success: true, project });
+
+        // ⛓️ Fire-and-forget Polygon blockchain write AFTER response is sent
+        // Works on Vercel serverless — no background worker needed
+        const newExp = project.expenditures[project.expenditures.length - 1];
+        if (newExp) {
+            const blockchainService = require('../services/blockchainService');
+            blockchainService.logExpenditure(
+                project.projectCode || project._id.toString(),
+                vendor,
+                expAmount,
+                entryHash
+            ).then(async (result) => {
+                if (result && result.txHash) {
+                    await require('mongoose').model('Project').updateOne(
+                        { _id: project._id, 'expenditures._id': newExp._id },
+                        { $set: { 'expenditures.$.txHash': result.txHash, 'expenditures.$.blockchainStatus': 'completed' } }
+                    );
+                    console.log(`⛓️ Polygon write confirmed: ${result.txHash}`);
+                }
+            }).catch(err => {
+                console.error('⚠️ Polygon write failed (non-critical):', err.message);
+                require('mongoose').model('Project').updateOne(
+                    { _id: project._id, 'expenditures._id': newExp._id },
+                    { $set: { 'expenditures.$.blockchainStatus': 'failed' } }
+                ).catch(() => {});
+            });
+        }
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
