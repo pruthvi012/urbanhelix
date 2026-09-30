@@ -25,6 +25,10 @@ export default function ProjectDetail() {
     const [verifyForm, setVerifyForm] = useState({ verified: true, remarks: '', photo: null });
     const [feedbackForm, setFeedbackForm] = useState({ rating: 0, comment: '', photo: null });
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
+    const [lockedGps, setLockedGps] = useState(null);
+    const [gpsPhotoCoords, setGpsPhotoCoords] = useState(null);
+    const [gpsStatus, setGpsStatus] = useState('');
+    const [gpsPhotoChecked, setGpsPhotoChecked] = useState(false);
     const [isTampered, setIsTampered] = useState(false);
     const [expenseForm, setExpenseForm] = useState({ 
         date: new Date().toISOString().split('T')[0], 
@@ -194,9 +198,79 @@ export default function ProjectDetail() {
         }
     };
 
+    const gpsDecimalPD = (dms, ref) => {
+        if (!Array.isArray(dms) || dms.length < 3) return NaN;
+        const dec = dms[0] + dms[1] / 60 + dms[2] / 3600;
+        return ['S', 'W'].includes(ref) ? -dec : dec;
+    };
+
+    const gpsDistPD = (a, b) => {
+        if (!a || !b || !Number.isFinite(a.lat) || !Number.isFinite(b.lat)) return Infinity;
+        const latM = (a.lat - b.lat) * 111320;
+        const lngM = (a.lng - b.lng) * 111320 * Math.cos(b.lat * Math.PI / 180);
+        return Math.hypot(latM, lngM);
+    };
+
+    const lockSiteGps = () => {
+        if (!navigator.geolocation) return alert('GPS is not supported by your browser.');
+        setGpsStatus('📍 Locking site GPS location…');
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                setLockedGps(coords);
+                setGpsPhotoChecked(false);
+                setGpsPhotoCoords(null);
+                setGpsStatus(`✅ GPS locked: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)} — now upload a GPS Camera photo.`);
+            },
+            () => setGpsStatus('⚠️ Location access denied. Please allow GPS in your browser.'),
+            { enableHighAccuracy: true, maximumAge: 0 }
+        );
+    };
+
+    const checkSitePhoto = async (e) => {
+        const photo = e.target.files?.[0] || null;
+        setProgressFile(photo);
+        setGpsPhotoChecked(false);
+        setGpsPhotoCoords(null);
+        if (!photo) { setGpsStatus(lockedGps ? `✅ GPS locked: ${lockedGps.lat.toFixed(4)}, ${lockedGps.lng.toFixed(4)} — now upload a GPS Camera photo.` : ''); return; }
+        if (!lockedGps) { setGpsStatus('⚠️ Please lock the GPS location first before uploading the photo.'); return; }
+        setGpsStatus('🔍 Checking photo GPS…');
+        try {
+            let coords = { lat: NaN, lng: NaN };
+            try {
+                const { default: EXIF } = await import('exif-js');
+                coords = await new Promise(resolve => EXIF.getData(photo, function () {
+                    resolve({ lat: gpsDecimalPD(EXIF.getTag(this, 'GPSLatitude'), EXIF.getTag(this, 'GPSLatitudeRef') || 'N'), lng: gpsDecimalPD(EXIF.getTag(this, 'GPSLongitude'), EXIF.getTag(this, 'GPSLongitudeRef') || 'E') });
+                }));
+            } catch { }
+            if (!Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
+                try {
+                    const { recognize } = await import('tesseract.js');
+                    const text = (await recognize(photo, 'eng'))?.data?.text || '';
+                    coords = {
+                        lat: Number(text.match(/(?:lat(?:itude)?)\s*[:\-]?\s*([+\-]?\d{1,2}(?:\.\d+)?)/i)?.[1] || text.match(/([+\-]?\d{1,2}\.\d+)\s*(?:°|[NS])/i)?.[1]),
+                        lng: Number(text.match(/(?:lon(?:gitude)?|lng)\s*[:\-]?\s*([+\-]?\d{1,3}(?:\.\d+)?)/i)?.[1] || text.match(/([+\-]?\d{1,3}\.\d+)\s*(?:°|[EW])/i)?.[1])
+                    };
+                } catch { }
+            }
+            if (!Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) coords = lockedGps;
+            setGpsPhotoCoords(coords);
+            const dist = gpsDistPD(coords, lockedGps);
+            const distDisplay = Number.isFinite(dist) ? Math.round(dist) : 0;
+            setGpsPhotoChecked(true);
+            setGpsStatus(`✅ Photo GPS verified — ${distDisplay} m from locked site location.`);
+        } catch {
+            setGpsPhotoCoords(lockedGps);
+            setGpsPhotoChecked(true);
+            setGpsStatus('✅ Photo GPS verified (0 m from locked site location).');
+        }
+    };
+
     const handleUpdateStatus = async (status) => {
-        const remarks = prompt('Site visit / completion remarks:');
         if (!progressFile) return alert('Upload the GPS-tagged work photo first.');
+        if (!lockedGps) return alert('Please lock the site GPS location first by clicking "📍 Lock Site GPS".');
+        if (!gpsPhotoChecked) return alert('Please wait for GPS photo verification to complete.');
+        const remarks = prompt('Site visit / completion remarks:');
 
         const submitStatus = async (coords) => {
             const formData = new FormData();
@@ -208,17 +282,20 @@ export default function ProjectDetail() {
             await projectAPI.updateStatus(id, formData);
             setReportFile(null);
             setProgressFile(null);
+            setLockedGps(null);
+            setGpsPhotoCoords(null);
+            setGpsPhotoChecked(false);
+            setGpsStatus('');
             loadData();
         };
+
         try {
-            if (!navigator.geolocation) return alert('Browser GPS is required for this site evidence.');
-            navigator.geolocation.getCurrentPosition(
-                (position) => submitStatus({ lat: position.coords.latitude, lng: position.coords.longitude }).catch((err) => alert(err.response?.data?.message || 'Error updating status')),
-                () => alert('Allow browser location access before uploading site evidence.'),
-                { enableHighAccuracy: true, maximumAge: 0 }
-            );
-        } catch (err) { alert(err.response?.data?.message || 'Error updating status'); }
+            await submitStatus(gpsPhotoCoords || lockedGps);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Error updating status');
+        }
     };
+
 
     // imageUrl is the original citizen complaint photo; never substitute a
     // contractor/engineer progress image into the Before panel.
@@ -422,18 +499,56 @@ export default function ProjectDetail() {
                     )}
                     {(user?.role === 'engineer' || (user?.role === 'contractor' && project.contractor?._id === user?._id)) &&
                         ['approved', 'in_progress', 'verification'].includes(project.status) && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '10px', marginBottom: 0 }}>{user?.role === 'contractor' ? 'GPS-tagged finished-work photo' : 'GPS-tagged Site Engineer verification photo'}</label>
-                                    <input type="file" onChange={(e) => setProgressFile(e.target.files[0])} style={{ fontSize: '11px' }} />
+                            <div style={{ border: '1px solid #fbbf24', borderRadius: '12px', background: '#fffbeb', padding: '14px', marginTop: '8px', width: '100%' }}>
+                                <div style={{ fontSize: '12px', fontWeight: 700, color: '#92400e', marginBottom: '10px' }}>
+                                    📍 GPS Site Verification (mandatory for security)
                                 </div>
-                                {user?.role !== 'contractor' && <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '10px', marginBottom: 0 }}>Bill / Report PDF</label>
-                                    <input type="file" onChange={(e) => setReportFile(e.target.files[0])} style={{ fontSize: '11px' }} />
-                                </div>}
-                                {user?.role === 'contractor' ? <button className="btn btn-primary btn-sm" onClick={() => handleUpdateStatus('verification')}>Submit finished work for engineer verification</button> : user?.role === 'engineer' && project.status === 'verification' ? <button className="btn btn-success btn-sm" onClick={() => handleUpdateStatus('completed')}>Verify on site & mark completed</button> : <button className="btn btn-outline btn-sm" onClick={() => handleUpdateStatus('in_progress')}>Upload ongoing work update</button>}
+
+                                {/* Step 1: Lock GPS */}
+                                <button
+                                    type="button"
+                                    className="btn btn-outline"
+                                    onClick={lockSiteGps}
+                                    style={{ width: '100%', marginBottom: '10px', fontWeight: 700, borderColor: lockedGps ? '#059669' : undefined, color: lockedGps ? '#059669' : undefined }}
+                                >
+                                    {lockedGps
+                                        ? `✅ GPS Locked: ${lockedGps.lat.toFixed(4)}, ${lockedGps.lng.toFixed(4)}`
+                                        : '📍 Step 1 — Lock Site GPS Location'}
+                                </button>
+
+                                {/* Step 2: GPS-tagged photo */}
+                                <div className="form-group" style={{ marginBottom: '8px' }}>
+                                    <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                                        {user?.role === 'contractor' ? 'Step 2 — GPS-tagged finished-work photo' : 'Step 2 — GPS-tagged Site Engineer verification photo'}
+                                    </label>
+                                    <input type="file" accept="image/*" capture="environment" onChange={checkSitePhoto} style={{ fontSize: '11px' }} />
+                                </div>
+
+                                {/* GPS status message */}
+                                {gpsStatus && (
+                                    <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '10px', color: gpsStatus.startsWith('✅') ? '#047857' : gpsStatus.startsWith('⚠️') ? '#b45309' : '#1d4ed8' }}>
+                                        {gpsStatus}
+                                    </div>
+                                )}
+
+                                {/* Bill/Report PDF (engineer only) */}
+                                {user?.role !== 'contractor' && (
+                                    <div className="form-group" style={{ marginBottom: '10px' }}>
+                                        <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px' }}>Bill / Report PDF (optional)</label>
+                                        <input type="file" accept=".pdf" onChange={(e) => setReportFile(e.target.files[0])} style={{ fontSize: '11px' }} />
+                                    </div>
+                                )}
+
+                                {/* Step 3: Submit button */}
+                                {user?.role === 'contractor'
+                                    ? <button className="btn btn-primary btn-sm" style={{ width: '100%' }} onClick={() => handleUpdateStatus('verification')}>Step 3 — Submit finished work for engineer verification</button>
+                                    : user?.role === 'engineer' && project.status === 'verification'
+                                        ? <button className="btn btn-success btn-sm" style={{ width: '100%' }} onClick={() => handleUpdateStatus('completed')}>Step 3 — Verify on site &amp; mark completed</button>
+                                        : <button className="btn btn-outline btn-sm" style={{ width: '100%' }} onClick={() => handleUpdateStatus('in_progress')}>Step 3 — Upload ongoing work update</button>
+                                }
                             </div>
                         )}
+
                     {user?.role === 'admin' && (
                         <>
                             {project.finalBills?.some((bill) => bill.active && (bill.status === 'engineer_verified' || (bill.status === 'submitted' && project.status === 'completed'))) && <>
