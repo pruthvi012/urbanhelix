@@ -364,13 +364,25 @@ export default function Dashboard() {
         const pTitle = (p.title || '').toLowerCase();
         const pWardNo = p.wardNo ? String(p.wardNo) : '';
 
+        let matchesWard = false;
         if (selectedWardObj) {
-            if (pWardNo && String(selectedWardObj.wardNo) === pWardNo) return true;
-            if (selectedWardObj.name && (pWard.includes(selectedWardObj.name.toLowerCase()) || pWardName.includes(selectedWardObj.name.toLowerCase()))) return true;
-            if (selectedWardObj.areas && selectedWardObj.areas.some(a => pArea.includes(a.toLowerCase()) || pTitle.includes(a.toLowerCase()) || pWard.includes(a.toLowerCase()))) return true;
+            if (pWardNo && String(selectedWardObj.wardNo) === pWardNo) matchesWard = true;
+            else if (selectedWardObj.name && (pWard.includes(selectedWardObj.name.toLowerCase()) || pWardName.includes(selectedWardObj.name.toLowerCase()))) matchesWard = true;
+            else if (selectedWardObj.areas && selectedWardObj.areas.some(a => pArea.includes(a.toLowerCase()) || pTitle.includes(a.toLowerCase()) || pWard.includes(a.toLowerCase()))) matchesWard = true;
         }
 
-        return pWard.includes(sel) || pWardName.includes(sel) || pArea.includes(sel) || sel.includes(pWardName) || (pWardNo && sel.includes(pWardNo));
+        let matchesArea = pWard.includes(sel) || pWardName.includes(sel) || pArea.includes(sel) || sel.includes(pWardName) || (pWardNo && sel.includes(pWardNo));
+
+        if (selectedWardObj && selectedArea !== selectedWardObj.name) {
+            // Both a ward and a specific locality are selected
+            return matchesWard && matchesArea;
+        } else if (selectedWardObj) {
+            // Only a ward is selected
+            return matchesWard;
+        } else {
+            // Only an area is selected
+            return matchesArea;
+        }
     }) : [];
 
     // Further filter by selected BBMP work category on the left
@@ -653,7 +665,9 @@ export default function Dashboard() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <FiMapPin style={{ color: 'var(--accent-teal)', fontSize: '15px' }} />
                                         <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)' }}>
-                                            {selectedWardObj ? `Ward ${selectedWardObj.wardNo} · ${selectedWardObj.name}` : selectedArea}
+                                            {selectedWardObj 
+                                                ? (selectedArea !== selectedWardObj.name ? `Ward ${selectedWardObj.wardNo} · ${selectedWardObj.name} > ${selectedArea}` : `Ward ${selectedWardObj.wardNo} · ${selectedWardObj.name}`) 
+                                                : selectedArea}
                                         </span>
                                         <span style={{ 
                                             fontSize: '11px', 
@@ -868,7 +882,7 @@ export default function Dashboard() {
                                                     } else {
                                                         setSelectedArea(item.label);
                                                         setAreaSearch(item.label);
-                                                        setSelectedWardObj(null);
+                                                        // Do NOT clear selectedWardObj here, keep the ward selected!
                                                     }
                                                     setShowAreaSuggestions(false);
                                                 }}
@@ -934,6 +948,7 @@ export default function Dashboard() {
                                             setSelectedWardObj(w);
                                             setSelectedArea(w.name);
                                             setAreaSearch(`Ward ${w.wardNo} · ${w.name}`);
+                                            setShowAreaSuggestions(false);
                                         }}
                                         style={{
                                             padding: '10px 12px',
