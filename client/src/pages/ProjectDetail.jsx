@@ -521,13 +521,12 @@ export default function ProjectDetail() {
                     <div className="table-container">
                         <table className="table">
                             <thead>
-                                <tr><th>Date</th><th>Material</th><th>Vendor</th><th>Amount</th><th>Evidence</th><th>Audit Hash</th><th>Status & Actions</th></tr>
+                                <tr><th>Date</th><th>Vendor</th><th>Amount</th><th>Evidence</th><th>Audit Hash</th><th>⛓️ Polygon Proof</th><th>Status &amp; Actions</th></tr>
                             </thead>
                             <tbody>
                                 {project.expenditures.sort((a, b) => new Date(b.date) - new Date(a.date)).map((exp) => (
                                     <tr key={exp._id}>
                                         <td style={{ fontSize: '13px' }}>{new Date(exp.date).toLocaleDateString()}</td>
-                                        <td style={{ fontWeight: 500 }}>{exp.material}</td>
                                         <td style={{ fontSize: '13px' }}>{exp.vendor}</td>
                                         <td style={{ fontWeight: 600, color: 'var(--accent-red)' }}>{formatCurrency(exp.amount)}</td>
                                         <td>
@@ -543,6 +542,17 @@ export default function ProjectDetail() {
                                                     🔒 {exp.entryHash?.substring(0, 16)}...
                                                 </span>
                                             </div>
+                                        </td>
+                                        <td>
+                                            {exp.txHash ? (
+                                                <a href={`https://amoy.polygonscan.com/tx/${exp.txHash}`} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', textDecoration: 'none' }}>
+                                                    ⛓️ View on Polygon
+                                                </a>
+                                            ) : exp.blockchainStatus === 'failed' ? (
+                                                <span className="tx-tag" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>Retrying...</span>
+                                            ) : (
+                                                <span className="tx-tag" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>⏳ Pending Block</span>
+                                            )}
                                         </td>
                                         <td>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

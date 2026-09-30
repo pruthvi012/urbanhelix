@@ -215,17 +215,28 @@ class BlockchainService {
                 throw new Error("Polygon contract address not configured");
             }
             
-            // Convert amount to integer (assuming amount is in standard currency, converting to wei representation if needed, 
-            // but we'll just log it as a uint256 integer of the actual amount for the MVP)
             const amtUint = Math.round(Number(amount));
             
-            console.log(`Submitting to Polygon Amoy: [${projectCode}] ${vendor} - ${amtUint} - ${sha256Hash}`);
+            // Contract expects bytes32 for sha256Hash
+            // entryHash is a hex string like "abc123..." — pad/convert to bytes32
+            let hashBytes32;
+            try {
+                const hexHash = sha256Hash && sha256Hash.startsWith('0x') 
+                    ? sha256Hash 
+                    : '0x' + (sha256Hash || '').padEnd(64, '0').slice(0, 64);
+                hashBytes32 = ethers.zeroPadValue(hexHash, 32);
+            } catch(e) {
+                // fallback: zero bytes32
+                hashBytes32 = ethers.ZeroHash;
+            }
+            
+            console.log(`Submitting to Polygon Amoy: [${projectCode}] ${vendor} - ${amtUint}`);
             
             const tx = await this.polygonContracts.ExpenditureLogger.logExpenditure(
                 projectCode || 'UNKNOWN',
                 vendor || 'UNKNOWN',
                 amtUint,
-                sha256Hash || ''
+                hashBytes32
             );
             
             console.log(`Transaction sent to Polygon. Hash: ${tx.hash}`);
