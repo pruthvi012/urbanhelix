@@ -380,11 +380,14 @@ export default function Dashboard() {
     const completedCitizenWorks = citizenProjects.filter(p => p.status === 'Completed');
 
     // South wards directory list
+    // When a ward is already selected (selectedWardObj), don't filter by areaSearch text
+    // so the full grid stays visible and the user can select a different ward
     const filteredSouthWards = fallbackWards.filter(w => {
         if (wardACFilter !== 'All' && !w.assemblyConstituency.toLowerCase().includes(wardACFilter.toLowerCase())) {
             return false;
         }
-        if (areaSearch && areaSearch.trim()) {
+        // Only text-filter when user is actively typing AND no ward has been chosen yet
+        if (!selectedWardObj && areaSearch && areaSearch.trim()) {
             const term = areaSearch.toLowerCase().trim();
             const matchesNo = String(w.wardNo).includes(term);
             const matchesName = w.name.toLowerCase().includes(term);
@@ -555,10 +558,8 @@ export default function Dashboard() {
                             display: 'flex', 
                             flexDirection: 'column', 
                             gap: '8px', 
-                            overflowY: 'auto', 
-                            maxHeight: selectedArea ? '240px' : '520px', 
-                            paddingRight: '4px',
-                            transition: 'max-height 0.25s ease'
+                            overflowY: 'visible', 
+                            paddingRight: '4px'
                         }}>
                             {BBMP_CIVIC_WORKS.map((work, idx) => {
                                 const isSelected = selectedCivicWork === work.name;
@@ -816,7 +817,12 @@ export default function Dashboard() {
                                 {areaSearch && (
                                     <button 
                                         type="button" 
-                                        onClick={() => { setAreaSearch(''); setShowAreaSuggestions(false); }} 
+                                        onClick={() => { 
+                                            setAreaSearch(''); 
+                                            setSelectedArea('');
+                                            setSelectedWardObj(null);
+                                            setShowAreaSuggestions(false); 
+                                        }} 
                                         style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
                                     >
                                         <FiX />
