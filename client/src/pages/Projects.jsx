@@ -238,30 +238,12 @@ export default function Projects() {
         }
     };
 
-        const handleApprove = async (id, estimatedBudget, draftAmount, p) => {
-        const contractorName = p?.contractor?.name || 'Assigned Contractor';
-        const accountNumber = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\n\nEnter Contractor Bank Account Number for budget allocation:`);
-        if (accountNumber === null) return;
-        if (!accountNumber.trim()) {
-            alert('Bank Account Number is required to pass and allocate budget!');
-            return;
-        }
-
-        const ifscCode = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\nAccount No: ${accountNumber}\n\nEnter IFSC Code:`);
-        if (ifscCode === null) return;
-        if (!ifscCode.trim()) {
-            alert('IFSC Code is required!');
-            return;
-        }
-
-        const bankName = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\nAccount No: ${accountNumber} | IFSC: ${ifscCode}\n\nEnter Bank Name:`) || 'State Bank of India';
-
-        const allocatedBudget = Number(estimatedBudget);
+            const handleApprove = async (id, estimatedBudget) => {
+        const allocatedBudget = Number(estimatedBudget || 0);
         try {
             const res = await projectAPI.approve(id, { 
                 allocatedBudget, 
-                bankDetails: { accountNumber, ifscCode, bankName },
-                remarks: `Budget Passed & Allocated to ${contractorName} (Acc: ${accountNumber})` 
+                remarks: 'Project Approved' 
             });
             loadData();
             
@@ -270,7 +252,11 @@ export default function Projects() {
                 code = 'UHX-' + res.data.project._id.substring(18).toUpperCase();
             }
             
-            alert(`✅ BUDGET PASSED!\n\n👷 Contractor: ${contractorName}\n🏦 Account No: ${accountNumber}\n🏢 Bank: ${bankName} (${ifscCode})\n\nAssignment Code: ${code || 'UHX-APPROVED'}`);
+            if (code) {
+                alert(`✅ SUCCESS! Project Approved.\n\nCONTRACTOR ASSIGNMENT CODE: ${code}\n\nPlease share this code with the contractor so they can claim this project.`);
+            } else {
+                alert(`✅ Project Approved successfully!`);
+            }
         } catch (err) { 
             console.error('Approval error:', err);
             const msg = err.response?.data?.message || err.message || 'Approval failed';
@@ -899,16 +885,16 @@ export default function Projects() {
                                                                 <FiDownload /> PDF
                                                             </button>
                                                             {isApprovalAuthority && (
-                                                                (p.budgetPassed || p.contractorBankDetails?.accountNumber) ? (
-                                                                    <span style={{ fontSize: '11px', fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '3px 10px', borderRadius: '12px', border: '1px solid #86efac', whiteSpace: 'nowrap' }}>✅ Budget Passed</span>
-                                                                ) : p.status === 'rejected' ? (
-                                                                    <span style={{ fontSize: '11px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', padding: '3px 10px', borderRadius: '12px', border: '1px solid #fca5a5', whiteSpace: 'nowrap' }}>❌ Rejected</span>
-                                                                ) : (
+                                                                p.status === 'proposed' ? (
                                                                     <>
-                                                                        <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id], p)}>Proceed</button>
+                                                                        <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget)}>Proceed</button>
                                                                         <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
                                                                     </>
-                                                                )
+                                                                ) : ['approved', 'in_progress', 'verification', 'completed'].includes(p.status) ? (
+                                                                    <span style={{ fontSize: '11px', fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '3px 10px', borderRadius: '12px', border: '1px solid #86efac', whiteSpace: 'nowrap' }}>✅ Approved</span>
+                                                                ) : p.status === 'rejected' ? (
+                                                                    <span style={{ fontSize: '11px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', padding: '3px 10px', borderRadius: '12px', border: '1px solid #fca5a5', whiteSpace: 'nowrap' }}>❌ Rejected</span>
+                                                                ) : null
                                                             )}
                                                             </div>
                                                         </td>
