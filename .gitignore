@@ -46,3 +46,5 @@ blockchain/typechain-types/
 *.exe
 *.txt
 client/dev-dist/
+.vercel
+.env*
