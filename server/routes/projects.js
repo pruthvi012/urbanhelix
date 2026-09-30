@@ -290,9 +290,13 @@ router.post('/:id/final-bill', protect, authorize('contractor'), upload.single('
         bill.metadataSnapshot = finalBillSnapshot(project, bill);
         bill.metadataHash = sha256(JSON.stringify(bill.metadataSnapshot));
         bill.polygonAnchorHash = finalBillPolygonCommitment(bill.originalFileHash, bill.metadataHash);
-        const polygonAnchor = await polygonService.anchorIntegrityHash(project.projectCode, 'FINAL_BILL', bill.polygonAnchorHash);
-        bill.polygonAnchorTxHash = polygonAnchor.txHash;
-        bill.polygonAnchorBlockNumber = polygonAnchor.blockNumber;
+        try {
+            const polygonAnchor = await polygonService.anchorIntegrityHash(project.projectCode, 'FINAL_BILL', bill.polygonAnchorHash);
+            bill.polygonAnchorTxHash = polygonAnchor?.txHash || null;
+            bill.polygonAnchorBlockNumber = polygonAnchor?.blockNumber || null;
+        } catch (anchorErr) {
+            console.warn('Final bill Polygon anchoring skipped:', anchorErr.message);
+        }
         const record = await HashChainService.addRecord('final_bill_submitted', { projectId: String(project._id), billId: String(bill._id), metadataSnapshot: bill.metadataSnapshot, metadataHash: bill.metadataHash }, { entityType: 'project', entityId: project._id }, req.user._id);
         bill.hashChainRecordId = record._id;
         await recordFinalBillWorkflow(project, bill, engineerAlreadyVerified ? 'final_bill_engineer_verified' : 'final_bill_submitted', req.user._id);
@@ -568,21 +572,25 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_o
         // Anchor the uploaded budget proof on Polygon at creation. Its file hash
         // and budget metadata are later compared with the immutable calldata.
         if (req.files?.budgetEstimateProof?.[0]) {
-            const proof = req.files.budgetEstimateProof[0];
-            const proofUrl = project.budgetEstimateProofUrl;
-            const proofFileHash = sha256(proof.buffer || await getStoredFileBuffer(proofUrl, proof.key));
-            const anchorHash = sha256(JSON.stringify({
-                projectId: String(project._id),
-                projectCode: project.projectCode || '',
-                estimatedBudget: Number(project.estimatedBudget),
-                fileHash: proofFileHash
-            }));
-            const anchor = await polygonService.anchorIntegrityHash(project.projectCode || String(project._id), 'BUDGET_PROOF', anchorHash);
-            project.budgetProofFileHash = proofFileHash;
-            project.budgetProofAnchorHash = anchorHash;
-            project.budgetProofPolygonTxHash = anchor.txHash;
-            project.budgetProofPolygonBlockNumber = anchor.blockNumber;
-            await project.save();
+            try {
+                const proof = req.files.budgetEstimateProof[0];
+                const proofUrl = project.budgetEstimateProofUrl;
+                const proofFileHash = sha256(proof.buffer || await getStoredFileBuffer(proofUrl, proof.key));
+                const anchorHash = sha256(JSON.stringify({
+                    projectId: String(project._id),
+                    projectCode: project.projectCode || '',
+                    estimatedBudget: Number(project.estimatedBudget),
+                    fileHash: proofFileHash
+                }));
+                const anchor = await polygonService.anchorIntegrityHash(project.projectCode || String(project._id), 'BUDGET_PROOF', anchorHash);
+                project.budgetProofFileHash = proofFileHash;
+                project.budgetProofAnchorHash = anchorHash;
+                project.budgetProofPolygonTxHash = anchor.txHash;
+                project.budgetProofPolygonBlockNumber = anchor.blockNumber;
+                await project.save();
+            } catch (anchorErr) {
+                console.warn('Budget proof anchoring skipped:', anchorErr.message);
+            }
         }
 
         // Blockchain: Create Project on-chain
