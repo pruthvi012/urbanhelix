@@ -238,26 +238,39 @@ export default function Projects() {
         }
     };
 
-    const handleApprove = async (id, estimatedBudget, draftAmount) => {
-        // Approval uses the already approved proposal amount. Budget allocation
-        // is not a second user action in the Approval Authority workflow.
+        const handleApprove = async (id, estimatedBudget, draftAmount, p) => {
+        const contractorName = p?.contractor?.name || 'Assigned Contractor';
+        const accountNumber = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\n\nEnter Contractor Bank Account Number for budget allocation:`);
+        if (accountNumber === null) return;
+        if (!accountNumber.trim()) {
+            alert('Bank Account Number is required to pass and allocate budget!');
+            return;
+        }
+
+        const ifscCode = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\nAccount No: ${accountNumber}\n\nEnter IFSC Code:`);
+        if (ifscCode === null) return;
+        if (!ifscCode.trim()) {
+            alert('IFSC Code is required!');
+            return;
+        }
+
+        const bankName = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\nAccount No: ${accountNumber} | IFSC: ${ifscCode}\n\nEnter Bank Name:`) || 'State Bank of India';
+
         const allocatedBudget = Number(estimatedBudget);
-        if (!Number.isFinite(allocatedBudget) || allocatedBudget <= 0) return alert('This project has no valid proposed budget.');
         try {
-            const res = await projectAPI.approve(id, { allocatedBudget, remarks: `Approved with budget allocation of ₹${allocatedBudget.toLocaleString()}` });
+            const res = await projectAPI.approve(id, { 
+                allocatedBudget, 
+                bankDetails: { accountNumber, ifscCode, bankName },
+                remarks: `Budget Passed & Allocated to ${contractorName} (Acc: ${accountNumber})` 
+            });
             loadData();
             
-            // If the old server didn't generate a code, we deterministically create one from the ID
             let code = res.data?.project?.projectCode;
             if (!code && res.data?.project?._id) {
                 code = 'UHX-' + res.data.project._id.substring(18).toUpperCase();
             }
             
-            if (code) {
-                alert(`✅ SUCCESS! Project Approved.\n\nCONTRACTOR ASSIGNMENT CODE: ${code}\n\nPlease share this code with the contractor so they can claim this project.`);
-            } else {
-                alert(`✅ Project Approved successfully!`);
-            }
+            alert(`✅ BUDGET PASSED!\n\n👷 Contractor: ${contractorName}\n🏦 Account No: ${accountNumber}\n🏢 Bank: ${bankName} (${ifscCode})\n\nAssignment Code: ${code || 'UHX-APPROVED'}`);
         } catch (err) { 
             console.error('Approval error:', err);
             const msg = err.response?.data?.message || err.message || 'Approval failed';
@@ -888,11 +901,11 @@ export default function Projects() {
                                                             {isApprovalAuthority && (
                                                                 p.status === 'proposed' ? (
                                                                     <>
-                                                                        <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Proceed</button>
+                                                                        <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id], p)}>Proceed</button>
                                                                         <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
                                                                     </>
                                                                 ) : p.status === 'approved' || p.status === 'in_progress' || p.status === 'verification' || p.status === 'completed' ? (
-                                                                    <span style={{ fontSize: '11px', fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '3px 10px', borderRadius: '12px', border: '1px solid #86efac', whiteSpace: 'nowrap' }}>✅ Approved</span>
+                                                                    <span style={{ fontSize: '11px', fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '3px 10px', borderRadius: '12px', border: '1px solid #86efac', whiteSpace: 'nowrap' }}>✅ Budget Passed</span>
                                                                 ) : p.status === 'rejected' ? (
                                                                     <span style={{ fontSize: '11px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', padding: '3px 10px', borderRadius: '12px', border: '1px solid #fca5a5', whiteSpace: 'nowrap' }}>❌ Rejected</span>
                                                                 ) : null
