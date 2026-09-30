@@ -1,12 +1,13 @@
 const { ethers } = require('ethers');
 const Project = require('../models/Project');
 
-const POLYGON_RPC_URL = process.env.POLYGON_RPC_URL || 'https://rpc-amoy.polygon.technology';
+const POLYGON_RPC_URL = process.env.POLYGON_RPC_URL || 'https://polygon-amoy.drpc.org';
 const POLYGON_PRIVATE_KEY = process.env.POLYGON_PRIVATE_KEY;
 const EXPENDITURE_LOGGER_ADDRESS = process.env.EXPENDITURE_LOGGER_ADDRESS;
 
+// Matches the deployed ExpenditureLogger ABI used by the application.
 const abi = [
-    "function logExpenditure(string _expenditureId, string _projectCode, string _vendor, uint256 _amount, string _sha256Hash) external"
+    "function logExpenditure(string projectCode, string vendor, uint256 amount, string sha256Hash) external"
 ];
 
 let contract = null;
@@ -76,5 +77,25 @@ async function recordExpenditureOnChain(projectId, expId, projectCode, vendor, a
 // Retry keeps looking at ${failed} in a separate setInterval if we want it.
 
 module.exports = {
-    recordExpenditureOnChain
+    recordExpenditureOnChain,
+    // Reuses the deployed logger: the vendor field identifies the immutable
+    // record type and the hash field contains the document commitment.
+    async anchorIntegrityHash(projectCode, recordType, commitmentHash) {
+        if (!contract) throw new Error('Polygon integrity anchor is not configured');
+        const tx = await contract.logExpenditure(projectCode, `INTEGRITY:${recordType}`, 0, commitmentHash);
+        const receipt = await tx.wait();
+        if (!receipt || receipt.status !== 1) throw new Error('Polygon integrity anchor transaction failed');
+        return { txHash: tx.hash, blockNumber: Number(receipt.blockNumber) };
+    },
+    async verifyIntegrityAnchor(txHash, projectCode, recordType, commitmentHash) {
+        if (!contract || !provider || !txHash) return false;
+        const [tx, receipt] = await Promise.all([provider.getTransaction(txHash), provider.getTransactionReceipt(txHash)]);
+        if (!tx || !receipt || receipt.status !== 1 || tx.to?.toLowerCase() !== contract.target.toLowerCase()) return false;
+        const parsed = contract.interface.parseTransaction({ data: tx.data, value: tx.value });
+        return parsed?.name === 'logExpenditure'
+            && String(parsed.args[0]) === String(projectCode)
+            && String(parsed.args[1]) === `INTEGRITY:${recordType}`
+            && String(parsed.args[2]) === '0'
+            && String(parsed.args[3]).toLowerCase() === String(commitmentHash).toLowerCase();
+    }
 };

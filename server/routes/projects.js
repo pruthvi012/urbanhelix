@@ -130,6 +130,25 @@ const finalBillSnapshot = (project, bill) => ({
     originalFileHash: bill.originalFileHash
 });
 
+const finalBillPolygonCommitment = (fileHash, metadataHash) => sha256(JSON.stringify({ fileHash, metadataHash }));
+
+const verifyBudgetProofIntegrity = async (project) => {
+    // Records created before this security upgrade have no Polygon anchor; do
+    // not mislabel them as verified, but retain backward compatibility.
+    if (!project.budgetProofPolygonTxHash) return { valid: true, legacy: true };
+    try {
+        const currentFileHash = sha256(await getStoredFileBuffer(project.budgetEstimateProofUrl));
+        const currentAnchor = sha256(JSON.stringify({
+            projectId: String(project._id), projectCode: project.projectCode || '',
+            estimatedBudget: Number(project.estimatedBudget), fileHash: currentFileHash
+        }));
+        const valid = currentFileHash === project.budgetProofFileHash
+            && currentAnchor === project.budgetProofAnchorHash
+            && await polygonService.verifyIntegrityAnchor(project.budgetProofPolygonTxHash, project.projectCode || String(project._id), 'BUDGET_PROOF', currentAnchor);
+        return valid ? { valid: true } : { valid: false, message: 'TAMPER DETECTED — Budget proof integrity mismatch.' };
+    } catch (_) { return { valid: false, message: 'TAMPER DETECTED — Budget proof file is missing.' }; }
+};
+
 const finalBillWorkflowSnapshot = (bill) => ({
     billId: String(bill._id),
     status: bill.status,
@@ -207,6 +226,17 @@ const verifyFinalBillIntegrity = async (project, bill) => {
             await markFinalBillSuspicious(project, bill, 'TAMPER DETECTED — Bill file integrity mismatch.');
             return { valid: false, message: 'TAMPER DETECTED — Bill file integrity mismatch.' };
         }
+        // For newly submitted bills, Polygon is the independent source of truth.
+        // A MongoDB attacker cannot rewrite this historical transaction input.
+        if (bill.polygonAnchorTxHash) {
+            const currentMetadataHash = sha256(JSON.stringify(currentSnapshot));
+            const currentCommitment = finalBillPolygonCommitment(currentFileHash, currentMetadataHash);
+            const anchorValid = await polygonService.verifyIntegrityAnchor(bill.polygonAnchorTxHash, currentSnapshot.projectCode, 'FINAL_BILL', currentCommitment);
+            if (!anchorValid) {
+                await markFinalBillSuspicious(project, bill, 'TAMPER DETECTED — Polygon integrity anchor mismatch.');
+                return { valid: false, message: 'TAMPER DETECTED — Polygon integrity anchor mismatch.' };
+            }
+        }
     } catch (error) {
         if (error.code === 'FILE_MISSING') {
             await markFinalBillSuspicious(project, bill, 'TAMPER DETECTED — Bill file is missing.');
@@ -226,6 +256,8 @@ router.post('/:id/final-bill', protect, authorize('contractor'), upload.single('
         if (!project.contractor || String(project.contractor) !== String(req.user._id)) return res.status(403).json({ success: false, message: 'You can submit a bill only for your assigned project.' });
         if (!['completed', 'verification'].includes(project.status)) return res.status(400).json({ success: false, message: 'The Site Engineer must verify the completed project before the final bill can be submitted.' });
         if (activeFinalBill(project)) return res.status(409).json({ success: false, message: 'Final bill already submitted for this project.' });
+        const budgetProofIntegrity = await verifyBudgetProofIntegrity(project);
+        if (!budgetProofIntegrity.valid) return res.status(409).json({ success: false, message: budgetProofIntegrity.message });
         const supplier = String(req.body.completionSupplier || '');
         const amount = Number(req.body.claimedAmount);
         const approvedAmount = Number(project.allocatedBudget || project.estimatedBudget || 0);
@@ -257,6 +289,10 @@ router.post('/:id/final-bill', protect, authorize('contractor'), upload.single('
         const bill = project.finalBills[project.finalBills.length - 1];
         bill.metadataSnapshot = finalBillSnapshot(project, bill);
         bill.metadataHash = sha256(JSON.stringify(bill.metadataSnapshot));
+        bill.polygonAnchorHash = finalBillPolygonCommitment(bill.originalFileHash, bill.metadataHash);
+        const polygonAnchor = await polygonService.anchorIntegrityHash(project.projectCode, 'FINAL_BILL', bill.polygonAnchorHash);
+        bill.polygonAnchorTxHash = polygonAnchor.txHash;
+        bill.polygonAnchorBlockNumber = polygonAnchor.blockNumber;
         const record = await HashChainService.addRecord('final_bill_submitted', { projectId: String(project._id), billId: String(bill._id), metadataSnapshot: bill.metadataSnapshot, metadataHash: bill.metadataHash }, { entityType: 'project', entityId: project._id }, req.user._id);
         bill.hashChainRecordId = record._id;
         await recordFinalBillWorkflow(project, bill, engineerAlreadyVerified ? 'final_bill_engineer_verified' : 'final_bill_submitted', req.user._id);
@@ -268,6 +304,17 @@ router.post('/:id/final-bill', protect, authorize('contractor'), upload.single('
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
+});
+
+// Independent budget-proof verification for controlled security demonstrations.
+// This performs no mutation unless an approval/release route subsequently blocks.
+router.get('/:id/budget-proof/integrity', protect, authorize('admin', 'engineer', 'financial_officer'), async (req, res) => {
+    try {
+        const project = await Project.findById(req.params.id);
+        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+        const result = await verifyBudgetProofIntegrity(project);
+        res.status(result.valid ? 200 : 409).json({ success: result.valid, ...result });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
 // Allowed materials per category (whitelist)
@@ -517,6 +564,26 @@ router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_o
         }
 
         const project = await Project.create(projectData);
+
+        // Anchor the uploaded budget proof on Polygon at creation. Its file hash
+        // and budget metadata are later compared with the immutable calldata.
+        if (req.files?.budgetEstimateProof?.[0]) {
+            const proof = req.files.budgetEstimateProof[0];
+            const proofUrl = project.budgetEstimateProofUrl;
+            const proofFileHash = sha256(proof.buffer || await getStoredFileBuffer(proofUrl, proof.key));
+            const anchorHash = sha256(JSON.stringify({
+                projectId: String(project._id),
+                projectCode: project.projectCode || '',
+                estimatedBudget: Number(project.estimatedBudget),
+                fileHash: proofFileHash
+            }));
+            const anchor = await polygonService.anchorIntegrityHash(project.projectCode || String(project._id), 'BUDGET_PROOF', anchorHash);
+            project.budgetProofFileHash = proofFileHash;
+            project.budgetProofAnchorHash = anchorHash;
+            project.budgetProofPolygonTxHash = anchor.txHash;
+            project.budgetProofPolygonBlockNumber = anchor.blockNumber;
+            await project.save();
+        }
 
         // Blockchain: Create Project on-chain
         try {
@@ -919,6 +986,8 @@ router.get('/:id/final-bill/integrity', protect, authorize('engineer', 'contract
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
         const bill = activeFinalBill(project);
         if (!bill) return res.status(404).json({ success: false, message: 'No active final bill found for this project.' });
+        const budgetProofIntegrity = await verifyBudgetProofIntegrity(project);
+        if (!budgetProofIntegrity.valid) return res.status(409).json({ success: false, message: budgetProofIntegrity.message });
         if (req.user.role === 'contractor' && String(project.contractor) !== String(req.user._id)) {
             return res.status(403).json({ success: false, message: 'You can view only your assigned project bill.' });
         }
@@ -937,6 +1006,8 @@ router.put('/:id/final-bill/approval', protect, authorize('admin'), async (req, 
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
         const bill = activeFinalBill(project);
         if (!bill) return res.status(404).json({ success: false, message: 'No active final bill found for this project.' });
+        const budgetProofIntegrity = await verifyBudgetProofIntegrity(project);
+        if (!budgetProofIntegrity.valid) return res.status(409).json({ success: false, message: budgetProofIntegrity.message });
         const integrity = await verifyFinalBillIntegrity(project, bill);
         if (!integrity.valid) return res.status(409).json({ success: false, message: integrity.message });
 
@@ -1338,6 +1409,8 @@ router.put('/:id/final-bill/release', protect, authorize('admin'), async (req, r
         if (project.paymentBlocked) return res.status(409).json({ success: false, message: 'Payment is blocked because final-bill integrity requires investigation.' });
         const bill = activeFinalBill(project);
         if (!bill) return res.status(404).json({ success: false, message: 'No active final bill found for this project.' });
+        const budgetProofIntegrity = await verifyBudgetProofIntegrity(project);
+        if (!budgetProofIntegrity.valid) return res.status(409).json({ success: false, message: budgetProofIntegrity.message });
         if (bill.financeReleased) return res.status(409).json({ success: false, message: 'Final bill payment has already been released.' });
         normalizeApprovedBillMeta(bill);
         if (bill.status !== 'approved' || !bill.engineerVerifiedAt || !bill.approvalAuthorityAt) {

@@ -65,6 +65,9 @@ const projectSchema = new mongoose.Schema({
         supplier: { type: String, required: true },
         claimedAmount: { type: Number, required: true },
         originalFileHash: { type: String, required: true },
+        polygonAnchorHash: { type: String, default: '' },
+        polygonAnchorTxHash: { type: String, default: '' },
+        polygonAnchorBlockNumber: { type: Number, default: null },
         metadataSnapshot: { type: mongoose.Schema.Types.Mixed, required: true },
         metadataHash: { type: String, required: true },
         hashChainRecordId: { type: mongoose.Schema.Types.ObjectId, ref: 'HashChainRecord', default: null },
@@ -109,6 +112,10 @@ const projectSchema = new mongoose.Schema({
         }
     ],
     budgetEstimateProofUrl: String,
+    budgetProofFileHash: { type: String, default: '' },
+    budgetProofAnchorHash: { type: String, default: '' },
+    budgetProofPolygonTxHash: { type: String, default: '' },
+    budgetProofPolygonBlockNumber: { type: Number, default: null },
     isBudgetLocked: { type: Boolean, default: false },
     feedback: [{
         citizen: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
