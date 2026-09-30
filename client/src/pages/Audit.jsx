@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { auditAPI } from '../services/api';
+import { auditAPI, projectAPI } from '../services/api';
 import { FiShield, FiSearch, FiCheckCircle, FiXCircle, FiActivity, FiRefreshCw, FiAlertTriangle, FiDownload } from 'react-icons/fi';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -27,10 +27,13 @@ export default function Audit() {
     const [auditLogs, setAuditLogs] = useState([]);
     const [logPage, setLogPage] = useState(1);
     const [totalLogPages, setTotalLogPages] = useState(1);
+    const [polygonProjects, setPolygonProjects] = useState([]);
+    const [polygonLoading, setPolygonLoading] = useState(false);
     const [logLoading, setLogLoading] = useState(false);
 
     useEffect(() => { 
         if (activeTab === 'chain') loadData(); 
+        else if (activeTab === 'polygon') loadPolygonData();
         else loadLogs();
     }, [page, logPage, activeTab]);
 
@@ -49,6 +52,18 @@ export default function Audit() {
                 setTamperedBlocks(chainRes.data.errors.map(e => e.sequenceNumber));
             }
         } catch (err) { console.error(err); } finally { setLoading(false); }
+    };
+
+        const loadPolygonData = async () => {
+        try {
+            setPolygonLoading(true);
+            const res = await projectAPI.getAll({ limit: 100 });
+            setPolygonProjects(res.data.projects || []);
+        } catch (err) {
+            console.error('Polygon load error:', err);
+        } finally {
+            setPolygonLoading(false);
+        }
     };
 
     const loadLogs = async () => {
@@ -249,8 +264,9 @@ export default function Audit() {
                 </div>
             </div>
 
-            <div className="glass-card" style={{ marginBottom: '24px', padding: 0, display: 'flex' }}>
+            <div className="glass-card" style={{ marginBottom: '24px', padding: 0, display: 'flex', flexWrap: 'wrap' }}>
                 <button className={`tab-btn ${activeTab === 'chain' ? 'active' : ''}`} onClick={() => setActiveTab('chain')}><FiShield style={{marginRight: '8px'}}/> Blockchain Audit Trail</button>
+                <button className={`tab-btn ${activeTab === 'polygon' ? 'active' : ''}`} onClick={() => setActiveTab('polygon')}>⛓️ Polygon On-Chain Proofs</button>
                 {isAdmin && (
                     <button className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => setActiveTab('logs')}><FiActivity style={{marginRight: '8px'}}/> System Activity Logs</button>
                 )}
