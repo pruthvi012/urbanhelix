@@ -272,7 +272,7 @@ export default function Audit() {
                 )}
             </div>
 
-            {activeTab === 'chain' ? (
+            {activeTab === 'chain' && (
                 <>
                 {loading && <div className="loading" style={{ padding: '40px' }}><div className="spinner"></div> Loading chain data...</div>}
                 
@@ -524,7 +524,9 @@ export default function Audit() {
                     )}
                 </div>
                 </>
-            ) : (
+            )}
+
+            {activeTab === 'logs' && (
                 <div className="section">
                     {!isAdmin ? (
                         <div style={{
