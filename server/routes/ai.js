@@ -38,34 +38,43 @@ CITIZEN'S QUESTION: "${question}"
         console.error("AI Error:", error);
 
         // Smart fallback — reads real data and replies based on it
+        // Smart fallback � reads real data and replies based on it
         const { question = '', context = {} } = req.body || {};
         const projects = context.projects || [];
         const q = question.toLowerCase();
+
+        // Check if user is just asking for a general list of projects
+        const isGeneralList = /all|list|which|what|show|ongoing|active|going on/i.test(q);
 
         // Try to find matching projects by ward/location name from question
         const matched = projects.filter(p => {
             const ward = (p.location?.ward || '').toLowerCase();
             const title = (p.title || '').toLowerCase();
-            // Check if any word in the question appears in ward or title
-            return q.split(/\s+/).some(word => word.length > 3 && (ward.includes(word) || title.includes(word)));
+            return q.split(/s+/).some(word => word.length > 3 && (ward.includes(word) || title.includes(word)));
         });
 
         let answer;
         if (matched.length > 0) {
-            const summary = matched.slice(0, 3).map(p => {
-                const status = p.status === 'completed' ? '✅ Completed' :
-                               p.status === 'in_progress' ? '🔄 In Progress' :
-                               p.status === 'delayed' ? '⚠️ Delayed' : `📋 ${p.status}`;
-                const budget = p.budget ? `₹${(p.budget / 100000).toFixed(1)}L` : '';
-                return `• ${p.title} — ${status}${budget ? ` (${budget})` : ''}`;
+            const summary = matched.slice(0, 5).map(p => {
+                const status = p.status === 'completed' ? '? Completed' :
+                               p.status === 'in_progress' ? '?? In Progress' :
+                               p.status === 'delayed' ? '?? Delayed' : `?? ${p.status}`;
+                return `� ${p.title} � ${status}`;
             }).join('\n');
-            answer = `Here's what's happening:\n\n${summary}${matched.length > 3 ? `\n\n...and ${matched.length - 3} more project(s).` : ''}`;
+            answer = `Here's what I found:\n\n${summary}`;
+        } else if (isGeneralList && projects.length > 0) {
+            const summary = projects.slice(0, 5).map(p => {
+                const status = p.status === 'completed' ? '? Completed' :
+                               p.status === 'in_progress' ? '?? In Progress' :
+                               p.status === 'delayed' ? '?? Delayed' : `?? ${p.status}`;
+                return `� ${p.title} (${p.location?.ward || 'Citywide'}) � ${status}`;
+            }).join('\n');
+            answer = `Currently, there are ${projects.length} active projects going on citywide. Here are some of them:\n\n${summary}`;
         } else if (projects.length > 0) {
             answer = `No project found in this area or ward. Currently, there are ${projects.length} active projects citywide.`;
         } else {
             answer = `No project data available right now. Please check the Projects section for live updates.`;
         }
-
         res.json({ success: true, answer });
     }
 });
