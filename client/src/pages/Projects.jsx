@@ -896,7 +896,7 @@ export default function Projects() {
                                                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                                                     {isApprovalAuthority && (
                                                                         <>
-                                                                            {['proposed', 'approved', 'in_progress', 'verification'].includes(p.status) && <>
+                                                                            {p.status === 'completed' && <>
                                                                                 <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Approve Project</button>
                                                                                 <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
                                                                             </>}
@@ -920,7 +920,7 @@ export default function Projects() {
                                                                         </button>
                                                                     )}
 
-                                                                    {isApprovalAuthority && p.status !== 'proposed' && (
+                                                                    {isApprovalAuthority && p.status === 'completed' && (
                                                                         <Link to={`/projects/${p._id}`} className="btn btn-outline btn-sm" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                                             👁️ View Evidence
                                                                         </Link>
