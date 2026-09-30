@@ -281,15 +281,24 @@ export default function Audit() {
                         <div style={{ fontSize: '32px', color: chainStatus?.valid ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                             {chainStatus?.valid ? <FiCheckCircle /> : <FiAlertTriangle />}
                         </div>
-                        <div>
+                        <div style={{ flex: 1 }}>
                             <h3 style={{ margin: 0, fontSize: '18px', color: chainStatus?.valid ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                                 {chainStatus?.valid ? 'Chain Integrity Verified' : 'Tampering Detected!'}
                             </h3>
                             <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)' }}>
                                 {chainStatus?.valid 
                                     ? `All ${chainStatus.totalRecords} blocks successfully verified. No tampering detected.` 
-                                    : `CRITICAL WARNING: Tampering detected in ${tamperedBlocks.length} block(s). Chain is broken.`}
+                                    : `CRITICAL WARNING: Tampering detected in ${chainStatus?.errors?.length || tamperedBlocks.length} block(s). Chain is broken.`}
                             </p>
+                            {!chainStatus?.valid && chainStatus?.errors && (
+                                <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    {chainStatus.errors.map((err, idx) => (
+                                        <div key={idx} style={{ fontSize: '12px', background: 'rgba(239, 68, 68, 0.1)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444' }}>
+                                            <strong>{err.sequenceNumber > 0 ? `Block #${err.sequenceNumber}:` : 'Database Ledger Mismatch:'}</strong> {err.error} {err.details?.expected ? `(Ledger: ₹${Number(err.details.expected).toLocaleString()} vs DB: ₹${Number(err.details.stored).toLocaleString()})` : ''}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

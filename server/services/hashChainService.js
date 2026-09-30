@@ -259,9 +259,14 @@ class HashChainService {
             }
         }
 
+        const creationRecord = records.find(r => r.recordType === 'project_created');
+        const approvalRecord = records.find(r => r.recordType === 'project_approved');
+        const mainRecord = approvalRecord || creationRecord || records[0];
+
         return {
             valid: discrepancies.length === 0,
             discrepancies,
+            sequenceNumber: mainRecord?.sequenceNumber || 0,
             project: {
                 title: project.title,
                 projectCode: project.projectCode
