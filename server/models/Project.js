@@ -119,10 +119,12 @@ const projectSchema = new mongoose.Schema({
         date: { type: Date, required: true },
         invoiceDate: { type: Date, required: true },
         amount: { type: Number, required: true },
-        material: { type: String, required: true },
+        
         vendor: { type: String, required: true },
         invoiceUrl: { type: String, required: true },
         progressPhotoUrl: { type: String },
+        txHash: { type: String },
+        blockchainStatus: { type: String, enum: ['pending', 'processing', 'completed', 'failed'], default: 'pending' },
         gpsLat: { type: Number },
         gpsLng: { type: Number },
         remarks: { type: String },

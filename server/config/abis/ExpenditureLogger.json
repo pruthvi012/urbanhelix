@@ -1,0 +1,29 @@
+{
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        { "indexed": false, "internalType": "string", "name": "projectCode", "type": "string" },
+        { "indexed": false, "internalType": "string", "name": "vendor", "type": "string" },
+        { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" },
+        { "indexed": false, "internalType": "string", "name": "sha256Hash", "type": "string" },
+        { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+        { "indexed": false, "internalType": "address", "name": "loggedBy", "type": "address" }
+      ],
+      "name": "ExpenditureLogged",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        { "internalType": "string", "name": "projectCode", "type": "string" },
+        { "internalType": "string", "name": "vendor", "type": "string" },
+        { "internalType": "uint256", "name": "amount", "type": "uint256" },
+        { "internalType": "string", "name": "sha256Hash", "type": "string" }
+      ],
+      "name": "logExpenditure",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ]
+}

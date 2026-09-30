@@ -1,28 +1,18 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("dotenv").config({ path: "../server/.env" });
 
-/** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-    solidity: {
-        version: "0.8.24",
-        settings: {
-            optimizer: {
-                enabled: true,
-                runs: 200,
-            },
-        },
+  solidity: "0.8.20",
+  networks: {
+    amoy: {
+      url: "https://rpc-amoy.polygon.technology",
+      accounts: [process.env.POLYGON_PRIVATE_KEY],
+      chainId: 80002
     },
-    networks: {
-        localhost: {
-            url: "http://127.0.0.1:8545",
-        },
-        hardhat: {
-            chainId: 31337,
-        },
-    },
-    paths: {
-        sources: "./contracts",
-        tests: "./test",
-        cache: "./cache",
-        artifacts: "./artifacts",
-    },
+    polygon: {
+      url: "https://polygon-rpc.com",
+      accounts: [process.env.POLYGON_PRIVATE_KEY],
+      chainId: 137
+    }
+  }
 };

@@ -180,6 +180,67 @@ class BlockchainService {
             throw error;
         }
     }
+
+    // --- ExpenditureLogger (Polygon Amoy Testnet Integration) ---
+    
+    async _initPolygon() {
+        if (this.polygonContracts) return;
+        
+        // Connect to Polygon Amoy
+        const polygonRpc = process.env.POLYGON_RPC_URL || 'https://rpc-amoy.polygon.technology';
+        this.polygonProvider = new ethers.JsonRpcProvider(polygonRpc);
+        
+        // We need a real wallet for the testnet. If not provided in env, use a dummy one just so it doesn't crash 
+        // (but it will fail on transaction until funded)
+        const pk = process.env.POLYGON_PRIVATE_KEY || '0x' + '1'.repeat(64);
+        this.polygonWallet = new ethers.Wallet(pk, this.polygonProvider);
+        
+        // Load ExpenditureLogger ABI
+        const abiData = require('../config/abis/ExpenditureLogger.json');
+        
+        // This is a dummy address, will be overridden by env variable once deployed
+        const contractAddress = process.env.POLYGON_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000';
+        
+        this.polygonContracts = {
+            ExpenditureLogger: new ethers.Contract(contractAddress, abiData.abi, this.polygonWallet)
+        };
+    }
+
+    async logExpenditure(projectCode, vendor, amount, sha256Hash) {
+        try {
+            await this._initPolygon();
+            
+            // Check if contract address is set
+            if (this.polygonContracts.ExpenditureLogger.target === '0x0000000000000000000000000000000000000000') {
+                throw new Error("Polygon contract address not configured");
+            }
+            
+            // Convert amount to integer (assuming amount is in standard currency, converting to wei representation if needed, 
+            // but we'll just log it as a uint256 integer of the actual amount for the MVP)
+            const amtUint = Math.round(Number(amount));
+            
+            console.log(`Submitting to Polygon Amoy: [${projectCode}] ${vendor} - ${amtUint} - ${sha256Hash}`);
+            
+            const tx = await this.polygonContracts.ExpenditureLogger.logExpenditure(
+                projectCode || 'UNKNOWN',
+                vendor || 'UNKNOWN',
+                amtUint,
+                sha256Hash || ''
+            );
+            
+            console.log(`Transaction sent to Polygon. Hash: ${tx.hash}`);
+            const receipt = await tx.wait();
+            console.log(`Transaction confirmed on Polygon! Block: ${receipt.blockNumber}`);
+            
+            return {
+                success: true,
+                txHash: tx.hash
+            };
+        } catch (error) {
+            console.error('Polygon Blockchain Error (logExpenditure):', error.message);
+            throw error;
+        }
+    }
 }
 
 module.exports = new BlockchainService();

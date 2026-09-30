@@ -1,81 +1,37 @@
-const hre = require("hardhat");
+const { ethers } = require("hardhat");
 const fs = require("fs");
 const path = require("path");
 
 async function main() {
-    console.log("🚀 Deploying UrbanHeliX Smart Contracts...\n");
+  const [deployer] = await ethers.getSigners();
+  console.log("Deploying with wallet:", deployer.address);
 
-    const [deployer] = await hre.ethers.getSigners();
-    console.log("📍 Deploying with account:", deployer.address);
-    console.log("💰 Account balance:", (await hre.ethers.provider.getBalance(deployer.address)).toString());
-    console.log("");
+  const balance = await deployer.provider.getBalance(deployer.address);
+  console.log("Wallet balance:", ethers.formatEther(balance), "MATIC");
 
-    // Deploy FundAllocation
-    const FundAllocation = await hre.ethers.getContractFactory("FundAllocation");
-    const fundAllocation = await FundAllocation.deploy();
-    await fundAllocation.waitForDeployment();
-    const fundAddr = await fundAllocation.getAddress();
-    console.log("✅ FundAllocation deployed to:", fundAddr);
+  const Factory = await ethers.getContractFactory("ExpenditureLogger");
+  const contract = await Factory.deploy();
+  await contract.waitForDeployment();
 
-    // Deploy ProjectRegistry
-    const ProjectRegistry = await hre.ethers.getContractFactory("ProjectRegistry");
-    const projectRegistry = await ProjectRegistry.deploy();
-    await projectRegistry.waitForDeployment();
-    const projAddr = await projectRegistry.getAddress();
-    console.log("✅ ProjectRegistry deployed to:", projAddr);
+  const address = await contract.getAddress();
+  console.log("\n? ExpenditureLogger deployed to:", address);
+  console.log("Network:", (await ethers.provider.getNetwork()).name);
 
-    // Deploy MilestonePayment
-    const MilestonePayment = await hre.ethers.getContractFactory("MilestonePayment");
-    const milestonePayment = await MilestonePayment.deploy();
-    await milestonePayment.waitForDeployment();
-    const msAddr = await milestonePayment.getAddress();
-    console.log("✅ MilestonePayment deployed to:", msAddr);
+  // Save ABI + address for the server to use
+  const artifact = require("../artifacts/contracts/ExpenditureLogger.sol/ExpenditureLogger.json");
+  const output = {
+    address,
+    abi: artifact.abi,
+    network: (await ethers.provider.getNetwork()).chainId.toString()
+  };
 
-    console.log("\n🎉 All contracts deployed!\n");
-
-    // Save deployment addresses to a JSON file for the backend to read
-    const deploymentInfo = {
-        network: hre.network.name,
-        chainId: (await hre.ethers.provider.getNetwork()).chainId.toString(),
-        deployer: deployer.address,
-        deployedAt: new Date().toISOString(),
-        contracts: {
-            FundAllocation: { address: fundAddr },
-            ProjectRegistry: { address: projAddr },
-            MilestonePayment: { address: msAddr },
-        },
-    };
-
-    // Save to blockchain directory
-    const deployPath = path.join(__dirname, "..", "deployments.json");
-    fs.writeFileSync(deployPath, JSON.stringify(deploymentInfo, null, 2));
-    console.log("📄 Deployment info saved to:", deployPath);
-
-    // Also copy to server config directory so backend can read it
-    const serverConfigPath = path.join(__dirname, "..", "..", "server", "config", "deployments.json");
-    fs.writeFileSync(serverConfigPath, JSON.stringify(deploymentInfo, null, 2));
-    console.log("📄 Deployment info copied to server config:", serverConfigPath);
-
-    // Copy ABIs to server so backend can interact with contracts
-    const abiDir = path.join(__dirname, "..", "..", "server", "config", "abis");
-    if (!fs.existsSync(abiDir)) fs.mkdirSync(abiDir, { recursive: true });
-
-    const contracts = ["FundAllocation", "ProjectRegistry", "MilestonePayment"];
-    for (const name of contracts) {
-        const artifact = await hre.artifacts.readArtifact(name);
-        fs.writeFileSync(
-            path.join(abiDir, `${name}.json`),
-            JSON.stringify({ abi: artifact.abi }, null, 2)
-        );
-    }
-    console.log("📄 Contract ABIs copied to server config/abis/");
-
-    console.log("\n🏁 Deployment complete! Backend can now interact with the blockchain.");
+  const outPath = path.join(__dirname, "../../server/blockchain/ExpenditureLogger.json");
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
+  console.log("? ABI + address saved to server/blockchain/ExpenditureLogger.json");
+  console.log("\n?? Add these to your Vercel env vars:");
+  console.log("   POLYGON_CONTRACT_ADDRESS =", address);
+  console.log("   POLYGON_RPC_URL = https://rpc-amoy.polygon.technology");
 }
 
-main()
-    .then(() => process.exit(0))
-    .catch((error) => {
-        console.error("❌ Deployment failed:", error);
-        process.exit(1);
-    });
+main().catch(console.error);
