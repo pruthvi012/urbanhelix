@@ -254,29 +254,13 @@ export default function Projects() {
     };
 
                 const handleApprove = async (id, estimatedBudget, draftAmount, p) => {
-        const contractorName = p?.contractor?.name || 'Assigned Contractor';
-        const accountNumber = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\n\nEnter Contractor Bank Account Number for budget allocation:`);
-        if (accountNumber === null) return;
-        if (!accountNumber.trim()) {
-            alert('Bank Account Number is required to process budget allocation!');
-            return;
-        }
-
-        const ifscCode = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\nAccount No: ${accountNumber}\n\nEnter IFSC Code:`);
-        if (ifscCode === null) return;
-        if (!ifscCode.trim()) {
-            alert('IFSC Code is required!');
-            return;
-        }
-
-        const bankName = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\nAccount No: ${accountNumber} | IFSC: ${ifscCode}\n\nEnter Bank Name:`) || 'State Bank of India';
-
-        const allocatedBudget = Number(estimatedBudget);
+        const allocatedBudget = prompt(`Enter Allocated Budget for this project (Proposed: ₹${estimatedBudget.toLocaleString()}):`, estimatedBudget);
+        if (allocatedBudget === null) return;
+        
         try {
             const res = await projectAPI.approve(id, { 
-                allocatedBudget, 
-                bankDetails: { accountNumber, ifscCode, bankName },
-                remarks: `Budget Passed & Allocated to ${contractorName} (Acc: ${accountNumber})` 
+                allocatedBudget: Number(allocatedBudget), 
+                remarks: `Project approved and budget allocated.` 
             });
             loadData();
             
@@ -285,7 +269,7 @@ export default function Projects() {
                 code = 'UHX-' + res.data.project._id.substring(18).toUpperCase();
             }
             
-            alert(`✅ BUDGET ALLOCATED & PASSED!\n\n👷 Contractor: ${contractorName}\n🏦 Bank Account: ${accountNumber}\n🏢 Bank: ${bankName} (${ifscCode})\n\nAssignment Code: ${code || 'UHX-APPROVED'}`);
+            alert(`✅ PROJECT APPROVED!\n\nAllocated Budget: ₹${Number(allocatedBudget).toLocaleString()}\nAssignment Code: ${code || 'UHX-APPROVED'}\n\nContractors can now use this code to claim the project.`);
         } catch (err) { 
             console.error('Approval error:', err);
             const msg = err.response?.data?.message || err.message || 'Approval failed';
