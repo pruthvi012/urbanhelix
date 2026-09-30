@@ -392,16 +392,13 @@ export default function Dashboard() {
     const completedCitizenWorks = citizenProjects.filter(p => p.status === 'Completed');
 
     // South wards directory list
-    // When a ward is already selected (selectedWardObj), show ALL wards without any filter
-    // so the full grid stays visible and the user can select a different ward from any AC
+    // Filters by selected Assembly Constituency chip and optional user search text
     const filteredSouthWards = fallbackWards.filter(w => {
-        // If a ward is already selected, show everything (no AC or text filter)
-        if (selectedWardObj) return true;
-        // AC filter (only when no ward selected)
+        // Assembly Constituency Filter (BTM Layout, Jayanagar, etc.)
         if (wardACFilter !== 'All' && !w.assemblyConstituency.toLowerCase().includes(wardACFilter.toLowerCase())) {
             return false;
         }
-        // Text filter (only when user is actively typing AND no ward chosen)
+        // Search text filter (when user types in search input)
         if (areaSearch && areaSearch.trim()) {
             const term = areaSearch.toLowerCase().trim();
             const matchesNo = String(w.wardNo).includes(term);
@@ -568,14 +565,11 @@ export default function Dashboard() {
                             </span>
                         </div>
 
-                        {/* List of 8 Civic Works BBMP handles (Clickable & Highlighted) */}
+                        {/* 8 Civic Works BBMP handles (2-column compact grid, 100% visible) */}
                         <div style={{ 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            gap: '5px', 
-                            overflowY: 'auto',
-                            maxHeight: selectedArea ? '300px' : '520px',
-                            paddingRight: '2px'
+                            display: 'grid', 
+                            gridTemplateColumns: 'repeat(2, 1fr)', 
+                            gap: '6px', 
                         }}>
                             {BBMP_CIVIC_WORKS.map((work, idx) => {
                                 const isSelected = selectedCivicWork === work.name;
@@ -590,8 +584,8 @@ export default function Dashboard() {
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '8px',
-                                            padding: '7px 10px',
+                                            gap: '7px',
+                                            padding: '8px 9px',
                                             borderRadius: '9px',
                                             border: isSelected ? '2px solid var(--accent-teal)' : '1px solid #f1f5f9',
                                             background: isSelected ? '#f0fdfa' : '#fafbfc',
@@ -601,13 +595,13 @@ export default function Dashboard() {
                                         }}
                                     >
                                         <div style={{ 
-                                            fontSize: '15px', 
-                                            width: '28px', 
-                                            height: '28px', 
+                                            fontSize: '14px', 
+                                            width: '26px', 
+                                            height: '26px', 
                                             display: 'flex', 
                                             alignItems: 'center', 
                                             justifyContent: 'center', 
-                                            borderRadius: '7px', 
+                                            borderRadius: '6px', 
                                             background: '#ffffff', 
                                             border: isSelected ? '1px solid var(--accent-teal)' : '1px solid #e2e8f0',
                                             flexShrink: 0 
@@ -615,31 +609,25 @@ export default function Dashboard() {
                                             {work.icon}
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1px' }}>
-                                                <h4 style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: isSelected ? 'var(--accent-teal)' : 'var(--text-main)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <h4 style={{ margin: 0, fontSize: '11.5px', fontWeight: 700, color: isSelected ? 'var(--accent-teal)' : 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     {work.name}
                                                 </h4>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                    {selectedArea && (
-                                                        <span style={{ 
-                                                            fontSize: '10px', 
-                                                            fontWeight: 700, 
-                                                            background: countInWard > 0 ? 'rgba(16, 185, 129, 0.15)' : '#f1f5f9', 
-                                                            color: countInWard > 0 ? 'var(--accent-green)' : '#94a3b8', 
-                                                            padding: '1px 6px', 
-                                                            borderRadius: '8px' 
-                                                        }}>
-                                                            {countInWard}w
-                                                        </span>
-                                                    )}
-                                                    <span style={{ fontSize: '9px', color: isSelected ? 'var(--accent-teal)' : '#94a3b8', fontWeight: 600 }}>
-                                                        {isSelected ? '✓' : `0${idx + 1}`}
+                                                {selectedArea && (
+                                                    <span style={{ 
+                                                        fontSize: '9.5px', 
+                                                        fontWeight: 700, 
+                                                        background: countInWard > 0 ? 'rgba(16, 185, 129, 0.15)' : '#f1f5f9', 
+                                                        color: countInWard > 0 ? 'var(--accent-green)' : '#94a3b8', 
+                                                        padding: '1px 5px', 
+                                                        borderRadius: '6px',
+                                                        marginLeft: '4px',
+                                                        flexShrink: 0
+                                                    }}>
+                                                        {countInWard}w
                                                     </span>
-                                                </div>
+                                                )}
                                             </div>
-                                            <p style={{ margin: 0, fontSize: '10px', color: '#64748b', lineHeight: '1.3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {work.desc}
-                                            </p>
                                         </div>
                                     </div>
                                 );
