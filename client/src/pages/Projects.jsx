@@ -885,23 +885,16 @@ export default function Projects() {
                                                             >
                                                                 <FiDownload /> PDF
                                                             </button>
-                                                            {isApprovalAuthority && <>
-                                                                <button className="btn btn-success btn-sm" onClick={() => handleProceedFunds(p)}>Proceed</button>
-                                                                <button className="btn btn-danger btn-sm" onClick={() => p.finalBills?.some((bill) => bill.active) ? handleFinalBillDecision(p, false) : handleReject(p._id)}>Reject</button>
+                                                            {isApprovalAuthority && p.status === 'proposed' && <>
+                                                                <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Proceed</button>
+                                                                <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
                                                             </>}
                                                             </div>
                                                         </td>
                                                         {(isApprovalAuthority || ['engineer', 'financial_officer'].includes(user?.role) || (user?.role === 'contractor' && p.contractor?._id === user?._id)) && (
                                                             <td>
                                                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                                                    {isApprovalAuthority && (
-                                                                        <>
-                                                                            {p.status === 'completed' && <>
-                                                                                <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id])}>Approve Project</button>
-                                                                                <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
-                                                                            </>}
-                                                                        </>
-                                                                    )}
+                                                                    
                                                                     {['engineer', 'admin'].includes(user?.role) && p.status === 'approved' && !p.contractor && (
                                                                         <button className="btn btn-primary btn-sm" onClick={() => openAssign(p)}>Assign</button>
                                                                     )}
@@ -920,7 +913,7 @@ export default function Projects() {
                                                                         </button>
                                                                     )}
 
-                                                                    {isApprovalAuthority && p.status === 'completed' && (
+                                                                    {isApprovalAuthority && p.status !== 'proposed' && (
                                                                         <Link to={`/projects/${p._id}`} className="btn btn-outline btn-sm" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                                             👁️ View Evidence
                                                                         </Link>
