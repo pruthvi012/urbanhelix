@@ -67,7 +67,13 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [showDetailedAnalytics, setShowDetailedAnalytics] = useState(false);
-
+    
+    // Citizen Dashboard State
+    const [areaSearch, setAreaSearch] = useState('');
+    const [selectedArea, setSelectedArea] = useState('');
+    const [showAreaSuggestions, setShowAreaSuggestions] = useState(false);
+    const [citizenTab, setCitizenTab] = useState('ongoing'); // 'ongoing' or 'completed'
+    
     useEffect(() => {
         loadDashboardData();
     }, [selectedCategory]);
@@ -76,7 +82,7 @@ export default function Dashboard() {
         setLoading(true);
         try {
             const [projRes, analyticsRes, grievanceRes] = await Promise.all([
-                projectAPI.getAll({ limit: 6, category: selectedCategory !== 'all' ? selectedCategory : undefined }),
+                projectAPI.getAll({ limit: 100, category: selectedCategory !== 'all' ? selectedCategory : undefined }),
                 auditAPI.getAnalytics(selectedCategory),
                 grievanceAPI.getAll({ limit: 100 })
             ]);
@@ -204,9 +210,17 @@ export default function Dashboard() {
         contractor: p.contractor?.name || 'Assigned Builder',
         progress: p.status === 'completed' ? 100 : p.status === 'in_progress' ? 68 : p.status === 'verification' ? 90 : 25,
         status: p.status === 'completed' ? 'Completed' : p.status === 'in_progress' ? 'On track' : 'In review',
+        category: p.category || 'Public Infrastructure',
         spent: ((p.spentBudget || 0) / 10000000).toFixed(1),
         total: ((p.allocatedBudget || p.estimatedBudget || 10000000) / 10000000).toFixed(1)
     })) : [];
+    
+    // Citizen Dashboard Derived State
+    const allAreas = Array.from(new Set(displayProjects.map(p => p.ward)));
+    const filteredAreas = allAreas.filter(a => a.toLowerCase().includes(areaSearch.toLowerCase()));
+    const citizenProjects = selectedArea ? displayProjects.filter(p => p.ward === selectedArea) : [];
+    const ongoingCitizenWorks = citizenProjects.filter(p => p.status !== 'Completed');
+    const completedCitizenWorks = citizenProjects.filter(p => p.status === 'Completed');
 
     return (
         <div>
@@ -347,63 +361,167 @@ export default function Dashboard() {
             {/* ─── 3. TWO-COLUMN LOWER SECTION ─── */}
             <div className="dashboard-two-col">
                 {/* Left Column: Delivery Monitor */}
-                <div className="delivery-monitor-card">
-                    <div className="card-section-header">
-                        <div>
-                            <div className="card-overline-tag">DELIVERY MONITOR</div>
-                            <h3 className="card-title-main">Projects in your city</h3>
-                        </div>
-                        <Link to="/projects" className="view-all-link">
-                            <span>View all</span>
-                            <FiArrowUpRight />
-                        </Link>
-                    </div>
-
-                    <div className="delivery-projects-list">
-                        {displayProjects.length > 0 ? (
-                            displayProjects.slice(0, 4).map((p) => (
-                                <Link key={p._id} to={`/projects/${p._id}`} className="delivery-project-row">
-                                    <div className="project-row-info">
-                                        <h4>{p.title}</h4>
-                                        <p>{p.ward} · {p.contractor}</p>
-                                    </div>
-
-                                    <div className="project-row-progress">
-                                        <div className="progress-meta-text">
-                                            <span>{p.progress}% complete</span>
-                                            <span>{p.status}</span>
-                                        </div>
-                                        <div className="progress-track">
+                {user?.role === 'citizen' ? (
+                    <div className="delivery-monitor-card bbmp-works-card">
+                        <div className="card-section-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '16px', borderBottom: 'none', paddingBottom: '0' }}>
+                            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div className="card-overline-tag">LOCALITY MONITOR</div>
+                                    <h3 className="card-title-main">BBMP Works in Your Area</h3>
+                                </div>
+                            </div>
+                            <div style={{ position: 'relative', width: '100%' }}>
+                                <FiMapPin style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Search your locality (e.g., Koramangala)"
+                                    value={areaSearch}
+                                    onChange={(e) => {
+                                        setAreaSearch(e.target.value);
+                                        setShowAreaSuggestions(true);
+                                    }}
+                                    onFocus={() => setShowAreaSuggestions(true)}
+                                    style={{ width: '100%', padding: '12px 14px 12px 38px', borderRadius: '8px', border: '1px solid var(--border-light)', fontSize: '15px' }}
+                                />
+                                {showAreaSuggestions && areaSearch && (
+                                    <div className="area-suggestions-dropdown" style={{
+                                        position: 'absolute', top: '100%', left: 0, right: 0, 
+                                        background: 'white', border: '1px solid var(--border-light)', 
+                                        borderRadius: '8px', marginTop: '4px', zIndex: 10,
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto'
+                                    }}>
+                                        {filteredAreas.length > 0 ? filteredAreas.map(area => (
                                             <div 
-                                                className="progress-fill" 
-                                                style={{ 
-                                                    width: `${p.progress}%`,
-                                                    background: p.status === 'In review' ? 'var(--accent-amber)' : 'var(--accent-teal)'
+                                                key={area}
+                                                style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: '14px' }}
+                                                onClick={() => {
+                                                    setSelectedArea(area);
+                                                    setAreaSearch(area);
+                                                    setShowAreaSuggestions(false);
                                                 }}
-                                            ></div>
-                                        </div>
+                                            >
+                                                {area}
+                                            </div>
+                                        )) : (
+                                            <div style={{ padding: '10px 14px', color: 'var(--text-muted)', fontSize: '14px' }}>No localities found.</div>
+                                        )}
                                     </div>
-
-                                    <div className="project-row-financials">
-                                        <div className="project-budget-val">₹{p.spent} Cr</div>
-                                        <div className="project-budget-sub">of ₹{p.total} Cr</div>
-                                    </div>
-
-                                    <FiArrowUpRight className="project-arrow-icon" />
-                                </Link>
-                            ))
-                        ) : (
-                            <div className="empty-state-container" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                <p style={{ marginBottom: '16px' }}>No projects registered yet.</p>
-                                {user && (user.role === 'admin' || user.role === 'official') && (
-                                    <Link to="/projects" className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '14px', borderRadius: '20px', background: 'var(--accent-teal)', color: 'white', border: 'none' }}>
-                                        Go to Projects
-                                    </Link>
                                 )}
+                            </div>
+                        </div>
+
+                        {selectedArea ? (
+                            <div className="bbmp-works-content" style={{ marginTop: '20px' }}>
+                                <div className="tab-container" style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-light)', marginBottom: '16px', padding: '0 24px' }}>
+                                    <button 
+                                        className={`tab-btn ${citizenTab === 'ongoing' ? 'active' : ''}`}
+                                        onClick={() => setCitizenTab('ongoing')}
+                                        style={{ background: 'none', border: 'none', borderBottom: citizenTab === 'ongoing' ? '2px solid var(--accent-blue)' : '2px solid transparent', padding: '8px 4px', fontWeight: 600, color: citizenTab === 'ongoing' ? 'var(--accent-blue)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '14px' }}
+                                    >Ongoing Works ({ongoingCitizenWorks.length})</button>
+                                    <button 
+                                        className={`tab-btn ${citizenTab === 'completed' ? 'active' : ''}`}
+                                        onClick={() => setCitizenTab('completed')}
+                                        style={{ background: 'none', border: 'none', borderBottom: citizenTab === 'completed' ? '2px solid var(--accent-green)' : '2px solid transparent', padding: '8px 4px', fontWeight: 600, color: citizenTab === 'completed' ? 'var(--accent-green)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '14px' }}
+                                    >Completed Works ({completedCitizenWorks.length})</button>
+                                </div>
+                                
+                                <div className="delivery-projects-list" style={{ padding: '0 8px' }}>
+                                    {(citizenTab === 'ongoing' ? ongoingCitizenWorks : completedCitizenWorks).length > 0 ? (
+                                        (citizenTab === 'ongoing' ? ongoingCitizenWorks : completedCitizenWorks).map(p => (
+                                            <Link key={p._id} to={`/projects/${p._id}`} className="delivery-project-row" style={{ gridTemplateColumns: '1fr auto', padding: '16px', alignItems: 'center' }}>
+                                                <div className="project-row-info">
+                                                    <h4 style={{ marginBottom: '6px', fontSize: '15px' }}>{p.title}</h4>
+                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                        <span className="tx-tag" style={{ background: '#f1f5f9', color: '#475569', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 }}>{p.category}</span>
+                                                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{p.contractor}</span>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                                    <span className="tx-tag" style={{ 
+                                                        background: p.status === 'Completed' ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)', 
+                                                        color: p.status === 'Completed' ? 'var(--accent-green)' : 'var(--accent-blue)',
+                                                        fontWeight: 600,
+                                                        fontSize: '12px'
+                                                    }}>{p.status}</span>
+                                                    <FiArrowUpRight className="project-arrow-icon" style={{ position: 'static', opacity: 1, color: '#94a3b8' }} />
+                                                </div>
+                                            </Link>
+                                        ))
+                                    ) : (
+                                        <div className="empty-state-container" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                            <FiActivity style={{ fontSize: '28px', marginBottom: '12px', opacity: 0.4 }} />
+                                            <p style={{ fontSize: '14px' }}>No {citizenTab} projects being done in this area.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="empty-state-container" style={{ padding: '50px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                <FiMapPin style={{ fontSize: '32px', marginBottom: '16px', opacity: 0.3 }} />
+                                <p style={{ fontSize: '15px' }}>Search and select your locality above to view BBMP works.</p>
                             </div>
                         )}
                     </div>
-                </div>
+                ) : (
+                    <div className="delivery-monitor-card">
+                        <div className="card-section-header">
+                            <div>
+                                <div className="card-overline-tag">DELIVERY MONITOR</div>
+                                <h3 className="card-title-main">Projects in your city</h3>
+                            </div>
+                            <Link to="/projects" className="view-all-link">
+                                <span>View all</span>
+                                <FiArrowUpRight />
+                            </Link>
+                        </div>
+
+                        <div className="delivery-projects-list">
+                            {displayProjects.length > 0 ? (
+                                displayProjects.slice(0, 4).map((p) => (
+                                    <Link key={p._id} to={`/projects/${p._id}`} className="delivery-project-row">
+                                        <div className="project-row-info">
+                                            <h4>{p.title}</h4>
+                                            <p>{p.ward} · {p.contractor}</p>
+                                        </div>
+
+                                        <div className="project-row-progress">
+                                            <div className="progress-meta-text">
+                                                <span>{p.progress}% complete</span>
+                                                <span>{p.status}</span>
+                                            </div>
+                                            <div className="progress-track">
+                                                <div 
+                                                    className="progress-fill" 
+                                                    style={{ 
+                                                        width: `${p.progress}%`,
+                                                        background: p.status === 'In review' ? 'var(--accent-amber)' : 'var(--accent-teal)'
+                                                    }}
+                                                ></div>
+                                            </div>
+                                        </div>
+
+                                        <div className="project-row-financials">
+                                            <div className="project-budget-val">₹{p.spent} Cr</div>
+                                            <div className="project-budget-sub">of ₹{p.total} Cr</div>
+                                        </div>
+
+                                        <FiArrowUpRight className="project-arrow-icon" />
+                                    </Link>
+                                ))
+                            ) : (
+                                <div className="empty-state-container" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                    <p style={{ marginBottom: '16px' }}>No projects registered yet.</p>
+                                    {user && (user.role === 'admin' || user.role === 'official') && (
+                                        <Link to="/projects" className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '14px', borderRadius: '20px', background: 'var(--accent-teal)', color: 'white', border: 'none' }}>
+                                            Go to Projects
+                                        </Link>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Right Column: City Health / Delivery Confidence */}
                 <div className="city-health-card">
