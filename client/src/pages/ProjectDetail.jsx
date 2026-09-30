@@ -98,22 +98,32 @@ export default function ProjectDetail() {
         }
     };
     
-            const handleApprove = async () => {
+                const handleApprove = async () => {
+        const contractorName = project.contractor?.name || 'Assigned Contractor';
+        const accountNumber = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\n\nEnter Contractor Bank Account Number for budget allocation:`);
+        if (accountNumber === null) return; // Cancelled
+        if (!accountNumber.trim()) {
+            alert('Bank Account Number is required to process budget allocation!');
+            return;
+        }
+
+        const ifscCode = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\nAccount No: ${accountNumber}\n\nEnter IFSC Code:`);
+        if (ifscCode === null) return;
+        if (!ifscCode.trim()) {
+            alert('IFSC Code is required!');
+            return;
+        }
+
+        const bankName = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\nAccount No: ${accountNumber} | IFSC: ${ifscCode}\n\nEnter Bank Name:`) || 'State Bank of India';
+
         const allocatedBudget = Number(project.estimatedBudget || 0);
         try {
-            const res = await projectAPI.approve(id, { 
+            await projectAPI.approve(id, { 
                 allocatedBudget, 
-                remarks: 'Project Approved' 
+                bankDetails: { accountNumber, ifscCode, bankName },
+                remarks: `Budget Passed & Allocated to ${contractorName} (Acc: ${accountNumber})` 
             });
-            let code = res.data?.project?.projectCode;
-            if (!code && res.data?.project?._id) {
-                code = 'UHX-' + res.data.project._id.substring(18).toUpperCase();
-            }
-            if (code) {
-                alert(`✅ SUCCESS! Project Approved.\n\nCONTRACTOR ASSIGNMENT CODE: ${code}\n\nPlease share this code with the contractor so they can claim this project.`);
-            } else {
-                alert(`✅ Project Approved successfully!`);
-            }
+            alert(`✅ BUDGET ALLOCATED & PASSED!\n\n👷 Contractor: ${contractorName}\n🏦 Bank Account: ${accountNumber}\n🏢 Bank: ${bankName} (${ifscCode})\n\nBudget has been successfully allocated.`);
             loadData();
         } catch (err) { 
             console.error('Approve error:', err);
@@ -386,20 +396,20 @@ export default function ProjectDetail() {
                     {user?.role === 'admin' && (
                         <>
                             {budgetProofUrl && <button className="btn btn-outline btn-sm" onClick={openBudgetProof}>View Budget PDF</button>}
-                            {project.status === 'proposed' ? (
+                            {(project.budgetPassed || project.contractorBankDetails?.accountNumber) ? (
+                                <span style={{ fontSize: '12px', fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '4px 12px', borderRadius: '12px', border: '1px solid #86efac', whiteSpace: 'nowrap' }}>
+                                    ✅ Budget Passed {project.contractor?.name ? '(' + project.contractor.name + ')' : ''}
+                                </span>
+                            ) : project.status === 'rejected' ? (
+                                <span style={{ fontSize: '12px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', padding: '4px 12px', borderRadius: '12px', border: '1px solid #fca5a5', whiteSpace: 'nowrap' }}>
+                                    ❌ Budget Rejected
+                                </span>
+                            ) : (
                                 <>
                                     <button className="btn btn-success btn-sm" onClick={handleApprove}>Proceed</button>
                                     <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject</button>
                                 </>
-                            ) : ['approved', 'in_progress', 'verification', 'completed'].includes(project.status) ? (
-                                <span style={{ fontSize: '12px', fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '4px 12px', borderRadius: '12px', border: '1px solid #86efac', whiteSpace: 'nowrap' }}>
-                                    ✅ Approved
-                                </span>
-                            ) : project.status === 'rejected' ? (
-                                <span style={{ fontSize: '12px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', padding: '4px 12px', borderRadius: '12px', border: '1px solid #fca5a5', whiteSpace: 'nowrap' }}>
-                                    ❌ Rejected
-                                </span>
-                            ) : null}
+                            )}
                         </>
                     )}
                     {['engineer', 'admin'].includes(user?.role) && ['approved', 'in_progress'].includes(project.status) && !project.contractor && (
