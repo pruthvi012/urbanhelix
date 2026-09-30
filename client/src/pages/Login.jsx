@@ -5,11 +5,11 @@ import { FiShield, FiActivity, FiChevronDown, FiChevronUp } from 'react-icons/fi
 import { authAPI } from '../services/api';
 
 const ROLES = [
+    { key: 'citizen', label: 'Public Citizen', desc: 'Municipal command center...', email: 'ananya@citizen.com', avatar: 'AD' },
     { key: 'admin', label: 'Authorized Approving Officer', desc: 'Approve projects and oversee delivery...', email: 'admin@urbanhelix.gov', avatar: 'AO' },
     { key: 'engineer', label: 'Site Engineer', desc: 'Technical & field audit...', email: 'rajesh.engineer@urbanhelix.gov', avatar: 'RK' },
     { key: 'contractor', label: 'Project Contractor', desc: 'Civil works execution...', email: 'vikram@contractor.com', avatar: 'VM' },
-    { key: 'financial_officer', label: 'Finance Officer', desc: 'Treasury & escrow release...', email: 'sunita.finance@urbanhelix.gov', avatar: 'SS' },
-    { key: 'citizen', label: 'Public Citizen', desc: 'Municipal command center...', email: 'ananya@citizen.com', avatar: 'AD' }
+    { key: 'financial_officer', label: 'Finance Officer', desc: 'Treasury & escrow release...', email: 'sunita.finance@urbanhelix.gov', avatar: 'SS' }
 ];
 
 export default function Login() {
@@ -1105,3 +1105,4 @@ export default function Login() {
         </>
     );
 }
+
