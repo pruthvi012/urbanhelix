@@ -66,6 +66,41 @@ const BBMP_CIVIC_WORKS = [
     }
 ];
 
+const matchesBBMPCategory = (project, civicWorkKey) => {
+    if (!civicWorkKey) return true;
+    const cat = (project.rawCategory || project.category || '').toLowerCase();
+    const title = (project.title || '').toLowerCase();
+    const desc = (project.description || '').toLowerCase();
+
+    switch (civicWorkKey) {
+        case 'Roads & Footpaths':
+            return cat === 'road' || cat.includes('road') || cat.includes('footpath') || 
+                   title.includes('road') || title.includes('pothole') || title.includes('asphalt') || title.includes('footpath') || title.includes('street') || desc.includes('road') || desc.includes('pothole');
+        case 'Storm Water Drains':
+            return cat === 'drainage' || cat.includes('drain') || cat.includes('storm') || 
+                   title.includes('drain') || title.includes('swd') || title.includes('rajakaluve') || title.includes('culvert') || desc.includes('drain');
+        case 'Street Lighting':
+            return cat === 'electricity' || cat.includes('light') || cat.includes('electric') || 
+                   title.includes('light') || title.includes('led') || title.includes('lamp') || title.includes('pole') || desc.includes('light');
+        case 'Solid Waste Management':
+            return cat === 'sanitation' || cat.includes('waste') || cat.includes('sanitat') || 
+                   title.includes('waste') || title.includes('garbage') || title.includes('clean') || title.includes('compost') || desc.includes('waste');
+        case 'Parks & Green Spaces':
+            return cat === 'park' || cat.includes('park') || cat.includes('green') || 
+                   title.includes('park') || title.includes('garden') || title.includes('tree') || title.includes('play') || desc.includes('park');
+        case 'Lakes & Water Bodies':
+            return cat === 'water_supply' || cat.includes('lake') || cat.includes('water') || 
+                   title.includes('lake') || title.includes('kere') || title.includes('bund') || title.includes('water body') || desc.includes('lake');
+        case 'Public Infrastructure':
+            return cat === 'building' || cat === 'bridge' || cat.includes('build') || cat.includes('infra') || 
+                   title.includes('building') || title.includes('hall') || title.includes('market') || title.includes('complex') || title.includes('centre') || desc.includes('building');
+        case 'Other Civic Works':
+            return cat === 'other' || !['road', 'drainage', 'electricity', 'sanitation', 'park', 'building', 'bridge', 'water_supply'].includes(cat);
+        default:
+            return true;
+    }
+};
+
 const SAMPLE_DELIVERY_PROJECTS = [
     {
         _id: 'sample-1',
@@ -127,7 +162,7 @@ export default function Dashboard() {
     const [showAreaSuggestions, setShowAreaSuggestions] = useState(false);
     const [citizenTab, setCitizenTab] = useState('ongoing'); // 'ongoing' or 'completed'
     const [wardACFilter, setWardACFilter] = useState('All');
-    const [selectedCivicWork, setSelectedCivicWork] = useState(null);
+    const [selectedCivicWork, setSelectedCivicWork] = useState('Roads & Footpaths');
     
     useEffect(() => {
         loadDashboardData();
@@ -258,20 +293,31 @@ export default function Dashboard() {
         }
     };
 
-    const displayProjects = projects.length > 0 ? projects.map(p => ({
-        _id: p._id,
-        title: p.title,
-        ward: p.location?.ward ? `Ward ${p.location.wardNo || ''} · ${p.location.ward}` : 'Ward 04 · Central',
-        wardNo: p.location?.wardNo || null,
-        wardName: p.location?.ward || '',
-        area: p.location?.area || '',
-        contractor: p.contractor?.name || 'Assigned Builder',
-        progress: p.status === 'completed' ? 100 : p.status === 'in_progress' ? 68 : p.status === 'verification' ? 90 : 25,
-        status: p.status === 'completed' ? 'Completed' : p.status === 'in_progress' ? 'On track' : 'In review',
-        category: p.category || 'Public Infrastructure',
-        spent: ((p.spentBudget || 0) / 10000000).toFixed(1),
-        total: ((p.allocatedBudget || p.estimatedBudget || 10000000) / 10000000).toFixed(1)
-    })) : [];
+    const displayProjects = projects.length > 0 ? projects.map(p => {
+        let matchedCat = 'Other Civic Works';
+        for (const bw of BBMP_CIVIC_WORKS) {
+            if (matchesBBMPCategory(p, bw.name)) {
+                matchedCat = bw.name;
+                break;
+            }
+        }
+        return {
+            _id: p._id,
+            title: p.title,
+            description: p.description || '',
+            ward: p.location?.ward ? `Ward ${p.location.wardNo || ''} · ${p.location.ward}` : 'Ward 04 · Central',
+            wardNo: p.location?.wardNo || null,
+            wardName: p.location?.ward || '',
+            area: p.location?.area || '',
+            contractor: p.contractor?.name || 'Assigned Builder',
+            progress: p.status === 'completed' ? 100 : p.status === 'in_progress' ? 68 : p.status === 'verification' ? 90 : 25,
+            status: p.status === 'completed' ? 'Completed' : p.status === 'in_progress' ? 'On track' : 'In review',
+            rawCategory: p.category || 'other',
+            category: matchedCat,
+            spent: ((p.spentBudget || 0) / 10000000).toFixed(1),
+            total: ((p.allocatedBudget || p.estimatedBudget || 10000000) / 10000000).toFixed(1)
+        };
+    }) : [];
     
     // Citizen Dashboard Derived State
     const allAreas = Array.from(new Set(displayProjects.map(p => p.ward)));
@@ -310,7 +356,7 @@ export default function Dashboard() {
     })();
 
     // Filter projects for selected ward / area
-    const citizenProjects = selectedArea ? displayProjects.filter(p => {
+    const wardProjects = selectedArea ? displayProjects.filter(p => {
         const sel = (selectedArea || '').toLowerCase().trim();
         const pWard = (p.ward || '').toLowerCase();
         const pWardName = (p.wardName || '').toLowerCase();
@@ -326,6 +372,9 @@ export default function Dashboard() {
 
         return pWard.includes(sel) || pWardName.includes(sel) || pArea.includes(sel) || sel.includes(pWardName) || (pWardNo && sel.includes(pWardNo));
     }) : [];
+
+    // Further filter by selected BBMP work category on the left
+    const citizenProjects = wardProjects.filter(p => matchesBBMPCategory(p, selectedCivicWork));
 
     const ongoingCitizenWorks = citizenProjects.filter(p => p.status !== 'Completed');
     const completedCitizenWorks = citizenProjects.filter(p => p.status === 'Completed');
@@ -486,14 +535,14 @@ export default function Dashboard() {
             {/* ─── 3. TWO-COLUMN LOWER SECTION ─── */}
             {user?.role === 'citizen' ? (
                 <div className="dashboard-two-col" style={{ gridTemplateColumns: '1.05fr 1.35fr', gap: '24px' }}>
-                    {/* LEFT SECTION: BBMP Works (List of civic works BBMP handles) */}
+                    {/* LEFT SECTION: BBMP Works (Interactive Category Filter + Projects in Selected Ward) */}
                     <div className="delivery-monitor-card" style={{ display: 'flex', flexDirection: 'column' }}>
-                        <div className="card-section-header" style={{ marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid #f1f5f9' }}>
+                        <div className="card-section-header" style={{ marginBottom: '14px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
                             <div>
                                 <div className="card-overline-tag">BBMP JURISDICTION</div>
                                 <h3 className="card-title-main">BBMP Works</h3>
                                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px', marginBottom: 0 }}>
-                                    Civic works & public utilities executed across Bengaluru municipal wards
+                                    Select a civic work category to filter projects in the selected ward
                                 </p>
                             </div>
                             <span className="tx-tag" style={{ background: 'rgba(13, 148, 136, 0.1)', color: 'var(--accent-teal)', fontWeight: 700, fontSize: '11px', whiteSpace: 'nowrap' }}>
@@ -501,55 +550,211 @@ export default function Dashboard() {
                             </span>
                         </div>
 
-                        {/* List of 8 Civic Works BBMP handles */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', maxHeight: '530px', paddingRight: '4px' }}>
-                            {BBMP_CIVIC_WORKS.map((work, idx) => (
-                                <div 
-                                    key={work.key}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'flex-start',
-                                        gap: '14px',
-                                        padding: '12px 14px',
-                                        borderRadius: '12px',
-                                        border: '1px solid #f1f5f9',
-                                        background: '#fafbfc',
-                                        transition: 'all 0.2s ease',
-                                    }}
-                                >
-                                    <div style={{ 
-                                        fontSize: '22px', 
-                                        width: '40px', 
-                                        height: '40px', 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        justifyContent: 'center', 
-                                        borderRadius: '10px', 
-                                        background: '#ffffff', 
-                                        border: '1px solid #e2e8f0',
-                                        flexShrink: 0 
-                                    }}>
-                                        {work.icon}
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                                            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-main)' }}>
-                                                {work.name}
-                                            </h4>
-                                            <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600 }}>
-                                                0{idx + 1}
-                                            </span>
+                        {/* List of 8 Civic Works BBMP handles (Clickable & Highlighted) */}
+                        <div style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '8px', 
+                            overflowY: 'auto', 
+                            maxHeight: selectedArea ? '240px' : '520px', 
+                            paddingRight: '4px',
+                            transition: 'max-height 0.25s ease'
+                        }}>
+                            {BBMP_CIVIC_WORKS.map((work, idx) => {
+                                const isSelected = selectedCivicWork === work.name;
+                                const countInWard = selectedArea 
+                                    ? wardProjects.filter(p => matchesBBMPCategory(p, work.name)).length 
+                                    : 0;
+
+                                return (
+                                    <div 
+                                        key={work.key}
+                                        onClick={() => setSelectedCivicWork(work.name)}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '12px',
+                                            padding: '10px 14px',
+                                            borderRadius: '12px',
+                                            border: isSelected ? '2px solid var(--accent-teal)' : '1px solid #f1f5f9',
+                                            background: isSelected ? '#f0fdfa' : '#fafbfc',
+                                            boxShadow: isSelected ? '0 4px 12px rgba(13, 148, 136, 0.12)' : 'none',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease',
+                                        }}
+                                    >
+                                        <div style={{ 
+                                            fontSize: '20px', 
+                                            width: '36px', 
+                                            height: '36px', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            borderRadius: '10px', 
+                                            background: '#ffffff', 
+                                            border: isSelected ? '1px solid var(--accent-teal)' : '1px solid #e2e8f0',
+                                            flexShrink: 0 
+                                        }}>
+                                            {work.icon}
                                         </div>
-                                        <p style={{ margin: 0, fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
-                                            {work.desc}
-                                        </p>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                                <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: isSelected ? 'var(--accent-teal)' : 'var(--text-main)' }}>
+                                                    {work.name}
+                                                </h4>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    {selectedArea && (
+                                                        <span style={{ 
+                                                            fontSize: '11px', 
+                                                            fontWeight: 700, 
+                                                            background: countInWard > 0 ? 'rgba(16, 185, 129, 0.15)' : '#f1f5f9', 
+                                                            color: countInWard > 0 ? 'var(--accent-green)' : '#94a3b8', 
+                                                            padding: '1px 7px', 
+                                                            borderRadius: '10px' 
+                                                        }}>
+                                                            {countInWard} {countInWard === 1 ? 'work' : 'works'}
+                                                        </span>
+                                                    )}
+                                                    <span style={{ fontSize: '10px', color: isSelected ? 'var(--accent-teal)' : '#94a3b8', fontWeight: 600 }}>
+                                                        {isSelected ? 'Active ✓' : `0${idx + 1}`}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <p style={{ margin: 0, fontSize: '11px', color: '#64748b', lineHeight: '1.3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {work.desc}
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
+
+                        {/* PROJECTS FOR SELECTED WARD + CATEGORY DISPLAYED ON THE LEFT */}
+                        {selectedArea ? (
+                            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                                {/* Active Ward + Category Title Bar */}
+                                <div style={{ 
+                                    padding: '10px 14px', 
+                                    background: 'rgba(13, 148, 136, 0.06)', 
+                                    borderRadius: '10px', 
+                                    border: '1px solid rgba(13, 148, 136, 0.15)',
+                                    marginBottom: '14px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    flexWrap: 'wrap',
+                                    gap: '8px'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <FiMapPin style={{ color: 'var(--accent-teal)', fontSize: '15px' }} />
+                                        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)' }}>
+                                            {selectedWardObj ? `Ward ${selectedWardObj.wardNo} · ${selectedWardObj.name}` : selectedArea}
+                                        </span>
+                                        <span style={{ 
+                                            fontSize: '11px', 
+                                            fontWeight: 700, 
+                                            background: 'var(--accent-teal)', 
+                                            color: 'white', 
+                                            padding: '2px 8px', 
+                                            borderRadius: '12px' 
+                                        }}>
+                                            {selectedCivicWork}
+                                        </span>
+                                    </div>
+                                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent-teal)' }}>
+                                        {citizenProjects.length} Works
+                                    </span>
+                                </div>
+
+                                {/* Tabs: Ongoing Works & Completed Works */}
+                                <div className="tab-container" style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-light)', marginBottom: '14px' }}>
+                                    <button 
+                                        className={`tab-btn ${citizenTab === 'ongoing' ? 'active' : ''}`}
+                                        onClick={() => setCitizenTab('ongoing')}
+                                        style={{ 
+                                            background: 'none', 
+                                            border: 'none', 
+                                            borderBottom: citizenTab === 'ongoing' ? '2px solid var(--accent-blue)' : '2px solid transparent', 
+                                            padding: '6px 4px', 
+                                            fontWeight: 600, 
+                                            color: citizenTab === 'ongoing' ? 'var(--accent-blue)' : 'var(--text-muted)', 
+                                            cursor: 'pointer', 
+                                            fontSize: '13px' 
+                                        }}
+                                    >
+                                        Ongoing Works ({ongoingCitizenWorks.length})
+                                    </button>
+                                    <button 
+                                        className={`tab-btn ${citizenTab === 'completed' ? 'active' : ''}`}
+                                        onClick={() => setCitizenTab('completed')}
+                                        style={{ 
+                                            background: 'none', 
+                                            border: 'none', 
+                                            borderBottom: citizenTab === 'completed' ? '2px solid var(--accent-green)' : '2px solid transparent', 
+                                            padding: '6px 4px', 
+                                            fontWeight: 600, 
+                                            color: citizenTab === 'completed' ? 'var(--accent-green)' : 'var(--text-muted)', 
+                                            cursor: 'pointer', 
+                                            fontSize: '13px' 
+                                        }}
+                                    >
+                                        Completed Works ({completedCitizenWorks.length})
+                                    </button>
+                                </div>
+                                
+                                {/* Project List or Empty Message */}
+                                <div className="delivery-projects-list" style={{ overflowY: 'auto', maxHeight: '280px', paddingRight: '4px' }}>
+                                    {(citizenTab === 'ongoing' ? ongoingCitizenWorks : completedCitizenWorks).length > 0 ? (
+                                        (citizenTab === 'ongoing' ? ongoingCitizenWorks : completedCitizenWorks).map(p => (
+                                            <Link key={p._id} to={`/projects/${p._id}`} className="delivery-project-row" style={{ gridTemplateColumns: '1fr auto', padding: '12px 14px', alignItems: 'center' }}>
+                                                <div className="project-row-info">
+                                                    <h4 style={{ marginBottom: '4px', fontSize: '14px' }}>{p.title}</h4>
+                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                        <span className="tx-tag" style={{ background: '#f1f5f9', color: '#475569', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 }}>
+                                                            {p.category}
+                                                        </span>
+                                                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{p.contractor}</span>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <span className="tx-tag" style={{ 
+                                                        background: p.status === 'Completed' ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)', 
+                                                        color: p.status === 'Completed' ? 'var(--accent-green)' : 'var(--accent-blue)',
+                                                        fontWeight: 600,
+                                                        fontSize: '11px'
+                                                    }}>{p.status}</span>
+                                                    <FiArrowUpRight className="project-arrow-icon" style={{ position: 'static', opacity: 1, color: '#94a3b8' }} />
+                                                </div>
+                                            </Link>
+                                        ))
+                                    ) : (
+                                        <div className="empty-state-container" style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                            <FiActivity style={{ fontSize: '26px', marginBottom: '8px', opacity: 0.4 }} />
+                                            <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, color: 'var(--text-main)' }}>
+                                                No projects found for this work in this ward.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ 
+                                marginTop: '16px', 
+                                padding: '16px', 
+                                background: '#fafbfc', 
+                                borderRadius: '12px', 
+                                border: '1px dashed #cbd5e1', 
+                                textAlign: 'center' 
+                            }}>
+                                <FiMapPin style={{ fontSize: '22px', color: 'var(--accent-teal)', marginBottom: '6px', opacity: 0.8 }} />
+                                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+                                    Select a ward on the right to view <strong>{selectedCivicWork}</strong> projects.
+                                </p>
+                            </div>
+                        )}
                     </div>
 
-                    {/* RIGHT SECTION: South Bengaluru Wards (Searchable/listed set of all South wards & project display) */}
+                    {/* RIGHT SECTION: South Bengaluru Wards (Always visible searchable ward grid) */}
                     <div className="delivery-monitor-card bbmp-works-card" style={{ display: 'flex', flexDirection: 'column' }}>
                         <div className="card-section-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '14px', borderBottom: 'none', paddingBottom: '0', marginBottom: '16px' }}>
                             <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
@@ -558,29 +763,38 @@ export default function Dashboard() {
                                     <h3 className="card-title-main">South Bengaluru Wards</h3>
                                 </div>
                                 {selectedArea && (
-                                    <button 
-                                        onClick={() => {
-                                            setSelectedArea('');
-                                            setSelectedWardObj(null);
-                                            setAreaSearch('');
-                                        }}
-                                        style={{ 
-                                            background: '#f1f5f9', 
-                                            border: '1px solid #e2e8f0', 
-                                            borderRadius: '16px', 
-                                            padding: '4px 12px', 
-                                            fontSize: '12px', 
-                                            fontWeight: 600, 
-                                            color: '#475569', 
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px'
-                                        }}
-                                    >
-                                        <FiX style={{ fontSize: '13px' }} />
-                                        <span>Change Ward / View All</span>
-                                    </button>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ 
+                                            background: 'rgba(13, 148, 136, 0.1)', 
+                                            color: 'var(--accent-teal)', 
+                                            padding: '4px 10px', 
+                                            borderRadius: '14px', 
+                                            fontSize: '11px', 
+                                            fontWeight: 700 
+                                        }}>
+                                            Active: Ward {selectedWardObj?.wardNo || ''} · {selectedArea}
+                                        </span>
+                                        <button 
+                                            onClick={() => {
+                                                setSelectedArea('');
+                                                setSelectedWardObj(null);
+                                                setAreaSearch('');
+                                            }}
+                                            style={{ 
+                                                background: '#f1f5f9', 
+                                                border: '1px solid #e2e8f0', 
+                                                borderRadius: '14px', 
+                                                padding: '3px 8px', 
+                                                fontSize: '11px', 
+                                                fontWeight: 600, 
+                                                color: '#64748b', 
+                                                cursor: 'pointer' 
+                                            }}
+                                            title="Clear ward selection"
+                                        >
+                                            ✕ Clear
+                                        </button>
+                                    </div>
                                 )}
                             </div>
 
@@ -649,174 +863,102 @@ export default function Dashboard() {
                             </div>
                         </div>
 
-                        {/* When a ward / locality is selected: Show existing project display */}
-                        {selectedArea ? (
-                            <div className="bbmp-works-content" style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                {/* Active Ward Info Badge */}
-                                <div style={{ 
-                                    padding: '10px 14px', 
-                                    background: 'rgba(13, 148, 136, 0.06)', 
-                                    borderRadius: '10px', 
-                                    border: '1px solid rgba(13, 148, 136, 0.15)',
-                                    marginBottom: '14px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <FiMapPin style={{ color: 'var(--accent-teal)' }} />
-                                        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)' }}>
-                                            {selectedWardObj ? `Ward ${selectedWardObj.wardNo} - ${selectedWardObj.name}` : selectedArea}
-                                        </span>
-                                        {selectedWardObj?.assemblyConstituency && (
-                                            <span style={{ fontSize: '11px', color: '#64748b' }}>
-                                                ({selectedWardObj.assemblyConstituency})
-                                            </span>
-                                        )}
-                                    </div>
-                                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-teal)' }}>
-                                        {citizenProjects.length} Works
-                                    </span>
-                                </div>
+                        {/* Assembly Constituency filter chips */}
+                        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '12px' }}>
+                            {southConstituencies.map(ac => (
+                                <button
+                                    key={ac}
+                                    onClick={() => setWardACFilter(ac)}
+                                    style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '16px',
+                                        border: '1px solid',
+                                        borderColor: wardACFilter === ac ? 'var(--accent-teal)' : '#e2e8f0',
+                                        background: wardACFilter === ac ? 'var(--accent-teal)' : '#ffffff',
+                                        color: wardACFilter === ac ? '#ffffff' : '#64748b',
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    {ac}
+                                </button>
+                            ))}
+                        </div>
 
-                                {/* Tabs: Ongoing Works & Completed Works */}
-                                <div className="tab-container" style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-light)', marginBottom: '16px' }}>
-                                    <button 
-                                        className={`tab-btn ${citizenTab === 'ongoing' ? 'active' : ''}`}
-                                        onClick={() => setCitizenTab('ongoing')}
-                                        style={{ background: 'none', border: 'none', borderBottom: citizenTab === 'ongoing' ? '2px solid var(--accent-blue)' : '2px solid transparent', padding: '8px 4px', fontWeight: 600, color: citizenTab === 'ongoing' ? 'var(--accent-blue)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '13px' }}
-                                    >Ongoing Works ({ongoingCitizenWorks.length})</button>
-                                    <button 
-                                        className={`tab-btn ${citizenTab === 'completed' ? 'active' : ''}`}
-                                        onClick={() => setCitizenTab('completed')}
-                                        style={{ background: 'none', border: 'none', borderBottom: citizenTab === 'completed' ? '2px solid var(--accent-green)' : '2px solid transparent', padding: '8px 4px', fontWeight: 600, color: citizenTab === 'completed' ? 'var(--accent-green)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '13px' }}
-                                    >Completed Works ({completedCitizenWorks.length})</button>
-                                </div>
-                                
-                                {/* Existing Project Display without percentages/budgets/progress */}
-                                <div className="delivery-projects-list" style={{ overflowY: 'auto', maxHeight: '380px', paddingRight: '4px' }}>
-                                    {(citizenTab === 'ongoing' ? ongoingCitizenWorks : completedCitizenWorks).length > 0 ? (
-                                        (citizenTab === 'ongoing' ? ongoingCitizenWorks : completedCitizenWorks).map(p => (
-                                            <Link key={p._id} to={`/projects/${p._id}`} className="delivery-project-row" style={{ gridTemplateColumns: '1fr auto', padding: '14px 16px', alignItems: 'center' }}>
-                                                <div className="project-row-info">
-                                                    <h4 style={{ marginBottom: '4px', fontSize: '14px' }}>{p.title}</h4>
-                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                                        <span className="tx-tag" style={{ background: '#f1f5f9', color: '#475569', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 }}>{p.category}</span>
-                                                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{p.contractor}</span>
-                                                    </div>
-                                                </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                                                    <span className="tx-tag" style={{ 
-                                                        background: p.status === 'Completed' ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)', 
-                                                        color: p.status === 'Completed' ? 'var(--accent-green)' : 'var(--accent-blue)',
-                                                        fontWeight: 600,
-                                                        fontSize: '11px'
-                                                    }}>{p.status}</span>
-                                                    <FiArrowUpRight className="project-arrow-icon" style={{ position: 'static', opacity: 1, color: '#94a3b8' }} />
-                                                </div>
-                                            </Link>
-                                        ))
-                                    ) : (
-                                        <div className="empty-state-container" style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                            <FiActivity style={{ fontSize: '26px', marginBottom: '10px', opacity: 0.4 }} />
-                                            <p style={{ fontSize: '13px', margin: 0 }}>No {citizenTab} projects being done in this area.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ) : (
-                            /* When NO ward is selected: Searchable/listed set of all South wards */
-                            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                {/* Assembly Constituency filter chips */}
-                                <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '12px' }}>
-                                    {southConstituencies.map(ac => (
-                                        <button
-                                            key={ac}
-                                            onClick={() => setWardACFilter(ac)}
-                                            style={{
-                                                padding: '4px 10px',
-                                                borderRadius: '16px',
-                                                border: '1px solid',
-                                                borderColor: wardACFilter === ac ? 'var(--accent-teal)' : '#e2e8f0',
-                                                background: wardACFilter === ac ? 'var(--accent-teal)' : '#ffffff',
-                                                color: wardACFilter === ac ? '#ffffff' : '#64748b',
-                                                fontSize: '11px',
-                                                fontWeight: 600,
-                                                cursor: 'pointer',
-                                                whiteSpace: 'nowrap'
-                                            }}
-                                        >
-                                            {ac}
-                                        </button>
-                                    ))}
-                                </div>
+                        <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>
+                            Select a South Ward ({filteredSouthWards.length} Wards):
+                        </div>
 
-                                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>
-                                    Select a South Ward ({filteredSouthWards.length} Wards):
-                                </div>
-
-                                {/* Listed set of all South wards */}
-                                <div style={{ 
-                                    display: 'grid', 
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', 
-                                    gap: '8px', 
-                                    overflowY: 'auto', 
-                                    maxHeight: '400px', 
-                                    paddingRight: '4px' 
-                                }}>
-                                    {filteredSouthWards.map(w => (
-                                        <div
-                                            key={w.wardNo}
-                                            onClick={() => {
-                                                setSelectedWardObj(w);
-                                                setSelectedArea(w.name);
-                                                setAreaSearch(`Ward ${w.wardNo} · ${w.name}`);
-                                            }}
-                                            style={{
-                                                padding: '10px 12px',
-                                                borderRadius: '10px',
-                                                border: '1px solid #e2e8f0',
-                                                background: '#fafbfc',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.15s ease'
-                                            }}
-                                            onMouseEnter={(e) => {
+                        {/* Listed set of all South wards (3-column grid) with active highlight */}
+                        <div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', 
+                            gap: '8px', 
+                            overflowY: 'auto', 
+                            maxHeight: '480px', 
+                            paddingRight: '4px' 
+                        }}>
+                            {filteredSouthWards.map(w => {
+                                const isWardSelected = selectedWardObj?.wardNo === w.wardNo || (selectedArea && selectedArea.toLowerCase() === w.name.toLowerCase());
+                                return (
+                                    <div
+                                        key={w.wardNo}
+                                        onClick={() => {
+                                            setSelectedWardObj(w);
+                                            setSelectedArea(w.name);
+                                            setAreaSearch(`Ward ${w.wardNo} · ${w.name}`);
+                                        }}
+                                        style={{
+                                            padding: '10px 12px',
+                                            borderRadius: '10px',
+                                            border: isWardSelected ? '2px solid var(--accent-teal)' : '1px solid #e2e8f0',
+                                            background: isWardSelected ? '#f0fdfa' : '#fafbfc',
+                                            boxShadow: isWardSelected ? '0 0 0 1px var(--accent-teal), 0 4px 12px rgba(13, 148, 136, 0.12)' : 'none',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!isWardSelected) {
                                                 e.currentTarget.style.borderColor = 'var(--accent-teal)';
                                                 e.currentTarget.style.background = '#ffffff';
-                                            }}
-                                            onMouseLeave={(e) => {
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!isWardSelected) {
                                                 e.currentTarget.style.borderColor = '#e2e8f0';
                                                 e.currentTarget.style.background = '#fafbfc';
-                                            }}
-                                        >
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                                                <span style={{ 
-                                                    fontSize: '10px', 
-                                                    fontWeight: 700, 
-                                                    background: 'rgba(59, 130, 246, 0.1)', 
-                                                    color: 'var(--accent-blue)', 
-                                                    padding: '2px 6px', 
-                                                    borderRadius: '6px' 
-                                                }}>
-                                                    Ward {w.wardNo}
-                                                </span>
-                                                <span style={{ fontSize: '10px', color: '#94a3b8' }}>
-                                                    {w.assemblyConstituency.split(' ')[0]}
-                                                </span>
-                                            </div>
-                                            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)', marginTop: '4px' }}>
-                                                {w.name}
-                                            </div>
-                                            {w.areas && w.areas.length > 0 && (
-                                                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                    {w.areas.slice(0, 2).join(', ')}
-                                                </div>
-                                            )}
+                                            }
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                            <span style={{ 
+                                                fontSize: '10px', 
+                                                fontWeight: 700, 
+                                                background: isWardSelected ? 'var(--accent-teal)' : 'rgba(59, 130, 246, 0.1)', 
+                                                color: isWardSelected ? '#ffffff' : 'var(--accent-blue)', 
+                                                padding: '2px 6px', 
+                                                borderRadius: '6px' 
+                                            }}>
+                                                Ward {w.wardNo}
+                                            </span>
+                                            <span style={{ fontSize: '10px', color: isWardSelected ? 'var(--accent-teal)' : '#94a3b8', fontWeight: 600 }}>
+                                                {isWardSelected ? '✓ Active' : w.assemblyConstituency.split(' ')[0]}
+                                            </span>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                                        <div style={{ fontSize: '13px', fontWeight: 700, color: isWardSelected ? 'var(--accent-teal-dark, #0f766e)' : 'var(--text-main)', marginTop: '4px' }}>
+                                            {w.name}
+                                        </div>
+                                        {w.areas && w.areas.length > 0 && (
+                                            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {w.areas.slice(0, 2).join(', ')}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             ) : (
