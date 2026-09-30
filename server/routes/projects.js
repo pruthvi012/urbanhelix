@@ -500,7 +500,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
 });
 
 // POST /api/projects — propose a new project (citizen, engineer, admin, finance)
-router.post('/', protect, authorize('citizen', 'engineer', 'admin', 'financial_officer'), upload.fields([
+router.post('/', protect, authorize('engineer', 'admin', 'financial_officer'), upload.fields([
     { name: 'image', maxCount: 1 }, 
     { name: 'report', maxCount: 1 },
     { name: 'budgetEstimateProof', maxCount: 1 }
