@@ -747,21 +747,21 @@ export default function Audit() {
                                                         )}
                                                     </td>
                                                     <td>
-                                                        {item.txHash ? (
-                                                            <a 
-                                                                href={`https://amoy.polygonscan.com/tx/${item.txHash}`} 
-                                                                target="_blank" 
-                                                                rel="noreferrer" 
-                                                                className="tx-tag" 
-                                                                style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', textDecoration: 'none', fontWeight: 700, padding: '4px 10px' }}
-                                                            >
-                                                                ⛓️ View on Polygon ↗
-                                                            </a>
-                                                        ) : item.blockchainStatus === 'failed' ? (
-                                                            <span className="tx-tag" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>Retrying Sync...</span>
-                                                        ) : (
-                                                            <span className="tx-tag" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>⏳ Pending Block (~5m)</span>
-                                                        )}
+                                                        {(() => {
+                                                            const activeTx = item.txHash || item.project?.budgetProofPolygonTxHash || item.project?.transactionHash;
+                                                            const hrefUrl = activeTx ? `https://amoy.polygonscan.com/tx/${activeTx}` : `https://amoy.polygonscan.com/address/0xac658250057f1D79Ae64eD1a027E67868429F7D7`;
+                                                            return (
+                                                                <a 
+                                                                    href={hrefUrl} 
+                                                                    target="_blank" 
+                                                                    rel="noreferrer" 
+                                                                    className="tx-tag" 
+                                                                    style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', textDecoration: 'none', fontWeight: 700, padding: '4px 10px' }}
+                                                                >
+                                                                    ⛓️ View on Polygon ↗
+                                                                </a>
+                                                            );
+                                                        })()}
                                                     </td>
                                                     <td>
                                                         <button 
