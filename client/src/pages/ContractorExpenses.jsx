@@ -565,7 +565,7 @@ export default function ContractorExpenses() {
                             <div className="table-container">
                                 <table className="table">
                                     <thead>
-                                        <tr><th>Date</th><th>Vendor</th><th>Amount</th><th>Invoice</th><th>Polygon Chain Status</th><th>Engineer Status</th></tr>
+                                        <tr><th>Date</th><th>Vendor</th><th>Amount</th><th>Invoice</th><th>Engineer Status</th></tr>
                                     </thead>
                                     <tbody>
                                         {[...selectedProject.expenditures].reverse().map((exp) => (
@@ -573,7 +573,7 @@ export default function ContractorExpenses() {
                                                 <td style={{ fontSize: '13px' }}>{new Date(exp.date).toLocaleDateString()}</td>
                                                 <td style={{ fontWeight: 600 }}>{exp.vendor}</td>
                                                 <td style={{ fontWeight: 700, color: 'var(--accent-red)' }}>{formatCurrency(exp.amount)}</td>
-                                                <td>{exp.txHash ? (<a href={`https://amoy.polygonscan.com/tx/${exp.txHash}`} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: "rgba(139, 92, 246, 0.1)", color: "#8b5cf6", textDecoration: "none" }}>?? Verified on Polygon</a>) : exp.blockchainStatus === "failed" ? (<span className="tx-tag" style={{ background: "rgba(239, 68, 68, 0.1)", color: "#ef4444" }}>Retrying...</span>) : (<span className="tx-tag" style={{ background: "rgba(245, 158, 11, 0.1)", color: "#f59e0b" }}>? Pending Block</span>)}</td><td><a href={exp.invoiceUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent-blue)', textDecoration: 'none' }}>📄 View</a></td>
+                                                <td><a href={exp.invoiceUrl} target="_blank" rel="noreferrer" className="tx-tag" style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent-blue)', textDecoration: 'none' }}>📄 View</a></td>
 
                                                 <td>
                                                     {exp.engineerVerified
