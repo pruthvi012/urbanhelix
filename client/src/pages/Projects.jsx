@@ -899,16 +899,16 @@ export default function Projects() {
                                                                 <FiDownload /> PDF
                                                             </button>
                                                             {isApprovalAuthority && (
-                                                                p.status === 'proposed' ? (
+                                                                (p.budgetPassed || p.contractorBankDetails?.accountNumber) ? (
+                                                                    <span style={{ fontSize: '11px', fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '3px 10px', borderRadius: '12px', border: '1px solid #86efac', whiteSpace: 'nowrap' }}>✅ Budget Passed</span>
+                                                                ) : p.status === 'rejected' ? (
+                                                                    <span style={{ fontSize: '11px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', padding: '3px 10px', borderRadius: '12px', border: '1px solid #fca5a5', whiteSpace: 'nowrap' }}>❌ Rejected</span>
+                                                                ) : (
                                                                     <>
                                                                         <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id], p)}>Proceed</button>
                                                                         <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>
                                                                     </>
-                                                                ) : p.status === 'approved' || p.status === 'in_progress' || p.status === 'verification' || p.status === 'completed' ? (
-                                                                    <span style={{ fontSize: '11px', fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '3px 10px', borderRadius: '12px', border: '1px solid #86efac', whiteSpace: 'nowrap' }}>✅ Budget Passed</span>
-                                                                ) : p.status === 'rejected' ? (
-                                                                    <span style={{ fontSize: '11px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', padding: '3px 10px', borderRadius: '12px', border: '1px solid #fca5a5', whiteSpace: 'nowrap' }}>❌ Rejected</span>
-                                                                ) : null
+                                                                )
                                                             )}
                                                             </div>
                                                         </td>

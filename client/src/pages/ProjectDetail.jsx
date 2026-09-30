@@ -396,12 +396,7 @@ export default function ProjectDetail() {
                     {user?.role === 'admin' && (
                         <>
                             {budgetProofUrl && <button className="btn btn-outline btn-sm" onClick={openBudgetProof}>View Budget PDF</button>}
-                            {project.status === 'proposed' ? (
-                                <>
-                                    <button className="btn btn-success btn-sm" onClick={handleApprove}>Proceed</button>
-                                    <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject</button>
-                                </>
-                            ) : ['approved', 'in_progress', 'verification', 'completed'].includes(project.status) ? (
+                            {(project.budgetPassed || project.contractorBankDetails?.accountNumber) ? (
                                 <span style={{ fontSize: '12px', fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '4px 12px', borderRadius: '12px', border: '1px solid #86efac', whiteSpace: 'nowrap' }}>
                                     ✅ Budget Passed {project.contractor?.name ? '(' + project.contractor.name + ')' : ''}
                                 </span>
@@ -409,7 +404,12 @@ export default function ProjectDetail() {
                                 <span style={{ fontSize: '12px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', padding: '4px 12px', borderRadius: '12px', border: '1px solid #fca5a5', whiteSpace: 'nowrap' }}>
                                     ❌ Budget Rejected
                                 </span>
-                            ) : null}
+                            ) : (
+                                <>
+                                    <button className="btn btn-success btn-sm" onClick={handleApprove}>Proceed</button>
+                                    <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject</button>
+                                </>
+                            )}
                         </>
                     )}
                     {['engineer', 'admin'].includes(user?.role) && ['approved', 'in_progress'].includes(project.status) && !project.contractor && (

@@ -91,6 +91,12 @@ const projectSchema = new mongoose.Schema({
         rejectionReason: { type: String, default: '' },
         correctionRequired: { type: Boolean, default: false }
     }],
+    budgetPassed: { type: Boolean, default: false },
+    contractorBankDetails: {
+        accountNumber: { type: String, default: '' },
+        ifscCode: { type: String, default: '' },
+        bankName: { type: String, default: '' },
+    },
     paymentBlocked: { type: Boolean, default: false },
     verifications: [
         {

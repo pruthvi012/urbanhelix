@@ -595,6 +595,10 @@ router.put('/:id/approve-v2', protect, authorize('admin'), async (req, res) => {
         }
 
         project.status = 'approved';
+        project.budgetPassed = true;
+        if (req.body.bankDetails) {
+            project.contractorBankDetails = req.body.bankDetails;
+        }
         project.allocatedBudget = allocatedBudget || project.estimatedBudget;
         project.statusHistory.push({
             status: 'approved',
