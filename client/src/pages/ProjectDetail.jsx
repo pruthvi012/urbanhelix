@@ -475,7 +475,7 @@ export default function ProjectDetail() {
                     {user?.role === 'admin' && (
                         <>
                             {budgetProofUrl && <button className="btn btn-outline btn-sm" onClick={openBudgetProof}>View Budget PDF</button>}
-                            {(project.budgetPassed || project.contractorBankDetails?.accountNumber) ? (
+                            {project.budgetPassed ? (
                                 <span style={{ fontSize: '12px', fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '4px 12px', borderRadius: '12px', border: '1px solid #86efac', whiteSpace: 'nowrap' }}>
                                     ✅ Budget Passed {project.contractor?.name ? '(' + project.contractor.name + ')' : ''}
                                 </span>
