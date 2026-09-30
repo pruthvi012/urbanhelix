@@ -526,6 +526,147 @@ export default function Audit() {
                 </>
             )}
 
+                        {activeTab === 'polygon' && (
+                <div style={{ marginBottom: '24px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                        <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #8b5cf6' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Network & Smart Contract</div>
+                            <div style={{ fontSize: '15px', fontWeight: 800, color: '#8b5cf6', marginTop: '4px' }}>Polygon Amoy Testnet</div>
+                            <a 
+                                href="https://amoy.polygonscan.com/address/0xac658250057f1D79Ae64eD1a027E67868429F7D7" 
+                                target="_blank" 
+                                rel="noreferrer"
+                                style={{ fontSize: '12px', color: 'var(--accent-blue)', textDecoration: 'none', wordBreak: 'break-all', display: 'inline-block', marginTop: '6px', fontWeight: 600 }}
+                            >
+                                🔗 0xac65...F7D7 (Contract) ↗
+                            </a>
+                        </div>
+
+                        <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #2563eb' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Admin / Deployer Wallet</div>
+                            <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--accent-blue)', marginTop: '4px' }}>Municipal Escrow Wallet</div>
+                            <a 
+                                href="https://amoy.polygonscan.com/address/0x8fcA503b13f99732BBda45265473B801269763ef" 
+                                target="_blank" 
+                                rel="noreferrer"
+                                style={{ fontSize: '12px', color: 'var(--accent-blue)', textDecoration: 'none', wordBreak: 'break-all', display: 'inline-block', marginTop: '6px', fontWeight: 600 }}
+                            >
+                                🔗 0x8fcA...63ef (Wallet) ↗
+                            </a>
+                        </div>
+
+                        <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #16a34a' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>On-Chain Synchronization</div>
+                            <div style={{ fontSize: '15px', fontWeight: 800, color: '#16a34a', marginTop: '4px' }}>Auto-Sync Every ~5 Mins</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>
+                                All verified expenditures and project approvals are hashed and written to Polygon.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="glass-card">
+                        <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            ⛓️ Live Polygon Proof Ledger
+                        </h3>
+
+                        {polygonLoading ? (
+                            <div className="loading" style={{ padding: '40px' }}><div className="spinner"></div> Loading Polygon records...</div>
+                        ) : (
+                            <div className="table-container">
+                                <table className="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Record Type</th>
+                                            <th>Project Title</th>
+                                            <th>Ward & Area</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                            <th>Polygon Explorer Proof</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(() => {
+                                            const items = [];
+                                            polygonProjects.forEach(p => {
+                                                if (p.projectCode) {
+                                                    items.push({
+                                                        id: p._id + '-app',
+                                                        type: 'Project Approval',
+                                                        title: p.title,
+                                                        ward: `Ward ${p.location?.wardNo || p.location?.ward || 'N/A'}: ${p.location?.area || ''}`,
+                                                        amount: p.allocatedBudget || p.estimatedBudget,
+                                                        status: p.status,
+                                                        txHash: p.transactionHash || null,
+                                                        date: p.updatedAt || p.createdAt,
+                                                        code: p.projectCode
+                                                    });
+                                                }
+                                                if (p.expenditures?.length) {
+                                                    p.expenditures.forEach(exp => {
+                                                        items.push({
+                                                            id: exp._id,
+                                                            type: `Material Expense (${exp.vendor || 'Vendor'})`,
+                                                            title: p.title,
+                                                            ward: `Ward ${p.location?.wardNo || p.location?.ward || 'N/A'}: ${p.location?.area || ''}`,
+                                                            amount: exp.amount,
+                                                            status: exp.engineerVerified ? 'engineer_verified' : 'pending',
+                                                            txHash: exp.txHash || null,
+                                                            blockchainStatus: exp.blockchainStatus,
+                                                            date: exp.date,
+                                                            code: p.projectCode
+                                                        });
+                                                    });
+                                                }
+                                            });
+
+                                            if (!items.length) {
+                                                return <tr><td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>No Polygon records found.</td></tr>;
+                                            }
+
+                                            return items.map((item) => (
+                                                <tr key={item.id}>
+                                                    <td>
+                                                        <span className="badge badge-proposed" style={{ fontSize: '11px', textTransform: 'none' }}>{item.type}</span>
+                                                    </td>
+                                                    <td>
+                                                        <div style={{ fontWeight: 600, fontSize: '13px' }}>{item.title}</div>
+                                                        <div style={{ fontSize: '10px', color: 'var(--accent-blue)' }}>{item.code}</div>
+                                                    </td>
+                                                    <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{item.ward}</td>
+                                                    <td style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>₹{Number(item.amount || 0).toLocaleString()}</td>
+                                                    <td>
+                                                        <span className={`badge badge-${item.status === 'engineer_verified' || item.status === 'approved' ? 'approved' : 'pending'}`}>
+                                                            {item.status?.replace('_', ' ')}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        {item.txHash ? (
+                                                            <a 
+                                                                href={`https://amoy.polygonscan.com/tx/${item.txHash}`} 
+                                                                target="_blank" 
+                                                                rel="noreferrer" 
+                                                                className="tx-tag" 
+                                                                style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', textDecoration: 'none', fontWeight: 700, padding: '4px 10px' }}
+                                                            >
+                                                                ⛓️ View on Polygon ↗
+                                                            </a>
+                                                        ) : item.blockchainStatus === 'failed' ? (
+                                                            <span className="tx-tag" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>Retrying Sync...</span>
+                                                        ) : (
+                                                            <span className="tx-tag" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>⏳ Pending Block (~5m)</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ));
+                                        })()}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {activeTab === 'logs' && (
                 <div className="section">
                     {!isAdmin ? (
