@@ -9,7 +9,6 @@ const ROLES = [
     { key: 'admin', label: 'Authorized Approving Officer', desc: 'Approve projects and oversee delivery...', email: 'admin@urbanhelix.gov', avatar: 'AO' },
     { key: 'engineer', label: 'Site Engineer', desc: 'Technical & field audit...', email: 'rajesh.engineer@urbanhelix.gov', avatar: 'RK' },
     { key: 'contractor', label: 'Project Contractor', desc: 'Civil works execution...', email: 'vikram@contractor.com', avatar: 'VM' },
-    { key: 'financial_officer', label: 'Finance Officer', desc: 'Treasury & escrow release...', email: 'sunita.finance@urbanhelix.gov', avatar: 'SS' }
 ];
 
 export default function Login() {
