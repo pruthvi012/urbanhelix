@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { FiShield, FiActivity, FiChevronDown, FiChevronUp } from 'react-icons/fi';
@@ -664,38 +664,6 @@ export default function Login() {
                 )}
 
                 <div className="login-form-wrapper">
-                    {/* PWA App Install Banner */}
-                    {showInstall && (
-                        <div style={{
-                            background: 'linear-gradient(135deg, #0d231e, #0a1815)',
-                            border: '1px solid rgba(45,212,191,0.3)',
-                            borderRadius: '12px',
-                            padding: '14px 18px',
-                            marginBottom: '28px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '12px',
-                            width: '100%',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <span style={{ fontSize: '24px' }}>📲</span>
-                                <div>
-                                    <div style={{ color: '#fff', fontWeight: 700, fontSize: '13px' }}>Install UrbanHelix</div>
-                                    <div style={{ color: '#94a3b8', fontSize: '11px' }}>Access your city dashboard from home screen</div>
-                                </div>
-                            </div>
-                            <button onClick={handleInstall} style={{
-                                background: '#0d9488', color: '#fff', border: 'none',
-                                borderRadius: '8px', padding: '8px 16px', fontWeight: 700,
-                                cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap'
-                            }}>
-                                Install
-                            </button>
-                        </div>
-                    )}
-
                     {/* Shield Icon */}
                     <div className="login-secure-badge">
                         <FiShield />
@@ -723,7 +691,7 @@ export default function Login() {
                             width: '100%',
                             textAlign: 'left'
                         }}>
-                            ⚠️ {error}
+                            âš ï¸ {error}
                         </div>
                     )}
 
@@ -739,7 +707,7 @@ export default function Login() {
                             width: '100%',
                             textAlign: 'left'
                         }}>
-                            ✅ {infoMessage}
+                            âœ… {infoMessage}
                         </div>
                     )}
 
@@ -750,14 +718,14 @@ export default function Login() {
                                 className={`login-tab-btn ${loginMethod === 'otp' ? 'active' : ''}`}
                                 onClick={() => { setLoginMethod('otp'); setError(''); setInfoMessage(''); }}
                             >
-                                👥 Citizen Access
+                                ðŸ‘¥ Citizen Access
                             </button>
                             <button 
                                 type="button" 
                                 className={`login-tab-btn ${loginMethod === 'password' ? 'active' : ''}`}
                                 onClick={() => { setLoginMethod('password'); setError(''); setInfoMessage(''); }}
                             >
-                                💼 Officer Portal
+                                ðŸ’¼ Officer Portal
                             </button>
                         </div>
                     )}
@@ -832,14 +800,14 @@ export default function Login() {
                                 </div>
 
                                 <button className="login-submit-btn" type="submit" disabled={loading}>
-                                    {loading ? '⏳ Please wait...' : 'Create Account'}
+                                    {loading ? 'â³ Please wait...' : 'Create Account'}
                                 </button>
                             </>
                         ) : loginMethod === 'otp' ? (
                             <>
                                 {otpSent && demoOtp && (
                                     <div className="login-otp-demo-banner">
-                                        🔒 <strong>Demo Mode Verification Code</strong><br />
+                                        ðŸ”’ <strong>Demo Mode Verification Code</strong><br />
                                         A simulated OTP <strong>{demoOtp}</strong> has been generated for phone <strong>{phone}</strong>.
                                     </div>
                                 )}
@@ -879,7 +847,7 @@ export default function Login() {
                                 )}
 
                                 <button className="login-submit-btn" type="submit" disabled={loading || otpLoading}>
-                                    {loading || otpLoading ? '⏳ Please wait...' : !otpSent ? (
+                                    {loading || otpLoading ? 'â³ Please wait...' : !otpSent ? (
                                         <>
                                             <span>Send Verification Code</span>
                                             <span>&rarr;</span>
@@ -929,7 +897,7 @@ export default function Login() {
                                 </div>
 
                                 <button className="login-submit-btn" type="submit" disabled={loading}>
-                                    {loading ? '⏳ Please wait...' : (
+                                    {loading ? 'â³ Please wait...' : (
                                         <>
                                             <span>Sign In</span>
                                             <span>&rarr;</span>
@@ -955,7 +923,7 @@ export default function Login() {
             </div>
         </div>
 
-        {/* ─── ACCESS POLICY MODAL ─── */}
+        {/* â”€â”€â”€ ACCESS POLICY MODAL â”€â”€â”€ */}
         {showPolicy && (
             <div
                 onClick={() => setShowPolicy(false)}
@@ -990,14 +958,14 @@ export default function Login() {
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 color: '#0d9488', fontSize: '18px'
                             }}>
-                                🛡️
+                                ðŸ›¡ï¸
                             </div>
                             <div>
                                 <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
                                     UrbanHeliX Access Policy
                                 </h2>
                                 <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-                                    Effective: August 2025 · Municipal Civic Platform
+                                    Effective: August 2025 Â· Municipal Civic Platform
                                 </p>
                             </div>
                         </div>
@@ -1010,7 +978,7 @@ export default function Login() {
                                 fontSize: '18px', color: '#64748b', fontWeight: 700
                             }}
                         >
-                            ×
+                            Ã—
                         </button>
                     </div>
 
@@ -1018,42 +986,42 @@ export default function Login() {
                     <div style={{ padding: '28px 32px', overflowY: 'auto', flex: 1 }}>
                         {[
                             {
-                                icon: '🏛️',
+                                icon: 'ðŸ›ï¸',
                                 title: '1. Purpose of Access',
                                 text: 'UrbanHeliX is an official civic transparency platform operated by the Municipal Corporation. Access is granted strictly for tracking public infrastructure projects, monitoring fund allocation, submitting grievances, and participating in civic governance. Any use beyond these purposes is strictly prohibited.'
                             },
                             {
-                                icon: '👥',
+                                icon: 'ðŸ‘¥',
                                 title: '2. User Roles & Permissions',
                                 text: 'Citizens may view public project data, grievance statuses, and budget summaries. Contractors and Site Engineers may update milestones and upload progress documentation for their assigned projects. Financial Officers may authorize fund releases and escrow transactions. City Admins have full access to all modules. Access is role-bound and may not be shared or transferred.'
                             },
                             {
-                                icon: '📊',
+                                icon: 'ðŸ“Š',
                                 title: '3. Data Collection & Usage',
                                 text: 'We collect your name, email address, role information, and activity logs (page visits, API calls, file uploads). This data is used solely to operate the platform, enforce accountability, and generate audit reports. We do not sell or share your personal data with third parties. All data is stored securely on government-grade infrastructure.'
                             },
                             {
-                                icon: '⛔',
+                                icon: 'â›”',
                                 title: '4. Prohibited Activities',
                                 text: 'Users must not: falsify project progress, fabricate invoices or verification photos, attempt unauthorized access to other users\' data, scrape or bulk-export platform data, use automated bots or scripts, or tamper with any audit or blockchain records. Violations will result in immediate account suspension.'
                             },
                             {
-                                icon: '🔗',
+                                icon: 'ðŸ”—',
                                 title: '5. Cryptographic Audit Trail',
-                                text: 'All significant actions on UrbanHeliX — fund releases, milestone approvals, project status changes — are cryptographically hashed and stored in an immutable SHA-256 linked chain. By using this platform, you acknowledge that your actions are permanently recorded and cannot be altered, deleted, or disputed.'
+                                text: 'All significant actions on UrbanHeliX â€” fund releases, milestone approvals, project status changes â€” are cryptographically hashed and stored in an immutable SHA-256 linked chain. By using this platform, you acknowledge that your actions are permanently recorded and cannot be altered, deleted, or disputed.'
                             },
                             {
-                                icon: '🔒',
+                                icon: 'ðŸ”’',
                                 title: '6. Confidentiality of Sensitive Data',
                                 text: 'Budget figures, escrow transaction details, contractor financial records, and project audit documents are confidential to authorized roles only. Citizens may view aggregated summaries. Unauthorized disclosure of role-restricted data to third parties is a violation of this policy and may attract legal consequences.'
                             },
                             {
-                                icon: '🔑',
+                                icon: 'ðŸ”‘',
                                 title: '7. Session & Credential Security',
                                 text: 'You are fully responsible for maintaining the confidentiality of your login credentials. Sessions are cleared when you open a new browser tab or window. Do not share your password with anyone. If you suspect unauthorized access to your account, contact the system administrator immediately at admin@urbanhelix.gov.'
                             },
                             {
-                                icon: '⚖️',
+                                icon: 'âš–ï¸',
                                 title: '8. Consequences of Violation',
                                 text: 'Violation of this access policy may result in: immediate suspension of your account, escalation to the relevant municipal authority, and where applicable, legal action under the Information Technology Act, 2000 and related regulations. UrbanHeliX reserves the right to audit all user activity at any time without prior notice.'
                             }
