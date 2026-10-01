@@ -718,14 +718,14 @@ export default function Login() {
                                 className={`login-tab-btn ${loginMethod === 'otp' ? 'active' : ''}`}
                                 onClick={() => { setLoginMethod('otp'); setError(''); setInfoMessage(''); }}
                             >
-                                ðŸ‘¥ Citizen Access
+                                👥 Citizen Access
                             </button>
                             <button 
                                 type="button" 
                                 className={`login-tab-btn ${loginMethod === 'password' ? 'active' : ''}`}
                                 onClick={() => { setLoginMethod('password'); setError(''); setInfoMessage(''); }}
                             >
-                                ðŸ’¼ Officer Portal
+                                💼 Officer Portal
                             </button>
                         </div>
                     )}
