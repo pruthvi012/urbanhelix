@@ -484,24 +484,22 @@ export default function ProjectDetail() {
                                 <span style={{ fontSize: '12px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', padding: '4px 12px', borderRadius: '12px', border: '1px solid #fca5a5', whiteSpace: 'nowrap' }}>
                                     ❌ Budget Rejected
                                 </span>
-                            ) : isTampered ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                    <button 
-                                        className="btn btn-sm" 
-                                        disabled 
-                                        style={{ opacity: 0.6, cursor: 'not-allowed', background: '#94a3b8', color: '#ffffff', borderColor: '#64748b', fontWeight: 700 }}
-                                    >
-                                        🔒 Proceed Frozen
-                                    </button>
-                                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                                        ⚠️ PROCEED FROZEN: Budget has been tampered! Action blocked for security investigation.
-                                    </span>
-                                </div>
                             ) : project.status === 'proposed' ? (
-                                <>
-                                    <button className="btn btn-success btn-sm" onClick={handleApprove}>Proceed</button>
-                                    <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject</button>
-                                </>
+                                isTampered ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                        <button className="btn btn-sm" disabled style={{ opacity: 0.6, cursor: 'not-allowed', background: '#94a3b8', color: '#ffffff', borderColor: '#64748b', fontWeight: 700 }}>
+                                            🔒 Proceed Frozen
+                                        </button>
+                                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                                            ⚠️ PROCEED FROZEN: Budget has been tampered! Action blocked for security investigation.
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button className="btn btn-success btn-sm" onClick={handleApprove}>Proceed</button>
+                                        <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject</button>
+                                    </>
+                                )
                             ) : (
                                 <span style={{ fontSize: '12px', fontWeight: 700, background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '12px', border: '1px solid #7dd3fc', whiteSpace: 'nowrap' }}>
                                     ✅ {project.status.charAt(0).toUpperCase() + project.status.slice(1).replace('_', ' ')}
@@ -666,7 +664,12 @@ export default function ProjectDetail() {
                         <strong>{formatCurrency(bill.claimedAmount)}</strong>
                         <span style={{ color: 'var(--text-secondary)' }}>{bill.supplier}</span>
                         {bill.billUrl && <a href={bill.billUrl} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">View final bill</a>}
-                        {user?.role === 'admin' && bill.active && bill.status === 'approved' && !bill.financeReleased && <button className="btn btn-success btn-sm" onClick={handleReleaseFinalBill}>Proceed with fund release</button>}
+                        {user?.role === 'admin' && bill.active && bill.status === 'approved' && !bill.financeReleased && !isTampered && <button className="btn btn-success btn-sm" onClick={handleReleaseFinalBill}>Proceed with fund release</button>}
+                        {user?.role === 'admin' && bill.active && bill.status === 'approved' && !bill.financeReleased && isTampered && (
+                            <span style={{ fontSize: '11px', fontWeight: 800, color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.3)' }}>
+                                🔒 FUND RELEASE BLOCKED — Budget tampering detected!
+                            </span>
+                        )}
                         {bill.financeReleased && <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>Payment released</span>}
                         {bill.tamperReason && <span style={{ color: 'var(--accent-red)', fontWeight: 700 }}>{bill.tamperReason}</span>}
                     </div>)}
