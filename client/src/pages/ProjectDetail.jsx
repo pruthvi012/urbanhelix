@@ -497,11 +497,15 @@ export default function ProjectDetail() {
                                         ⚠️ PROCEED FROZEN: Budget has been tampered! Action blocked for security investigation.
                                     </span>
                                 </div>
-                            ) : (
+                            ) : project.status === 'proposed' ? (
                                 <>
                                     <button className="btn btn-success btn-sm" onClick={handleApprove}>Proceed</button>
                                     <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject</button>
                                 </>
+                            ) : (
+                                <span style={{ fontSize: '12px', fontWeight: 700, background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '12px', border: '1px solid #7dd3fc', whiteSpace: 'nowrap' }}>
+                                    ✅ {project.status.charAt(0).toUpperCase() + project.status.slice(1).replace('_', ' ')}
+                                </span>
                             )}
                         </>
                     )}
