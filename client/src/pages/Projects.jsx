@@ -894,7 +894,9 @@ export default function Projects() {
                                                                 <FiDownload /> PDF
                                                             </button>
                                                             {isApprovalAuthority && (
-                                                                p.status === 'proposed' ? (
+                                                                p.isTampered ? (
+                                                                    <span style={{ fontSize: '11px', fontWeight: 800, background: '#fee2e2', color: '#991b1b', padding: '3px 10px', borderRadius: '12px', border: '1px solid #fca5a5', whiteSpace: 'nowrap' }}>🔒 Proceed Frozen</span>
+                                                                ) : p.status === 'proposed' ? (
                                                                     <>
                                                                         <button className="btn btn-success btn-sm" onClick={() => handleApprove(p._id, p.estimatedBudget, allocationDrafts[p._id], p)}>Proceed</button>
                                                                         <button className="btn btn-danger btn-sm" onClick={() => handleReject(p._id)}>Reject</button>

@@ -102,32 +102,19 @@ export default function ProjectDetail() {
         }
     };
     
-                const handleApprove = async () => {
-        const contractorName = project.contractor?.name || 'Assigned Contractor';
-        const accountNumber = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\n\nEnter Contractor Bank Account Number for budget allocation:`);
-        if (accountNumber === null) return; // Cancelled
-        if (!accountNumber.trim()) {
-            alert('Bank Account Number is required to process budget allocation!');
-            return;
+    const handleApprove = async () => {
+        if (isTampered) {
+            return alert("🔒 ACTION FROZEN: This project budget has been tampered! Budget processing is blocked for security investigation.");
         }
+        const allocatedBudget = prompt(`Enter Allocated Budget for this project (Proposed: ₹${(project.estimatedBudget || 0).toLocaleString()}):`, project.estimatedBudget);
+        if (allocatedBudget === null) return;
 
-        const ifscCode = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\nAccount No: ${accountNumber}\n\nEnter IFSC Code:`);
-        if (ifscCode === null) return;
-        if (!ifscCode.trim()) {
-            alert('IFSC Code is required!');
-            return;
-        }
-
-        const bankName = prompt(`👷 CONTRACTOR: ${contractorName.toUpperCase()}\nAccount No: ${accountNumber} | IFSC: ${ifscCode}\n\nEnter Bank Name:`) || 'State Bank of India';
-
-        const allocatedBudget = Number(project.estimatedBudget || 0);
         try {
             await projectAPI.approve(id, { 
-                allocatedBudget, 
-                bankDetails: { accountNumber, ifscCode, bankName },
-                remarks: `Budget Passed & Allocated to ${contractorName} (Acc: ${accountNumber})` 
+                allocatedBudget: Number(allocatedBudget), 
+                remarks: `Project approved and budget allocated.` 
             });
-            alert(`✅ BUDGET ALLOCATED & PASSED!\n\n👷 Contractor: ${contractorName}\n🏦 Bank Account: ${accountNumber}\n🏢 Bank: ${bankName} (${ifscCode})\n\nBudget has been successfully allocated.`);
+            alert(`✅ PROJECT APPROVED!\n\nAllocated Budget: ₹${Number(allocatedBudget).toLocaleString()}\n\nContractors can now claim the project.`);
             loadData();
         } catch (err) { 
             console.error('Approve error:', err);
@@ -136,14 +123,18 @@ export default function ProjectDetail() {
     };
 
     const handleReject = async () => {
+        if (isTampered) {
+            return alert("🔒 ACTION FROZEN: This project budget has been tampered! Budget processing is blocked for security investigation.");
+        }
         const reason = prompt('Enter reason for rejection:');
         if (reason === null) return;
         try {
             await projectAPI.reject(id, { remarks: reason });
             loadData();
+            alert(`Project proposal rejected.`);
         } catch (err) {
-            console.error('Reject error:', err);
-            alert(`Rejection Error: ${err.response?.data?.message || err.message || 'Unknown error'}`);
+            console.error('Rejection error:', err);
+            alert(`Rejection Error: ${err.response?.data?.message || err.message}`);
         }
     };
 
@@ -476,7 +467,16 @@ export default function ProjectDetail() {
                     {user?.role === 'admin' && (
                         <>
                             {budgetProofUrl && <button className="btn btn-outline btn-sm" onClick={openBudgetProof}>View Budget PDF</button>}
-                            {project.budgetPassed ? (
+                            {isTampered ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                    <button className="btn btn-sm" disabled style={{ opacity: 0.8, cursor: 'not-allowed', background: '#dc2626', color: '#ffffff', borderColor: '#b91c1c', fontWeight: 700 }}>
+                                        🔒 Proceed Frozen
+                                    </button>
+                                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                                        ⚠️ PROCEED FROZEN: Budget has been tampered! Action blocked for security investigation.
+                                    </span>
+                                </div>
+                            ) : project.budgetPassed ? (
                                 <span style={{ fontSize: '12px', fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '4px 12px', borderRadius: '12px', border: '1px solid #86efac', whiteSpace: 'nowrap' }}>
                                     ✅ Budget Passed {project.contractor?.name ? '(' + project.contractor.name + ')' : ''}
                                 </span>
@@ -485,21 +485,10 @@ export default function ProjectDetail() {
                                     ❌ Budget Rejected
                                 </span>
                             ) : project.status === 'proposed' ? (
-                                isTampered ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                        <button className="btn btn-sm" disabled style={{ opacity: 0.6, cursor: 'not-allowed', background: '#94a3b8', color: '#ffffff', borderColor: '#64748b', fontWeight: 700 }}>
-                                            🔒 Proceed Frozen
-                                        </button>
-                                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                                            ⚠️ PROCEED FROZEN: Budget has been tampered! Action blocked for security investigation.
-                                        </span>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <button className="btn btn-success btn-sm" onClick={handleApprove}>Proceed</button>
-                                        <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject</button>
-                                    </>
-                                )
+                                <>
+                                    <button className="btn btn-success btn-sm" onClick={handleApprove}>Proceed</button>
+                                    <button className="btn btn-danger btn-sm" onClick={handleReject}>Reject</button>
+                                </>
                             ) : (
                                 <span style={{ fontSize: '12px', fontWeight: 700, background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '12px', border: '1px solid #7dd3fc', whiteSpace: 'nowrap' }}>
                                     ✅ {project.status.charAt(0).toUpperCase() + project.status.slice(1).replace('_', ' ')}
